@@ -366,8 +366,7 @@ int parsemsg_object(struct mbn_message *msg) {
     /* we need data for these actions... */
     if( obj->Action == MBN_OBJ_ACTION_ENGINE_RESPONSE    || obj->Action == MBN_OBJ_ACTION_SET_ENGINE     ||
         obj->Action == MBN_OBJ_ACTION_FREQUENCY_RESPONSE || obj->Action == MBN_OBJ_ACTION_SET_FREQUENCY  ||
-        obj->Action == MBN_OBJ_ACTION_SENSOR_RESPONSE    || obj->Action == MBN_OBJ_ACTION_SENSOR_CHANGED ||
-        obj->Action == MBN_OBJ_ACTION_ACTUATOR_RESPONSE  || obj->Action == MBN_OBJ_ACTION_SET_ACTUATOR)
+        obj->Action == MBN_OBJ_ACTION_SENSOR_CHANGED     || obj->Action == MBN_OBJ_ACTION_SET_ACTUATOR)
       return 4;
     return 0;
   }
