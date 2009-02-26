@@ -23,7 +23,7 @@ int main(void) {
   mbn = mbnInit(this_node, *eth0);
   mbnEthernetInit(mbn, "eth0");
 
-  //pthread_exit(NULL);
+  pthread_exit(NULL);
   return 0;
 }
 

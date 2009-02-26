@@ -13,5 +13,5 @@ ${STATIC}: ${OBJECTS}
 	gcc -c $*.c
 
 clean:
-	rm ${OBJECTS} ${STATIC}
+	rm -f ${OBJECTS} ${STATIC}
 

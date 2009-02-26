@@ -8,7 +8,8 @@ src/mbn.a: force_look
 	${MAKE} -C src/
 
 clean:
-	rm main main.o
+	rm -f main
+	${MAKE} -C src/ clean
 
 force_look:
 

@@ -31,6 +31,7 @@
 
 
 #define MBN_MAX_MESSAGE_SIZE 128
+#define MBN_MIN_MESSAGE_SIZE 16
 
 
 /* All information required for the default objects of a node */
@@ -50,7 +51,20 @@ struct mbn_node_info {
 /* Struct for HW interfaces */
 struct mbn_interface {
   void *data; /* can be used by the interface */
-  /* unfinished... */
+  /* unfinished, needs callbacks (among other things...) */
+};
+
+
+/* Packet information structs */
+struct mbn_message {
+  unsigned char ControlByte;
+  unsigned long AddressTo, AddressFrom;
+  unsigned long MessageID;
+  unsigned short MessageType;
+  unsigned char DataLength;
+  unsigned char *buffer;
+  int bufferlength;
+  /* TODO: union with parsed data */
 };
 
 
