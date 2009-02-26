@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include <pthread.h>
 #include <fcntl.h>
@@ -22,47 +23,7 @@ struct mbn_ethernet_data {
   pthread_t thread;
 };
 
-
-/* Waits for input from network */
-/* TODO: thread cancellation? */
-void *receive_packets(void *ptr) {
-  struct mbn_handler *mbn = (struct mbn_handler *) ptr;
-  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
-  unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
-  int i, msgbuflen = 0;
-  struct sockaddr_ll from;
-  ssize_t rd;
-  socklen_t addrlength = sizeof(struct sockaddr_ll);
-
-  while((rd = recvfrom(eth->socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&from, &addrlength)) > 0) {
-    if(htons(from.sll_protocol) != ETH_P_DNR)
-      continue;
-
-    for(i=0; i<rd; i++) {
-      /* ignore non-start bytes if we haven't started yet */
-      if(msgbuflen == 0 && !(buffer[i] >= 0x80 && buffer[i] < 0xFF))
-        continue;
-      msgbuf[msgbuflen++] = buffer[i];
-      /* we have a full message, send buffer to mambanet stack for processing */
-      if(buffer[i] == 0xFF) {
-        if(msgbuflen >= MBN_MIN_MESSAGE_SIZE)
-          mbnProcessRawMambaNetMessage(mbn, msgbuf, msgbuflen);
-        msgbuflen = 0;
-      }
-      /* message was way too long, ignore it */
-      if(msgbuflen >= MBN_MAX_MESSAGE_SIZE)
-        msgbuflen = 0;
-    }
-  }
-
-  /* TODO: Notify application */
-  if(rd < 0)
-    perror("Can't read from socket");
-
-  MBN_TRACE(printf("Closing the receiver thread..."));
-
-  return NULL;
-}
+void *receive_packets(void *ptr);
 
 
 /* Creates a new ethernet interface and links it to the mbn handler */
@@ -75,7 +36,10 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
   data = (struct mbn_ethernet_data *) malloc(sizeof(struct mbn_ethernet_data));
   mbn->interface.data = (void *) data;
 
-  /* create a socket */
+  /* create a socket
+   * Note we use ETH_P_ALL here, because that's the only way to receive
+   *  outgoing packets from other processes as well as incoming packets
+   *  from the network. */
   data->socket = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));
   if(data->socket < 0) {
     perror("Couldn't create socket");
@@ -131,6 +95,48 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
     data->address[4], data->address[5]));
 
   return 0;
+}
+
+
+/* Waits for input from network */
+/* TODO: thread cancellation? */
+void *receive_packets(void *ptr) {
+  struct mbn_handler *mbn = (struct mbn_handler *) ptr;
+  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
+  unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
+  int i, msgbuflen = 0;
+  struct sockaddr_ll from;
+  ssize_t rd;
+  socklen_t addrlength = sizeof(struct sockaddr_ll);
+
+  while((rd = recvfrom(eth->socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&from, &addrlength)) > 0) {
+    if(htons(from.sll_protocol) != ETH_P_DNR)
+      continue;
+
+    for(i=0; i<rd; i++) {
+      /* ignore non-start bytes if we haven't started yet */
+      if(msgbuflen == 0 && !(buffer[i] >= 0x80 && buffer[i] < 0xFF))
+        continue;
+      msgbuf[msgbuflen++] = buffer[i];
+      /* we have a full message, send buffer to mambanet stack for processing */
+      if(buffer[i] == 0xFF) {
+        if(msgbuflen >= MBN_MIN_MESSAGE_SIZE)
+          mbnProcessRawMambaNetMessage(mbn, msgbuf, msgbuflen);
+        msgbuflen = 0;
+      }
+      /* message was way too long, ignore it */
+      if(msgbuflen >= MBN_MAX_MESSAGE_SIZE)
+        msgbuflen = 0;
+    }
+  }
+
+  /* TODO: Notify application */
+  if(rd < 0)
+    perror("Can't read from socket");
+
+  MBN_TRACE(printf("Closing the receiver thread..."));
+
+  return NULL;
 }
 
 

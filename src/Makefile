@@ -1,4 +1,6 @@
-OBJECTS = mbn.o ethernet.o
+CFLAGS  = -Wall -Wextra -std=c89 -pedantic
+HEADERS = mbn.h
+OBJECTS = mbn.o codec.o ethernet.o
 STATIC  = mbn.a
 
 all: ${STATIC}
@@ -9,8 +11,8 @@ p:
 ${STATIC}: ${OBJECTS}
 	ar rcs ${STATIC} ${OBJECTS}
 
-%.o: %.c
-	gcc -c $*.c
+%.o: %.c ${HEADERS} Makefile
+	gcc -c ${CFLAGS} $*.c
 
 clean:
 	rm -f ${OBJECTS} ${STATIC}

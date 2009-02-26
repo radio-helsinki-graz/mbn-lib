@@ -33,6 +33,9 @@
 #define MBN_MAX_MESSAGE_SIZE 128
 #define MBN_MIN_MESSAGE_SIZE 16
 
+#define MBN_MSGTYPE_ADDRESS 0x00
+#define MBN_MSGTYPE_OBJECT  0x01
+
 
 /* All information required for the default objects of a node */
 struct mbn_node_info {
@@ -56,15 +59,63 @@ struct mbn_interface {
 
 
 /* Packet information structs */
+struct mbn_message_address {
+  unsigned char Type;
+  unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
+  unsigned long MambaNetAddr, EngineAddr;
+  unsigned char Services;
+};
+
+struct mbn_message_object_information;
+
+/* large data types should be allocated (and freed)
+ * manually, to preserve memory for smaller data types */
+union mbn_message_object_data {
+  float Float;
+  unsigned long UInt;
+  long SInt;
+  unsigned long State;
+  unsigned char *String;
+  unsigned char *Error;
+  struct mbn_message_object_information *Info;
+};
+
+struct mbn_message_object_information {
+  unsigned char Description[32];
+  unsigned char Services;
+  unsigned char SensorType;
+  unsigned char SensorSize;
+  union mbn_message_object_data SensorMin;
+  union mbn_message_object_data SensorMax;
+  unsigned char ActuatorType;
+  unsigned char ActuatorSize;
+  union mbn_message_object_data ActuatorMin;
+  union mbn_message_object_data ActuatorMax;
+  union mbn_message_object_data ActuatorDef;
+};
+
+struct mbn_message_object {
+  unsigned short Number;
+  unsigned char Action;
+  unsigned char DataType;
+  unsigned char DataSize;
+  union mbn_message_object_data Data;
+};
+
 struct mbn_message {
   unsigned char ControlByte;
   unsigned long AddressTo, AddressFrom;
   unsigned long MessageID;
   unsigned short MessageType;
   unsigned char DataLength;
-  unsigned char *buffer;
+  unsigned char *raw;
+  int rawlength;
+  unsigned char buffer[98];
   int bufferlength;
-  /* TODO: union with parsed data */
+  union {
+    struct mbn_message_address Address;
+    struct mbn_message_object Object;
+  } Data;
 };
 
 
