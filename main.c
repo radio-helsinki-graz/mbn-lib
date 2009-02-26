@@ -15,18 +15,16 @@ struct mbn_node_info this_node = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // Hardwareparent
 };
 
-int global;
-
-int call(int *nr) {
-  printf("[main] Received %d from stack, returning globally defined number\n", *nr);
-  return global;
-}
 
 int main(void) {
-  global = 1;
-  mbnInit(this_node, call);
-  global = 10;
-  pthread_exit(NULL);
+  struct mbn_interface *eth0;
+  struct mbn_handler *mbn;
+
+  mbn = mbnInit(this_node, *eth0);
+  mbnEthernetInit(mbn, "eth0");
+
+  //pthread_exit(NULL);
+  return 0;
 }
 
 
