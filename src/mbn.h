@@ -36,6 +36,31 @@
 #define MBN_MSGTYPE_ADDRESS 0x00
 #define MBN_MSGTYPE_OBJECT  0x01
 
+#define MBN_OBJ_ACTION_GET_INFO           0
+#define MBN_OBJ_ACTION_INFO_RESPONSE      1
+#define MBN_OBJ_ACTION_GET_ENGINE         2
+#define MBN_OBJ_ACTION_ENGINE_RESPONSE    3
+#define MBN_OBJ_ACTION_SET_ENGINE         4
+#define MBN_OBJ_ACTION_GET_FREQUENCY      5
+#define MBN_OBJ_ACTION_FREQUENCY_RESPONSE 6
+#define MBN_OBJ_ACTION_SET_FREQUENCY      7
+#define MBN_OBJ_ACTION_GET_SENSOR        32
+#define MBN_OBJ_ACTION_SENSOR_RESPONSE   33
+#define MBN_OBJ_ACTION_SENSOR_CHANGED    34
+#define MBN_OBJ_ACTION_GET_ACTUATOR      64
+#define MBN_OBJ_ACTION_ACTUATOR_RESPONSE 65
+#define MBN_OBJ_ACTION_SET_ACTUATOR      66
+
+#define MBN_DATATYPE_NODATA    0
+#define MBN_DATATYPE_UINT      1
+#define MBN_DATATYPE_SINT      2
+#define MBN_DATATYPE_STATE     3
+#define MBN_DATATYPE_OCTETS    4
+#define MBN_DATATYPE_FLOAT     5
+#define MBN_DATATYPE_BITS      6
+#define MBN_DATATYPE_OBJINFO 128
+#define MBN_DATATYPE_ERROR   255
+
 
 /* All information required for the default objects of a node */
 struct mbn_node_info {
@@ -75,7 +100,8 @@ union mbn_message_object_data {
   unsigned long UInt;
   long SInt;
   unsigned long State;
-  unsigned char *String;
+  unsigned char Bits[8];
+  unsigned char *Octets;
   unsigned char *Error;
   struct mbn_message_object_information *Info;
 };

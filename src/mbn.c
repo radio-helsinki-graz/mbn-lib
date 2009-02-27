@@ -32,14 +32,18 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_in
 
 /* Entry point for all incoming MambaNet messages */
 void MBN_EXPORT mbnProcessRawMambaNetMessage(struct mbn_handler *mbn, unsigned char *buffer, int length) {
+  int r;
   struct mbn_message msg;
-
-  /* TODO: check for some conditions to prevent buffer overflows and other parsing problems */
 
   memset(&msg, 0, sizeof(struct mbn_message));
   msg.raw = buffer;
   msg.rawlength = length;
-  parse_message(&msg);
+
+  /* parse message */
+  if((r = parse_message(&msg)) != 0) {
+    MBN_TRACE(printf("Received invalid message (error %02X), dropping", r));
+    return;
+  }
 
   MBN_TRACE(printf("Received MambaNet message of %dB from 0x%08lX to 0x%08lX, ctrl 0x%02X, id 0x%06lX, type 0x%04X, %dB data",
      length, msg.AddressFrom, msg.AddressTo, msg.ControlByte, msg.MessageID, msg.MessageType, msg.DataLength));
