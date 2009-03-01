@@ -27,7 +27,7 @@
 #endif
 
 /* Debugging */
-#define MBN_TRACE(x) if(1) { printf("%s:%d: ", __FILE__, __LINE__); x; printf("\n"); }
+#define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 
 
 #define MBN_MAX_MESSAGE_SIZE 128
@@ -107,7 +107,7 @@ union mbn_message_object_data {
 };
 
 struct mbn_message_object_information {
-  unsigned char Description[32];
+  unsigned char Description[33];
   unsigned char Services;
   unsigned char SensorType;
   unsigned char SensorSize;
@@ -117,7 +117,7 @@ struct mbn_message_object_information {
   unsigned char ActuatorSize;
   union mbn_message_object_data ActuatorMin;
   union mbn_message_object_data ActuatorMax;
-  union mbn_message_object_data ActuatorDef;
+  union mbn_message_object_data ActuatorDefault;
 };
 
 struct mbn_message_object {

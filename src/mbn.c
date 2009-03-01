@@ -35,7 +35,7 @@ void MBN_EXPORT mbnProcessRawMambaNetMessage(struct mbn_handler *mbn, unsigned c
   int r;
   struct mbn_message msg;
 
-  memset(&msg, 0, sizeof(struct mbn_message));
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.raw = buffer;
   msg.rawlength = length;
 
@@ -54,6 +54,12 @@ void MBN_EXPORT mbnProcessRawMambaNetMessage(struct mbn_handler *mbn, unsigned c
       msg.Data.Address.Type, msg.Data.Address.EngineAddr, msg.Data.Address.Services));
 
   /* TODO: process message and send callbacks */
+
+  /* TODO: free() resources allocated by parse_message() */
+
+  /* temporary solution to get rid of a compiler warning */
+  if(mbn == (struct mbn_handler *)0)
+    return;
 }
 
 

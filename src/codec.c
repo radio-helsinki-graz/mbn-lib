@@ -27,6 +27,69 @@ int convert_7to8bits(unsigned char *buffer, unsigned char length, unsigned char 
 }
 
 
+/* Converts variable float into the native float type
+ * of the current CPU. Returns non-zero on failure.
+ * (shamelessly stolen from Anton's VariableFloat2Float())
+ * Note: this function does assume that the CPU
+ *  represenation of the float type is a 32 bits
+ *  IEEE 754, but we're probably quite safe with that */
+int convert_varfloat_to_float(unsigned char *buffer, unsigned char length, float *result) {
+  unsigned long tmp;
+  int exponent;
+  unsigned long mantessa;
+  char signbit;
+
+  /* check length */
+  if(length == 0 || length == 3 || length > 4)
+    return 1;
+
+  /* check for zero (is this even necessary?) */
+  tmp = 0x00000000;
+  if(memcmp((void *)&tmp, (void *)buffer, length) == 0) {
+    *result = *((float *)&tmp);
+    return 0;
+  }
+
+  /* otherwise, calculate float */
+  switch(length) {
+    case 1:
+      signbit  = (buffer[0]>>7)&0x01;
+      exponent = (buffer[0]>>4)&0x07;
+      mantessa = (buffer[0]   )&0x0F;
+      if(exponent == 0) /* denormalized */
+        exponent = -127;
+      else if(exponent == 7) /* +/-INF or NaN, depends on sign */
+        exponent = 128;
+      else
+        exponent -= 3;
+
+      tmp = (signbit<<31) | (((exponent+127)&0xFF)<<23) | ((mantessa&0x0F)<<19);
+      *result = *((float *)&tmp);
+      break;
+    case 2:
+      signbit  = (buffer[0]>>7)&0x01;
+      exponent = (buffer[0]>>2)&0x1F;
+      mantessa = (((unsigned long) buffer[0]&0x03)<<8) | (buffer[1]&0xFF);
+      if(exponent == 0) /* denormalized */
+        exponent = -127;
+      else if(exponent == 31) /* +/-INF, NaN, depends on sign */
+        exponent = 128;
+      else
+        exponent -= 15;
+
+      tmp = (signbit<<31) | (((exponent+127)&0xFF)<<23) | (((mantessa>>8)&0x03)<<21) | ((mantessa&0xFF)<<13);
+      *result = *((float *)&tmp);
+      break;
+    case 4:
+      tmp = (buffer[0]<<24) | (buffer[1]<<16) | (buffer[2]<<8) | buffer[3];
+      *result = *((float *)&tmp);
+      break;
+  }
+
+  return 0;
+}
+
+
 /* Parses the data part of Address Reservation Messages,
  * returns non-zero on failure */
 int parsemsg_address(struct mbn_message *msg) {
@@ -50,6 +113,7 @@ int parsemsg_address(struct mbn_message *msg) {
 /* Converts a data type into a union, allocating memory for the
  * types that need it. Returns non-zero on failure. */
 int parse_datatype(unsigned char type, unsigned char *buffer, int length, union mbn_message_object_data *result) {
+  struct mbn_message_object_information *nfo;
   int i;
 
   switch(type) {
@@ -57,6 +121,7 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
       if(length > 0)
         return 1;
       break;
+
     case MBN_DATATYPE_UINT:
     case MBN_DATATYPE_STATE:
       if(length < 1 || length > 4)
@@ -66,36 +131,101 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
         result->UInt <<= 8;
         result->UInt |= buffer[i];
       }
+      if(type == MBN_DATATYPE_STATE)
+        result->State = result->UInt;
       break;
+
     case MBN_DATATYPE_SINT:
       if(length < 1 || length > 4)
         return 1;
-      /* TODO: How do we parse a variable-length signed integer? */
+      /* parse it as a normal unsigned int */
+      for(i=0; i<length; i++) {
+        result->UInt <<= 8;
+        result->UInt |= buffer[i];
+      }
+      /* check for sign bit, and set the MSB bits to 1 */
+      /* This trick assumes that signed long types are always
+       * two's complement and 32 bits.
+       * TODO: test this on a 64bit cpu */
+      if(buffer[0] & 0x80) {
+        result->UInt |= length == 1 ? 0xFFFFFF80
+                      : length == 2 ? 0xFFFF8000
+                      : length == 3 ? 0xFF800000
+                      :               0x80000000;
+      }
+      /* this shouldn't be necessary, but does guarantee portability */
+      memmove((void *)&(result->SInt), (void *)&(result->UInt), sizeof(result->SInt));
       break;
+
     case MBN_DATATYPE_OCTETS:
-      if(length < 1 || length > 64)
+    case MBN_DATATYPE_ERROR:
+      if((type == MBN_DATATYPE_OCTETS && length < 1) || length > 64)
         return 1;
-      /* Note: we add an extra \0 to the octets so using string functions
-       * won't trash the application. The standard doesn't require this. */
+      /* Note: we add an extra \0 to the octets so using string functions won't
+       * trash the application. The MambaNet protocol doesn't require this. */
       result->Octets = malloc(length+1);
       memcpy(result->Octets, buffer, length);
       result->Octets[length] = 0;
+      if(type == MBN_DATATYPE_ERROR)
+        result->Error = result->Octets;
       break;
+
     case MBN_DATATYPE_FLOAT:
-      if(length < 1 || length > 4 || length == 3)
+      if(convert_varfloat_to_float(buffer, length, &(result->Float)) != 0)
         return 1;
-      /* TODO */
       break;
+
     case MBN_DATATYPE_BITS:
       if(length < 1 || length > 8)
         return 1;
       memcpy(result->Bits, buffer, length);
       break;
+
     case MBN_DATATYPE_OBJINFO:
       if(length < 37 || length > 77)
         return 1;
-      /* TODO */
+      nfo = (struct mbn_message_object_information *) calloc(1, sizeof(struct mbn_message_object_information));
+      i = 32;
+      memcpy(nfo->Description, buffer, i);
+      nfo->Services = buffer[i++];
+      nfo->SensorType = buffer[i++];
+      nfo->SensorSize = buffer[i++];
+      if((nfo->SensorSize*2)+i > length) {
+        free(nfo);
+        return 4;
+      }
+      if(parse_datatype(nfo->SensorType, &(buffer[i]), nfo->SensorSize, &(nfo->SensorMin)) != 0) {
+        free(nfo);
+        return 3;
+      }
+      i += nfo->SensorSize;
+      if(parse_datatype(nfo->SensorType, &(buffer[i]), nfo->SensorSize, &(nfo->SensorMax)) != 0) {
+        free(nfo);
+        return 3;
+      }
+      i += nfo->SensorSize;
+      nfo->ActuatorType = buffer[i++];
+      nfo->ActuatorSize = buffer[i++];
+      if((nfo->ActuatorSize*3)+i > length) {
+        free(nfo);
+        return 4;
+      }
+      if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorMin)) != 0) {
+        free(nfo);
+        return 3;
+      }
+      i += nfo->ActuatorSize;
+      if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorMax)) != 0) {
+        free(nfo);
+        return 3;
+      }
+      i += nfo->SensorSize;
+      if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorDefault)) != 0) {
+        free(nfo);
+        return 3;
+      }
       break;
+
     default:
       return 2;
   }
@@ -137,6 +267,7 @@ int parsemsg_object(struct mbn_message *msg) {
 
 
 /* Parses a raw MambaNet message and puts the results back in the struct,
+ *  allocating memory where necessary.
  * returns non-zero on failure */
 int parse_message(struct mbn_message *msg) {
   int l, err;
