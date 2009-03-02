@@ -17,6 +17,8 @@
 #ifndef MBN_H
 #define MBN_H
 
+#include <pthread.h>
+
 /* Global way to determine platform, considering we only
  * provide this stack for windows and linux at this point,
  * this method should be enough. It might be a better idea
@@ -44,12 +46,22 @@
 /* Debugging */
 #define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 
+#define MBN_ADDR_TIMEOUT 110 /* seconds */
 
 #define MBN_MAX_MESSAGE_SIZE 128
 #define MBN_MIN_MESSAGE_SIZE 16
 
 #define MBN_MSGTYPE_ADDRESS 0x00
 #define MBN_MSGTYPE_OBJECT  0x01
+
+#define MBN_ADDR_TYPE_INFO     0x00
+#define MBN_ADDR_TYPE_PING     0x01
+#define MBN_ADDR_TYPE_RESPONSE 0x02
+
+#define MBN_ADDR_SERVICES_SERVER 0x01
+#define MBN_ADDR_SERVICES_ENGINE 0x02
+#define MBN_ADDR_SERVICES_ERROR  0x40
+#define MBN_ADDR_SERVICES_VALID  0x80
 
 #define MBN_OBJ_ACTION_GET_INFO           0
 #define MBN_OBJ_ACTION_INFO_RESPONSE      1
@@ -85,6 +97,7 @@ union  mbn_message_object_data;
 struct mbn_message_object_information;
 struct mbn_message_object;
 struct mbn_message;
+struct mbn_address_node;
 struct mbn_handler;
 
 
@@ -172,10 +185,21 @@ struct mbn_message {
   } Data;
 };
 
+struct mbn_address_node {
+  unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
+  unsigned long MambaNetAddr, EngineAddr;
+  unsigned char Services;
+  int Alive; /* time since we last heard anything from the node */
+  /* an extra void* for the interface modules? */
+  struct mbn_address_node *next; /* singly linked list */
+};
+
 /* All internal data should go into this struct */
 struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
+  struct mbn_address_node *addresses;
+  pthread_t timeout_thread;
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
 };
 
@@ -186,9 +210,11 @@ extern "C" {
 #endif
 
 struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info);
+int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int);
-int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
+
+struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned int);
 
 #ifdef __cplusplus
 }

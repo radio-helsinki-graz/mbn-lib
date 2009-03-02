@@ -21,16 +21,8 @@
 #include <pthread.h>
 
 #include "mbn.h"
+#include "address.h"
 #include "codec.h"
-
-/* sleep() */
-#ifdef MBN_LINUX
-# include <unistd.h>
-#elif
-# include <windows.h>
-# define sleep(x) Sleep(x*1000)
-#endif
-
 
 
 struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
@@ -38,6 +30,13 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
 
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
+
+  /* create thread to keep track of timeouts */
+  if(pthread_create(&(mbn->timeout_thread), NULL, node_timeout_thread, (void *) mbn) != 0) {
+    perror("Error creating timeout thread");
+    free(mbn);
+    return NULL;
+  }
 
   return mbn;
 }
@@ -68,6 +67,12 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 
   /* send ReceiveMessage() callback, and stop processing if it returned non-zero */
   if(mbn->cb_ReceiveMessage != NULL && mbn->cb_ReceiveMessage(mbn, &msg) != 0) {
+    free_message(&msg);
+    return;
+  }
+
+  /* handle address reservation messages */
+  if(process_address_message(mbn, &msg) != 0) {
     free_message(&msg);
     return;
   }

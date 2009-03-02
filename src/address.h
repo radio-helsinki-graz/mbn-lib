@@ -14,12 +14,13 @@
 **
 ****************************************************************************/
 
-#ifndef CODEC_H
-#define CODEC_H
+#ifndef ADDRESS_H
+#define ADDRESS_H
 
 #include "mbn.h"
 
-int parse_message(struct mbn_message *);
-void free_message(struct mbn_message *);
+void *node_timeout_thread(void *);
+int process_address_message(struct mbn_handler *, struct mbn_message *);
 
 #endif
+
