@@ -121,7 +121,7 @@ void *receive_packets(void *ptr) {
       /* we have a full message, send buffer to mambanet stack for processing */
       if(buffer[i] == 0xFF) {
         if(msgbuflen >= MBN_MIN_MESSAGE_SIZE)
-          mbnProcessRawMambaNetMessage(mbn, msgbuf, msgbuflen);
+          mbnProcessRawMessage(mbn, msgbuf, msgbuflen);
         msgbuflen = 0;
       }
       /* message was way too long, ignore it */

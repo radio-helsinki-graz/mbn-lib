@@ -62,6 +62,21 @@
 #define MBN_DATATYPE_ERROR   255
 
 
+/* forward declarations, because many types depend on other types */
+struct mbn_node_info;
+struct mbn_interface;
+struct mbn_message_address;
+union  mbn_message_object_data;
+struct mbn_message_object_information;
+struct mbn_message_object;
+struct mbn_message;
+struct mbn_handler;
+
+
+/* Callback function prototypes */
+typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
+
+
 /* All information required for the default objects of a node */
 struct mbn_node_info {
   unsigned int MambaNetAddr;      /* Variable */
@@ -90,8 +105,6 @@ struct mbn_message_address {
   unsigned long MambaNetAddr, EngineAddr;
   unsigned char Services;
 };
-
-struct mbn_message_object_information;
 
 /* large data types should be allocated (and freed)
  * manually, to preserve memory for smaller data types */
@@ -144,11 +157,11 @@ struct mbn_message {
   } Data;
 };
 
-
 /* All internal data should go into this struct */
 struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
+  mbn_cb_ReceiveMessage cb_ReceiveMessage;
 };
 
 
@@ -159,7 +172,7 @@ extern "C" {
 
 struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info, struct mbn_interface);
 
-void MBN_IMPORT mbnProcessRawMambaNetMessage(struct mbn_handler *, unsigned char *, int);
+void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int);
 int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 
 #ifdef __cplusplus
@@ -167,5 +180,14 @@ int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 #endif
 
 
+/* Things that look like functions to the application but are secretly macros.
+ * (This is both faster because no extra functions have to be called, and makes
+ *  the library smaller because no extra functions have to be exported)
+ * These macros may still be replaced with proper functions when needed in the future.
+ */
+#define mbnSetReceiveMessageCallback(mbn, func) (mbn->cb_ReceiveMessage = func)
+#define mbnUnsetReceiveMessageCallback(mbn)     (mbn->cb_ReceiveMessage = NULL)
+
 #endif
+
 

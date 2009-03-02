@@ -16,11 +16,29 @@ struct mbn_node_info this_node = {
 };
 
 
+int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
+  int i;
+
+  if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
+    printf("Object Message: number %02X, action %2d, type %3d, size %2dB\n",
+      msg->Data.Object.Number, msg->Data.Object.Action, msg->Data.Object.DataType, msg->Data.Object.DataSize);
+
+    for(i=0; i<msg->bufferlength; i++)
+      printf(" %02X", msg->buffer[i]);
+    printf("\n");
+    if(msg->Data.Object.DataType == MBN_DATATYPE_SINT)
+      printf(" -> SInt: %ld\n", msg->Data.Object.Data.SInt);
+  }
+  return 0;
+}
+
+
 int main(void) {
   struct mbn_interface *eth0;
   struct mbn_handler *mbn;
 
   mbn = mbnInit(this_node, *eth0);
+  mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnEthernetInit(mbn, "eth0");
 
   pthread_exit(NULL);

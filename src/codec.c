@@ -251,15 +251,35 @@ int parsemsg_object(struct mbn_message *msg) {
   if(obj->DataType == MBN_DATATYPE_NODATA) {
     if(msg->bufferlength > 4)
       return 2;
+    /* we need data for these actions... */
+    if( obj->Action == MBN_OBJ_ACTION_ENGINE_RESPONSE    || obj->Action == MBN_OBJ_ACTION_SET_ENGINE     ||
+        obj->Action == MBN_OBJ_ACTION_FREQUENCY_RESPONSE || obj->Action == MBN_OBJ_ACTION_SET_FREQUENCY  ||
+        obj->Action == MBN_OBJ_ACTION_SENSOR_RESPONSE    || obj->Action == MBN_OBJ_ACTION_SENSOR_CHANGED ||
+        obj->Action == MBN_OBJ_ACTION_ACTUATOR_RESPONSE  || obj->Action == MBN_OBJ_ACTION_SET_ACTUATOR)
+      return 4;
     return 0;
   }
+
+  /* we don't need data for these actions... */
+  if( obj->Action == MBN_OBJ_ACTION_GET_INFO      || obj->Action == MBN_OBJ_ACTION_GET_ENGINE ||
+      obj->Action == MBN_OBJ_ACTION_GET_FREQUENCY || obj->Action == MBN_OBJ_ACTION_GET_SENSOR ||
+      obj->Action == MBN_OBJ_ACTION_GET_ACTUATOR)
+    return 4;
+
+  /* and for some actions we must get data of only one type */
+  if( (obj->Action == MBN_OBJ_ACTION_INFO_RESPONSE      && obj->DataType != MBN_DATATYPE_OBJINFO) ||
+      (obj->Action == MBN_OBJ_ACTION_ENGINE_RESPONSE    && obj->DataType != MBN_DATATYPE_UINT)    ||
+      (obj->Action == MBN_OBJ_ACTION_SET_ENGINE         && obj->DataType != MBN_DATATYPE_UINT)    ||
+      (obj->Action == MBN_OBJ_ACTION_FREQUENCY_RESPONSE && obj->DataType != MBN_DATATYPE_STATE)   ||
+      (obj->Action == MBN_OBJ_ACTION_SET_FREQUENCY      && obj->DataType != MBN_DATATYPE_STATE))
+    return 4;
 
   /* Data, so parse it */
   obj->DataSize = msg->buffer[4];
   if(obj->DataSize != msg->bufferlength-5)
     return 3;
 
-  if((r = parse_datatype(obj->DataType, msg->buffer, obj->DataSize, &(obj->Data))) != 0)
+  if((r = parse_datatype(obj->DataType, &(msg->buffer[5]), obj->DataSize, &(obj->Data))) != 0)
     return r | 8;
 
   return 0;
@@ -317,6 +337,44 @@ int parse_message(struct mbn_message *msg) {
   }
 
   return 0;
+}
+
+
+/* recursively free()'s data type unions/structs allocated by parse_datatype() */
+void free_datatype(unsigned char type, union mbn_message_object_data *data) {
+  if(type == MBN_DATATYPE_ERROR)
+    free(data->Error);
+  if(type == MBN_DATATYPE_OCTETS)
+    free(data->Octets);
+  if(type == MBN_DATATYPE_OBJINFO) {
+    if(data->Info->SensorSize > 0) {
+      free_datatype(data->Info->SensorType, &(data->Info->SensorMin));
+      free_datatype(data->Info->SensorType, &(data->Info->SensorMax));
+    }
+    if(data->Info->ActuatorSize > 0) {
+      free_datatype(data->Info->ActuatorType, &(data->Info->ActuatorMin));
+      free_datatype(data->Info->ActuatorType, &(data->Info->ActuatorMax));
+      free_datatype(data->Info->ActuatorType, &(data->Info->ActuatorDefault));
+    }
+    free(data->Info);
+  }
+}
+
+
+/* free()'s an mbn_message struct allocated by parse_message().
+ * The struct itself and the 'raw' data aren't freed, as these aren't
+ * allocated by parse_message(), either.*/
+void free_message(struct mbn_message *msg) {
+  /* no buffer, no data, nothing to free */
+  if(msg->bufferlength == 0)
+    return;
+
+  if(msg->MessageType == MBN_MSGTYPE_ADDRESS)
+    return;
+  else if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
+    if(msg->Data.Object.DataSize > 0)
+      free_datatype(msg->Data.Object.DataType, &(msg->Data.Object.Data));
+  }
 }
 
 
