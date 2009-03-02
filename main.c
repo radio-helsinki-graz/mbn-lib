@@ -47,12 +47,21 @@ int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
   return 0;
 }
 
+void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, struct mbn_address_node *new) {
+  struct mbn_address_node *cur;
+  cur = new == NULL ? old : new;
+  printf("%s: %08lX  ->  %04X:%04X:%04X\n",
+    old == NULL ? "New node" : new == NULL ? "Removed node" : "Node changed",
+    cur->MambaNetAddr, cur->ManufacturerID, cur->ProductID, cur->UniqueIDPerProduct);
+}
+
 
 int main(void) {
   struct mbn_handler *mbn;
 
   mbn = mbnInit(this_node);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
+  mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnEthernetInit(mbn, "eth0");
 
   pthread_exit(NULL);

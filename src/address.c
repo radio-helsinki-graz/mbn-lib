@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "mbn.h"
 #include "address.h"
@@ -30,7 +31,7 @@
 
 
 /* Thread waiting for timeouts */
-/* TODO: thread cancellation? variable locking? */
+/* TODO: thread cancellation? !!variable locking!! */
 void *node_timeout_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_address_node *node, *last, *tmp;
@@ -40,15 +41,18 @@ void *node_timeout_thread(void *arg) {
     node = last = mbn->addresses;
     while(node != NULL) {
       if(--node->Alive <= 0) {
+        MBN_TRACE(printf("Removing address table entry for 0x%08lX (timeout)", node->MambaNetAddr));
+        /* send callback */
+        if(mbn->cb_AddressTableChange != NULL)
+          mbn->cb_AddressTableChange(mbn, node, NULL);
+        /* remove node from list */
         if(last == mbn->addresses)
           mbn->addresses = node->next;
         else
           last->next = node->next;
-        MBN_TRACE(printf("Removing address table entry for 0x%08lX (timeout)", node->MambaNetAddr));
         tmp = node->next;
         free(node);
         node = tmp;
-        /* TODO: send callback */
       }
       last = node;
       node = node->next;
@@ -60,7 +64,7 @@ void *node_timeout_thread(void *arg) {
 /* handle address reservation information packets and update
  * the internal address list */
 void process_reservation_information(struct mbn_handler *mbn, struct mbn_message_address *nfo) {
-  struct mbn_address_node *node, *last;
+  struct mbn_address_node *node, *last, new;
 
   /* look for existing node with this address */
   node = mbnNodeStatus(mbn, nfo->MambaNetAddr);
@@ -80,6 +84,10 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
   /* we found the node in our list, but its address isn't
    * validated (anymore), so remove it. */
   if(node != NULL && !(nfo->Services & MBN_ADDR_SERVICES_VALID)) {
+    /* send callback */
+    if(mbn->cb_AddressTableChange != NULL)
+      mbn->cb_AddressTableChange(mbn, node, NULL);
+    /* remove node */
     if(mbn->addresses == node)
       mbn->addresses = node->next;
     else {
@@ -110,18 +118,22 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
     MBN_TRACE(printf("Inserting new address table entry for 0x%08lX", nfo->MambaNetAddr));
   }
 
-  /* update information */
   if(node != NULL) {
-    node->ManufacturerID = nfo->ManufacturerID;
-    node->ProductID = nfo->ProductID;
-    node->UniqueIDPerProduct = nfo->UniqueIDPerProduct;
-    node->MambaNetAddr = nfo->MambaNetAddr;
-    node->EngineAddr = nfo->EngineAddr;
-    node->Services = nfo->Services;
-    node->Alive = MBN_ADDR_TIMEOUT;
+    memcpy((void *)&new, (void *)node, sizeof(struct mbn_address_node));
+    new.ManufacturerID = nfo->ManufacturerID;
+    new.ProductID = nfo->ProductID;
+    new.UniqueIDPerProduct = nfo->UniqueIDPerProduct;
+    new.MambaNetAddr = nfo->MambaNetAddr;
+    new.EngineAddr = nfo->EngineAddr;
+    new.Services = nfo->Services;
+    /* something changed, update & send callback */
+    if(memcmp((void *)&new, (void *)node, sizeof(struct mbn_address_node)) != 0) {
+      if(mbn->cb_AddressTableChange != NULL)
+        mbn->cb_AddressTableChange(mbn, node->MambaNetAddr == 0 ? NULL : node, &new);
+      memcpy((void *)node, (void *)&new, sizeof(struct mbn_address_node));
+      node->Alive = MBN_ADDR_TIMEOUT;
+    }
   }
-
-  /* TODO: send callback on change */
 }
 
 

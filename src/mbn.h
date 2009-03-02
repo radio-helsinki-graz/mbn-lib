@@ -44,7 +44,7 @@
 #endif
 
 /* Debugging */
-#define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
+#define MBN_TRACE(x) if(0) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 
 #define MBN_ADDR_TIMEOUT 110 /* seconds */
 
@@ -103,6 +103,7 @@ struct mbn_handler;
 
 /* Callback function prototypes */
 typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
+typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
 
 
 /* All information required for the default objects of a node */
@@ -199,8 +200,9 @@ struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
   struct mbn_address_node *addresses;
-  pthread_t timeout_thread;
+  pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
+  mbn_cb_AddressTableChange cb_AddressTableChange;
 };
 
 
@@ -226,9 +228,11 @@ struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigne
  *  the library smaller because no extra functions have to be exported)
  * These macros may still be replaced with proper functions when needed in the future.
  */
-#define mbnSetInterface(mbn, itf)               (mbn->interface = interface)
-#define mbnSetReceiveMessageCallback(mbn, func) (mbn->cb_ReceiveMessage = func)
-#define mbnUnsetReceiveMessageCallback(mbn)     (mbn->cb_ReceiveMessage = NULL)
+#define mbnSetInterface(mbn, itf)                   (mbn->interface = interface)
+#define mbnSetReceiveMessageCallback(mbn, func)     (mbn->cb_ReceiveMessage = func)
+#define mbnUnsetReceiveMessageCallback(mbn)         (mbn->cb_ReceiveMessage = NULL)
+#define mbnSetAddressTableChangeCallback(mbn, func) (mbn->cb_AddressTableChange = func)
+#define mbnUnsetAddressTableChangeCallback(mbn)     (mbn->cb_AddressTableChange = NULL)
 
 #endif
 
