@@ -44,7 +44,7 @@
 #endif
 
 /* Debugging */
-#define MBN_TRACE(x) if(0) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
+#define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 
 #define MBN_ADDR_TIMEOUT 110 /* seconds */
 
@@ -201,6 +201,7 @@ struct mbn_handler {
   struct mbn_interface interface;
   struct mbn_address_node *addresses;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
+  pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
   mbn_cb_AddressTableChange cb_AddressTableChange;
 };

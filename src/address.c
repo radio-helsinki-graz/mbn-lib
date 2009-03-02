@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <pthread.h>
+
 #include "mbn.h"
 #include "address.h"
 
@@ -31,13 +33,14 @@
 
 
 /* Thread waiting for timeouts */
-/* TODO: thread cancellation? !!variable locking!! */
+/* TODO: thread cancellation? */
 void *node_timeout_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_address_node *node, *last, *tmp;
 
   while(1) {
     sleep(1);
+    pthread_mutex_lock(&(mbn->mbn_mutex));
     node = last = mbn->addresses;
     while(node != NULL) {
       if(--node->Alive <= 0) {
@@ -57,6 +60,7 @@ void *node_timeout_thread(void *arg) {
       last = node;
       node = node->next;
     }
+    pthread_mutex_unlock(&(mbn->mbn_mutex));
   }
 }
 
@@ -65,6 +69,8 @@ void *node_timeout_thread(void *arg) {
  * the internal address list */
 void process_reservation_information(struct mbn_handler *mbn, struct mbn_message_address *nfo) {
   struct mbn_address_node *node, *last, new;
+
+  pthread_mutex_lock(&(mbn->mbn_mutex));
 
   /* look for existing node with this address */
   node = mbnNodeStatus(mbn, nfo->MambaNetAddr);
@@ -134,6 +140,8 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
       node->Alive = MBN_ADDR_TIMEOUT;
     }
   }
+
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
 }
 
 

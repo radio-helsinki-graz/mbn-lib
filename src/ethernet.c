@@ -48,8 +48,9 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
   int error = 0;
   struct sockaddr_ll sockaddr;
 
-  memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
+  pthread_mutex_lock(&(mbn->mbn_mutex));
 
+  memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
   data = (struct mbn_ethernet_data *) malloc(sizeof(struct mbn_ethernet_data));
   mbn->interface.data = (void *) data;
 
@@ -104,19 +105,18 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
     close(data->socket);
     mbn->interface.data = NULL;
     free(data);
-    return 1;
-  }
+  } else
+    MBN_TRACE(printf("Listening on ethernet interface %s (index = %d, MAC = %02X:%02X:%02X:%02X:%02X:%02X)",
+      interface, data->ifindex, data->address[0], data->address[1], data->address[2], data->address[3],
+      data->address[4], data->address[5]));
 
-  MBN_TRACE(printf("Listening on ethernet interface %s (index = %d, MAC = %02X:%02X:%02X:%02X:%02X:%02X)",
-    interface, data->ifindex, data->address[0], data->address[1], data->address[2], data->address[3],
-    data->address[4], data->address[5]));
-
-  return 0;
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+  return error;
 }
 
 
 /* Waits for input from network */
-/* TODO: thread cancellation? */
+/* TODO: thread cancellation? do we need to lock anything here? */
 void *receive_packets(void *ptr) {
   struct mbn_handler *mbn = (struct mbn_handler *) ptr;
   struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;

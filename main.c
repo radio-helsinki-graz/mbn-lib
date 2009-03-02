@@ -33,6 +33,7 @@ struct mbn_node_info this_node = {
 
 int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
   int i;
+  return 0;
 
   if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
     printf("Object Message: number %02X, action %2d, type %3d, size %2dB\n",
