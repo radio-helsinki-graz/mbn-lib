@@ -34,10 +34,9 @@ int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int main(void) {
-  struct mbn_interface *eth0;
   struct mbn_handler *mbn;
 
-  mbn = mbnInit(this_node, *eth0);
+  mbn = mbnInit(this_node);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnEthernetInit(mbn, "eth0");
 

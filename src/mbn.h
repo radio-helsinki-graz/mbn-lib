@@ -170,7 +170,7 @@ struct mbn_handler {
 extern "C" {
 #endif
 
-struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info, struct mbn_interface);
+struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info);
 
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int);
 int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
@@ -185,6 +185,7 @@ int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
  *  the library smaller because no extra functions have to be exported)
  * These macros may still be replaced with proper functions when needed in the future.
  */
+#define mbnSetInterface(mbn, itf)               (mbn->interface = interface)
 #define mbnSetReceiveMessageCallback(mbn, func) (mbn->cb_ReceiveMessage = func)
 #define mbnUnsetReceiveMessageCallback(mbn)     (mbn->cb_ReceiveMessage = NULL)
 

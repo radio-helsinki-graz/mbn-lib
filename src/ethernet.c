@@ -33,6 +33,8 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
   int error = 0;
   struct sockaddr_ll sockaddr;
 
+  memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
+
   data = (struct mbn_ethernet_data *) malloc(sizeof(struct mbn_ethernet_data));
   mbn->interface.data = (void *) data;
 

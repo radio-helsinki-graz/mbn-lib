@@ -18,13 +18,11 @@
 
 
 
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_interface interface) {
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
   struct mbn_handler *mbn;
 
-  mbn = (struct mbn_handler *) malloc(sizeof(struct mbn_handler));
+  mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
-  mbn->interface = interface;
-  mbn->interface.data = NULL;
 
   return mbn;
 }
