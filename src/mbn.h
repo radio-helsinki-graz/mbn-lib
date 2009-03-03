@@ -106,6 +106,7 @@ typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
 typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
 
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
+typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 
 
 /* All information required for the default objects of a node */
@@ -126,6 +127,7 @@ struct mbn_node_info {
 struct mbn_interface {
   void *data; /* can be used by the interface */
   mbn_cb_FreeInterface cb_free;
+  mbn_cb_FreeInterfaceAddress cb_free_addr;
   /* unfinished, needs callbacks (among other things...) */
 };
 
@@ -194,7 +196,7 @@ struct mbn_address_node {
   unsigned long MambaNetAddr, EngineAddr;
   unsigned char Services;
   int Alive; /* time since we last heard anything from the node */
-  /* an extra void* for the interface modules? */
+  void *ifaddr; /* to be used by HW interfaces */
   struct mbn_address_node *next; /* singly linked list */
 };
 
@@ -219,7 +221,7 @@ struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info);
 void MBN_IMPORT mbnFree(struct mbn_handler *);
 int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 
-void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int);
+void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int, void *);
 
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned int);
 

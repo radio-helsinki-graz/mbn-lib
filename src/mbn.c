@@ -70,7 +70,7 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
 
 
 /* Entry point for all incoming MambaNet messages */
-void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buffer, int length) {
+void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buffer, int length, void *ifaddr) {
   int r, processed = 0;
   struct mbn_message msg;
 
@@ -101,7 +101,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
     processed++;
 
   /* handle address reservation messages */
-  if(!processed && process_address_message(mbn, &msg) != 0)
+  if(!processed && process_address_message(mbn, &msg, ifaddr) != 0)
     processed++;
 
   /* TODO: process message and send callbacks */

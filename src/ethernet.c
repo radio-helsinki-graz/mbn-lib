@@ -43,6 +43,7 @@ struct mbn_ethernet_data {
 
 void *receive_packets(void *);
 void ethernet_free(struct mbn_handler *);
+void free_addr(void *);
 
 
 /* Creates a new ethernet interface and links it to the mbn handler */
@@ -118,6 +119,7 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
       data->address[4], data->address[5]));
 
   mbn->interface.cb_free = ethernet_free;
+  mbn->interface.cb_free_addr = free_addr;
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
   return error;
@@ -149,6 +151,7 @@ void *receive_packets(void *ptr) {
   struct timeval tv;
   struct sockaddr_ll from;
   ssize_t rd;
+  void *ifaddr;
   socklen_t addrlength = sizeof(struct sockaddr_ll);
 
   while(1) {
@@ -161,7 +164,6 @@ void *receive_packets(void *ptr) {
     tv.tv_sec = 1;
     tv.tv_usec = 0;
     rd = select(eth->socket+1, &rdfd, NULL, NULL, &tv);
-      printf("select(): rd = %d, errno = %d\n", rd, errno);
     if(rd == 0 || (rd < 0 && errno == EINTR))
       continue;
     if(rd < 0) {
@@ -188,8 +190,11 @@ void *receive_packets(void *ptr) {
       msgbuf[msgbuflen++] = buffer[i];
       /* we have a full message, send buffer to mambanet stack for processing */
       if(buffer[i] == 0xFF) {
-        if(msgbuflen >= MBN_MIN_MESSAGE_SIZE)
-          mbnProcessRawMessage(mbn, msgbuf, msgbuflen);
+        if(msgbuflen >= MBN_MIN_MESSAGE_SIZE) {
+          ifaddr = malloc(from.sll_halen);
+          memcpy(ifaddr, (void *)from.sll_addr, from.sll_halen);
+          mbnProcessRawMessage(mbn, msgbuf, msgbuflen, ifaddr);
+        }
         msgbuflen = 0;
       }
       /* message was way too long, ignore it */
@@ -205,5 +210,9 @@ void *receive_packets(void *ptr) {
   return NULL;
 }
 
+
+void free_addr(void *addr) {
+  free(addr);
+}
 
 

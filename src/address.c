@@ -75,7 +75,7 @@ void *node_timeout_thread(void *arg) {
 
 /* handle address reservation information packets and update
  * the internal address list */
-void process_reservation_information(struct mbn_handler *mbn, struct mbn_message_address *nfo) {
+void process_reservation_information(struct mbn_handler *mbn, struct mbn_message_address *nfo, void *ifaddr) {
   struct mbn_address_node *node, *last, new;
 
   pthread_mutex_lock(&(mbn->mbn_mutex));
@@ -145,8 +145,20 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
       if(mbn->cb_AddressTableChange != NULL)
         mbn->cb_AddressTableChange(mbn, node->MambaNetAddr == 0 ? NULL : node, &new);
       memcpy((void *)node, (void *)&new, sizeof(struct mbn_address_node));
-      node->Alive = MBN_ADDR_TIMEOUT;
     }
+    node->Alive = MBN_ADDR_TIMEOUT;
+    /* update hardware address */
+    if(node->ifaddr != NULL && ifaddr != node->ifaddr && mbn->interface.cb_free_addr != NULL) {
+      /* check for nodes with the same pointer, and free the memory if none found */
+      last = mbn->addresses;
+      do
+        if(last != node && last->ifaddr == node->ifaddr)
+          break;
+      while((last = last->next) != NULL);
+      if(last == NULL)
+        mbn->interface.cb_free_addr(node->ifaddr);
+    }
+    node->ifaddr = ifaddr;
   }
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
@@ -154,9 +166,9 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
 
 
 /* Returns nonzero if the message has been processed */
-int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg) {
+int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, void *ifaddr) {
   if(msg->Data.Address.Type == MBN_ADDR_TYPE_INFO)
-    process_reservation_information(mbn, &(msg->Data.Address));
+    process_reservation_information(mbn, &(msg->Data.Address), ifaddr);
 
   /* TODO: process other message types */
 
@@ -166,10 +178,20 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 /* free()'s the entire address list */
 void free_addresses(struct mbn_handler *mbn) {
-  struct mbn_address_node *tmp, *node = mbn->addresses;
+  struct mbn_address_node *tmp, *next, *node = mbn->addresses;
 
   pthread_mutex_lock(&(mbn->mbn_mutex));
   while(node != NULL) {
+    /* check for ifaddr and free it */
+    if(node->ifaddr != NULL && mbn->interface.cb_free_addr != NULL) {
+      next = node;
+      while((next = next->next) != NULL)
+        if(next->ifaddr == node->ifaddr)
+          break;
+      if(next == NULL)
+        mbn->interface.cb_free_addr(node->ifaddr);
+    }
+    /* free node and go to next */
     tmp = node->next;
     free(node);
     node = tmp;
