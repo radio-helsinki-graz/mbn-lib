@@ -52,6 +52,23 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
 }
 
 
+void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
+  /* request cancellation for the timeout thread */
+  pthread_cancel(mbn->timeout_thread);
+
+  /* free interface */
+  if(mbn->interface.cb_free != NULL)
+    mbn->interface.cb_free(mbn);
+
+  /* free address list */
+  free_addresses(mbn);
+
+  /* wait for the timeout thread
+   * (make sure no locks on mbn->mbn_mutex are present here) */
+  pthread_join(mbn->timeout_thread, NULL);
+}
+
+
 /* Entry point for all incoming MambaNet messages */
 void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buffer, int length) {
   int r, processed = 0;

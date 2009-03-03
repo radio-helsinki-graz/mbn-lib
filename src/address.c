@@ -33,14 +33,22 @@
 
 
 /* Thread waiting for timeouts */
-/* TODO: thread cancellation? */
 void *node_timeout_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_address_node *node, *last, *tmp;
 
   while(1) {
+    /* we can safely cancel here */
+    pthread_testcancel();
+
+    /* sleep() is our method of timing
+     * (not really precise, but good enough) */
     sleep(1);
+
+    /* working on mbn_handler, so lock */
     pthread_mutex_lock(&(mbn->mbn_mutex));
+
+    /* check the address list */
     node = last = mbn->addresses;
     while(node != NULL) {
       if(--node->Alive <= 0) {
@@ -153,6 +161,21 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg) {
   /* TODO: process other message types */
 
   return 1;
+}
+
+
+/* free()'s the entire address list */
+void free_addresses(struct mbn_handler *mbn) {
+  struct mbn_address_node *tmp, *node = mbn->addresses;
+
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+  while(node != NULL) {
+    tmp = node->next;
+    free(node);
+    node = tmp;
+  }
+  mbn->addresses = NULL;
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
 }
 
 

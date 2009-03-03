@@ -16,6 +16,7 @@
 
 #include "mbn.h"
 #include <stdio.h>
+#include <sys/time.h>
 
 
 struct mbn_node_info this_node = {
@@ -59,11 +60,19 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 
 int main(void) {
   struct mbn_handler *mbn;
+  struct timeval before, after;
 
   mbn = mbnInit(this_node);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnEthernetInit(mbn, "eth0");
+
+  sleep(2);
+  gettimeofday(&before, NULL);
+  mbnFree(mbn);
+  gettimeofday(&after, NULL);
+  printf("mbnFree() finished in %.3fms\n",
+    (((float) after.tv_sec)+((float) after.tv_usec)/1000000.0f) - (((float) before.tv_sec)+((float) before.tv_usec)/1000000.0f));
 
   pthread_exit(NULL);
   return 0;

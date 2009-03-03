@@ -18,12 +18,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <pthread.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <linux/if_arp.h>
+#include <sys/select.h>
+#include <sys/time.h>
 
 #include "mbn.h"
 
@@ -38,7 +41,8 @@ struct mbn_ethernet_data {
   pthread_t thread;
 };
 
-void *receive_packets(void *ptr);
+void *receive_packets(void *);
+void ethernet_free(struct mbn_handler *);
 
 
 /* Creates a new ethernet interface and links it to the mbn handler */
@@ -47,6 +51,9 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
   struct ifreq ethreq;
   int error = 0;
   struct sockaddr_ll sockaddr;
+
+  if(mbn->interface.cb_free != NULL)
+    mbn->interface.cb_free(mbn);
 
   pthread_mutex_lock(&(mbn->mbn_mutex));
 
@@ -110,26 +117,70 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
       interface, data->ifindex, data->address[0], data->address[1], data->address[2], data->address[3],
       data->address[4], data->address[5]));
 
+  mbn->interface.cb_free = ethernet_free;
+
   pthread_mutex_unlock(&(mbn->mbn_mutex));
   return error;
 }
 
 
+void ethernet_free(struct mbn_handler *mbn) {
+  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
+
+  pthread_cancel(eth->thread);
+  /* note: locking mbn->mbn_mutex here may result in a deadlock */
+  pthread_join(eth->thread, NULL);
+
+  /* it's safe to do so, here */
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+  free(eth);
+  memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+}
+
+
 /* Waits for input from network */
-/* TODO: thread cancellation? do we need to lock anything here? */
 void *receive_packets(void *ptr) {
   struct mbn_handler *mbn = (struct mbn_handler *) ptr;
   struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
   unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
   int i, msgbuflen = 0;
+  fd_set rdfd;
+  struct timeval tv;
   struct sockaddr_ll from;
   ssize_t rd;
   socklen_t addrlength = sizeof(struct sockaddr_ll);
 
-  while((rd = recvfrom(eth->socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&from, &addrlength)) > 0) {
+  while(1) {
+    /* we can safely cancel here */
+    pthread_testcancel();
+
+    /* check for incoming data */
+    FD_ZERO(&rdfd);
+    FD_SET(eth->socket, &rdfd);
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    rd = select(eth->socket+1, &rdfd, NULL, NULL, &tv);
+      printf("select(): rd = %d, errno = %d\n", rd, errno);
+    if(rd == 0 || (rd < 0 && errno == EINTR))
+      continue;
+    if(rd < 0) {
+      perror("select()");
+      break;
+    }
+
+    /* read incoming data */
+    rd = recvfrom(eth->socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&from, &addrlength);
+    if(rd == 0 || (rd < 0 && errno == EINTR))
+      continue;
+    if(rd < 0) {
+      perror("recvfrom()");
+      break;
+    }
     if(htons(from.sll_protocol) != ETH_P_DNR)
       continue;
 
+    /* handle the data */
     for(i=0; i<rd; i++) {
       /* ignore non-start bytes if we haven't started yet */
       if(msgbuflen == 0 && !(buffer[i] >= 0x80 && buffer[i] < 0xFF))
@@ -147,9 +198,7 @@ void *receive_packets(void *ptr) {
     }
   }
 
-  /* TODO: Notify application */
-  if(rd < 0)
-    perror("Can't read from socket");
+  /* TODO: Notify application on error */
 
   MBN_TRACE(printf("Closing the receiver thread..."));
 
