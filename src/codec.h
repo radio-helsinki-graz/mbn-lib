@@ -22,4 +22,6 @@
 int parse_message(struct mbn_message *);
 void free_message(struct mbn_message *);
 
+int create_message(struct mbn_message *);
+
 #endif

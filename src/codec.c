@@ -42,6 +42,29 @@ int convert_7to8bits(unsigned char *buffer, unsigned char length, unsigned char 
 }
 
 
+/* Opposite of above function */
+int convert_8to7bits(unsigned char *buffer, unsigned char length, unsigned char *result) {
+  int i, reslength = 0;
+  unsigned char mask1, mask2, shift;
+
+  result[reslength] = 0;
+  for(i=0; i<length; i++) {
+    shift = i%7;
+    mask1 = 0x7F>>shift;
+    mask2 = mask1^0xFF;
+
+    result[reslength++] |= (buffer[i] & mask1) << shift;
+    result[reslength  ]  = (buffer[i] & mask2) >> (7-shift);
+    if(mask2 == 0xFE)
+      result[++reslength] = 0x00;
+  }
+  if((i%7) != 0)
+    reslength++;
+
+  return reslength;
+}
+
+
 /* Converts variable float into the native float type
  * of the current CPU. Returns non-zero on failure.
  * (shamelessly stolen from Anton's VariableFloat2Float())
@@ -102,6 +125,56 @@ int convert_varfloat_to_float(unsigned char *buffer, unsigned char length, float
   }
 
   return 0;
+}
+
+
+/* opposite of above function */
+void convert_float_to_varfloat(unsigned char *buffer, unsigned char length, float flt) {
+  unsigned long tmp;
+  int exponent;
+  unsigned long mantessa;
+  char signbit;
+
+  tmp = *((unsigned long *)&flt);
+  mantessa = tmp & 0x007FFFFF;
+  exponent = (tmp>>23)&0xFF;
+  exponent -= 127;
+  signbit  = (tmp>>(23+8))&0x01;
+
+  if(tmp == 0x00000000) {
+    memset((void *)buffer, 0, length);
+    return;
+  }
+
+  switch(length) {
+    case 1:
+      exponent += 3;
+      if(exponent < 0)
+        exponent = 0;
+      if(exponent > 6) {
+        exponent = 7;
+        mantessa = 0;
+      }
+      buffer[0] = (signbit<<7) | ((exponent&0x07)<<4) | ((mantessa>>19)&0x0F);
+      break;
+    case 2:
+      exponent += 15;
+      if(exponent < 0)
+        exponent = 0;
+      if(exponent > 30) {
+        exponent = 31;
+        mantessa = 0;
+      }
+      buffer[0] = (signbit<<7) | ((exponent&0x1F)<<2) | ((mantessa>>21)&0x03);
+      buffer[1] = (mantessa>>13)&0xFF;
+      break;
+    case 4:
+      buffer[0] = (tmp>>24)&0xFF;
+      buffer[1] = (tmp>>16)&0xFF;
+      buffer[2] = (tmp>> 8)&0xFF;
+      buffer[3] =  tmp     &0xFF;
+      break;
+  }
 }
 
 
@@ -390,6 +463,147 @@ void free_message(struct mbn_message *msg) {
     if(msg->Data.Object.DataSize > 0)
       free_datatype(msg->Data.Object.DataType, &(msg->Data.Object.Data));
   }
+}
+
+
+/* address struct -> 8bit data */
+void createmsg_address(struct mbn_message *msg) {
+  struct mbn_message_address *addr = &(msg->Data.Address);
+
+  msg->bufferlength = 16;
+  msg->buffer[ 0] =  addr->Type;
+  msg->buffer[ 1] = (addr->ManufacturerID    >> 8) & 0xFF;
+  msg->buffer[ 2] =  addr->ManufacturerID          & 0xFF;
+  msg->buffer[ 3] = (addr->ProductID         >> 8) & 0xFF;
+  msg->buffer[ 4] =  addr->ProductID               & 0xFF;
+  msg->buffer[ 5] = (addr->UniqueIDPerProduct>> 8) & 0xFF;
+  msg->buffer[ 6] =  addr->UniqueIDPerProduct      & 0xFF;
+  msg->buffer[ 7] = (addr->MambaNetAddr      >>24) & 0xFF;
+  msg->buffer[ 8] = (addr->MambaNetAddr      >>16) & 0xFF;
+  msg->buffer[ 9] = (addr->MambaNetAddr      >> 8) & 0xFF;
+  msg->buffer[10] =  addr->MambaNetAddr            & 0xFF;
+  msg->buffer[11] = (addr->EngineAddr        >>24) & 0xFF;
+  msg->buffer[12] = (addr->EngineAddr        >>16) & 0xFF;
+  msg->buffer[13] = (addr->EngineAddr        >> 8) & 0xFF;
+  msg->buffer[14] =  addr->EngineAddr              & 0xFF;
+  msg->buffer[15] =  addr->Services;
+}
+
+
+void create_datatype(unsigned char type, union mbn_message_object_data *dat, int length, unsigned char *buffer) {
+  int i;
+
+  switch(type) {
+    case MBN_DATATYPE_NODATA:
+      return;
+
+    case MBN_DATATYPE_UINT:
+    case MBN_DATATYPE_STATE:
+      if(type == MBN_DATATYPE_STATE)
+        memmove((void *)&(dat->UInt), (void *)&(dat->State), sizeof(dat->UInt));
+      for(i=0; i<length; i++)
+        buffer[i] = (dat->UInt<<(length-1-i)) & 0xFF;
+      break;
+
+    case MBN_DATATYPE_SINT:
+      /* again, this assumes unsigned int is 4 bytes in two's complement */
+      if(dat->SInt >= 0 || length == 4)
+        for(i=0; i<length; i++)
+          buffer[i] = (dat->SInt<<(length-1-i)) & 0xFF;
+      if(length == 2) {
+        buffer[0] = (0x80 | (dat->SInt<<8)) & 0xFF;
+        buffer[1] = dat->SInt & 0xFF;
+      } else
+        buffer[0] = (0x80 | dat->SInt) & 0xFF;
+      break;
+
+    case MBN_DATATYPE_OCTETS:
+    case MBN_DATATYPE_ERROR:
+    case MBN_DATATYPE_BITS:
+      memcpy((void *)buffer, (void *)
+        (type == MBN_DATATYPE_ERROR ? dat->Error : type == MBN_DATATYPE_OCTETS ? dat->Octets : dat->Bits), length);
+      break;
+
+    case MBN_DATATYPE_FLOAT:
+      convert_float_to_varfloat(buffer, length, dat->Float);
+      break;
+
+    case MBN_DATATYPE_OBJINFO:
+      i = 32;
+      memcpy((void *)buffer, (void *)dat->Info->Description, i);
+      buffer[i++] = dat->Info->Services;
+      buffer[i++] = dat->Info->SensorType;
+      buffer[i++] = dat->Info->SensorSize;
+      create_datatype(dat->Info->SensorType, &(dat->Info->SensorMin), dat->Info->SensorSize, &(buffer[i]));
+      i += dat->Info->SensorSize;
+      create_datatype(dat->Info->SensorType, &(dat->Info->SensorMax), dat->Info->SensorSize, &(buffer[i]));
+      i += dat->Info->SensorSize;
+      buffer[i++] = dat->Info->ActuatorType;
+      buffer[i++] = dat->Info->ActuatorSize;
+      create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMin), dat->Info->ActuatorSize, &(buffer[i]));
+      i += dat->Info->ActuatorSize;
+      create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMax), dat->Info->ActuatorSize, &(buffer[i]));
+      i += dat->Info->ActuatorSize;
+      create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorDefault), dat->Info->ActuatorSize, &(buffer[i]));
+  }
+}
+
+
+/* object message struct -> 8bit data 8 */
+void createmsg_object(struct mbn_message *msg) {
+  struct mbn_message_object *obj = &(msg->Data.Object);
+  int l = 0;
+
+  /* header */
+  msg->buffer[l++] = (obj->Number>>8) & 0xFF;
+  msg->buffer[l++] = obj->Number & 0xFF;
+  msg->buffer[l++] = obj->Action;
+  msg->buffer[l++] = obj->DataType;
+  msg->buffer[l++] = obj->DataSize;
+  l += obj->DataSize;
+
+  msg->bufferlength = l;
+}
+
+
+/* Converts the data in the structs to the "raw" member, which
+ * is assumed to be large enough to contain the entire packet. */
+/* TODO: error checking? */
+int create_message(struct mbn_message *msg) {
+  int datlen;
+
+  /* encode the data part */
+  if(msg->MessageType == MBN_MSGTYPE_ADDRESS)
+    createmsg_address(msg);
+  else if(msg->MessageType == MBN_MSGTYPE_OBJECT)
+    createmsg_object(msg);
+  else
+    return 0;
+
+  /* header */
+  msg->rawlength = 0;
+  msg->raw[msg->rawlength++] = msg->ControlByte | 0x80;
+  msg->raw[msg->rawlength++] = (msg->AddressTo  >>21) & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->AddressTo  >>14) & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->AddressTo  >> 7) & 0x7F;
+  msg->raw[msg->rawlength++] =  msg->AddressTo        & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->AddressFrom>>21) & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->AddressFrom>>14) & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->AddressFrom>> 7) & 0x7F;
+  msg->raw[msg->rawlength++] =  msg->AddressFrom      & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->MessageID  >>14) & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->MessageID  >> 7) & 0x7F;
+  msg->raw[msg->rawlength++] =  msg->MessageID        & 0x7F;
+  msg->raw[msg->rawlength++] = (msg->MessageType>> 7) & 0x7F;
+  msg->raw[msg->rawlength++] =  msg->MessageType      & 0x7F;
+
+  /* data + footer */
+  datlen = convert_8to7bits(msg->buffer, msg->bufferlength, &(msg->raw[msg->rawlength+1]));
+  msg->raw[msg->rawlength++] = datlen;
+  msg->rawlength += datlen;
+  msg->raw[msg->rawlength++] = 0xFF;
+
+  return msg->rawlength;
 }
 
 

@@ -48,6 +48,8 @@
 
 #define MBN_ADDR_TIMEOUT 110 /* seconds */
 
+#define MBN_BROADCAST_ADDRESS 0x10000000
+
 #define MBN_MAX_MESSAGE_SIZE 128
 #define MBN_MIN_MESSAGE_SIZE 16
 
@@ -107,6 +109,7 @@ typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_addres
 
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
+typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, int, void *);
 
 
 /* All information required for the default objects of a node */
@@ -128,6 +131,7 @@ struct mbn_interface {
   void *data; /* can be used by the interface */
   mbn_cb_FreeInterface cb_free;
   mbn_cb_FreeInterfaceAddress cb_free_addr;
+  mbn_cb_InterfaceTransmit cb_transmit;
   /* unfinished, needs callbacks (among other things...) */
 };
 
@@ -222,6 +226,7 @@ void MBN_IMPORT mbnFree(struct mbn_handler *);
 int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int, void *);
+void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *);
 
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned int);
 

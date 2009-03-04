@@ -44,6 +44,7 @@ struct mbn_ethernet_data {
 void *receive_packets(void *);
 void ethernet_free(struct mbn_handler *);
 void free_addr(void *);
+void transmit(struct mbn_handler *, unsigned char *, int, void *);
 
 
 /* Creates a new ethernet interface and links it to the mbn handler */
@@ -120,6 +121,7 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
 
   mbn->interface.cb_free = ethernet_free;
   mbn->interface.cb_free_addr = free_addr;
+  mbn->interface.cb_transmit = transmit;
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
   return error;
@@ -208,6 +210,37 @@ void *receive_packets(void *ptr) {
   MBN_TRACE(printf("Closing the receiver thread..."));
 
   return NULL;
+}
+
+
+void transmit(struct mbn_handler *mbn, unsigned char *buffer, int length, void *ifaddr) {
+  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
+  unsigned char *addr = (unsigned char *) ifaddr;
+  struct sockaddr_ll saddr;
+  int rd;
+
+  if(addr != NULL) {
+    MBN_TRACE(printf("Transmit request of %dB to %02X:%02X:%02X:%02X:%02X:%02X",
+      length, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]));
+  } else
+    MBN_TRACE(printf("Broadcasting message of %dB", length));
+
+  /* fill sockaddr struct */
+  memset((void *)&saddr, 0, sizeof(struct sockaddr_ll));
+  saddr.sll_family   = AF_PACKET;
+  saddr.sll_protocol = htons(ETH_P_DNR);
+  saddr.sll_ifindex  = eth->ifindex;
+  saddr.sll_hatype   = ARPHRD_ETHER;
+  saddr.sll_pkttype  = PACKET_OTHERHOST;
+  saddr.sll_halen    = ETH_ALEN;
+  if(addr != NULL)
+    memcpy(saddr.sll_addr, addr, 6);
+  else
+    memset(saddr.sll_addr, 0xFF, 6);
+
+  /* send data */
+  rd = sendto(eth->socket, buffer, length, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll));
+  /* TODO: error checking */
 }
 
 

@@ -16,6 +16,7 @@
 
 #include "mbn.h"
 #include <stdio.h>
+#include <string.h>
 #include <sys/time.h>
 
 
@@ -61,18 +62,37 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
+  struct mbn_message msg;
 
   mbn = mbnInit(this_node);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnEthernetInit(mbn, "eth0");
 
-  sleep(2);
+  sleep(1);
+
+  printf("Sending random message to MambaNet Browser\n");
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.ControlByte = 0x81;
+  msg.AddressTo   = MBN_BROADCAST_ADDRESS; //0x00040000;
+  msg.AddressFrom = this_node.MambaNetAddr;
+  msg.MessageType = 0;
+  msg.Data.Address.Type = MBN_ADDR_TYPE_INFO;
+  msg.Data.Address.ManufacturerID = this_node.ManufacturerID;
+  msg.Data.Address.ProductID = this_node.ProductID;
+  msg.Data.Address.UniqueIDPerProduct = this_node.UniqueIDPerProduct;
+  msg.Data.Address.MambaNetAddr = this_node.MambaNetAddr;
+  msg.Data.Address.EngineAddr = 0x00;
+  msg.Data.Address.Services = 0x80;
+  mbnSendMessage(mbn, &msg);
+
+  /*sleep(2);
   gettimeofday(&before, NULL);
   mbnFree(mbn);
   gettimeofday(&after, NULL);
   printf("mbnFree() finished in %.3fms\n",
     (((float) after.tv_sec)+((float) after.tv_usec)/1000000.0f) - (((float) before.tv_sec)+((float) before.tv_usec)/1000000.0f));
+    */
 
   pthread_exit(NULL);
   return 0;

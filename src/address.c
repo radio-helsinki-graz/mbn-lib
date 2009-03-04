@@ -52,7 +52,6 @@ void *node_timeout_thread(void *arg) {
     node = last = mbn->addresses;
     while(node != NULL) {
       if(--node->Alive <= 0) {
-        MBN_TRACE(printf("Removing address table entry for 0x%08lX (timeout)", node->MambaNetAddr));
         /* send callback */
         if(mbn->cb_AddressTableChange != NULL)
           mbn->cb_AddressTableChange(mbn, node, NULL);
@@ -115,7 +114,6 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
       free(node);
       node = NULL;
     }
-    MBN_TRACE(printf("Removing address table entry for 0x%08lX", nfo->MambaNetAddr));
   }
 
   /* not found but validated? insert new node in the table */
@@ -129,7 +127,6 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
         last = last->next;
       last->next = node;
     }
-    MBN_TRACE(printf("Inserting new address table entry for 0x%08lX", nfo->MambaNetAddr));
   }
 
   if(node != NULL) {

@@ -52,6 +52,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
 }
 
 
+/* IMPORTANT: must not be called in a thread which has a lock on mbn_mutex */
 void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   /* request cancellation for the timeout thread */
   pthread_cancel(mbn->timeout_thread);
@@ -108,6 +109,38 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
   free_message(&msg);
+}
+
+
+/* TODO: notify application on errors */
+void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
+  unsigned char raw[MBN_MAX_MESSAGE_SIZE];
+  struct mbn_address_node *dest;
+  void *ifaddr;
+
+  if(mbn->interface.cb_transmit == NULL)
+    return;
+
+  /* TODO: check for valid bit, AddressFrom, etc */
+
+  msg->raw = raw;
+  msg->rawlength = 0;
+
+  /* create the message */
+  create_message(msg);
+
+  /* determine interface address */
+  if(msg->AddressTo == MBN_BROADCAST_ADDRESS)
+    ifaddr = NULL;
+  else {
+    if((dest = mbnNodeStatus(mbn, msg->AddressTo)) == NULL)
+      ifaddr = NULL;
+    else
+      ifaddr = dest->ifaddr;
+  }
+
+  /* send the data to the interface transmit callback */
+  mbn->interface.cb_transmit(mbn, raw, msg->rawlength, ifaddr);
 }
 
 
