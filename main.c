@@ -61,6 +61,8 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 
 void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
   printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
+  if(valid)
+    mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);
 }
 
 

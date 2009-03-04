@@ -19,6 +19,7 @@
  *  - Handle object messages
  *  - Improve address table (internal format & API for browsing through the list)
  *  - Improve the API for H/W interface modules
+ *  - Add automated acknowledge handling
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
  *    > TCP/IP (server AND client?)
@@ -255,7 +256,8 @@ int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int, void *);
 void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);
 
-struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned int);
+void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);
+struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned long);
 
 #ifdef __cplusplus
 }

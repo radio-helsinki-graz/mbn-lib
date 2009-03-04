@@ -35,7 +35,6 @@
 /* send an address reservation broadcast message */
 void send_info(struct mbn_handler *mbn) {
   struct mbn_message msg;
-  pthread_mutex_lock(&(mbn->mbn_mutex));
   msg.AddressTo   = MBN_BROADCAST_ADDRESS;
   msg.AddressFrom = mbn->node.MambaNetAddr;
   msg.MessageID   = 0;
@@ -48,6 +47,7 @@ void send_info(struct mbn_handler *mbn) {
   msg.Data.Address.EngineAddr         = mbn->node.DefaultEngineAddr;
   msg.Data.Address.Services           = mbn->node.Services;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
+  pthread_mutex_lock(&(mbn->mbn_mutex));
   mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
   pthread_mutex_unlock(&(mbn->mbn_mutex));
 }
@@ -249,7 +249,7 @@ void free_addresses(struct mbn_handler *mbn) {
 
 /* Get information about a node address reservation information given
  * a MambaNet address. Returns NULL if not found. */
-struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsigned int addr) {
+struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsigned long addr) {
   struct mbn_address_node *node = mbn->addresses;
 
   if(node == NULL)
@@ -259,6 +259,17 @@ struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsi
       return node;
   } while((node = node->next) != NULL);
   return NULL;
+}
+
+
+void MBN_EXPORT mbnSendPingRequest(struct mbn_handler *mbn, unsigned long addr) {
+  struct mbn_message msg;
+
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.AddressTo = addr;
+  msg.MessageType = MBN_MSGTYPE_ADDRESS;
+  msg.Data.Address.Type = MBN_ADDR_TYPE_PING;
+  mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
 }
 
 
