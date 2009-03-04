@@ -14,6 +14,18 @@
 **
 ****************************************************************************/
 
+/* General project-wide TODO list (in addition to `grep TODO *.c`)
+ *  - Provide error handling for about everything (using callbacks, most likely)
+ *  - Handle object messages
+ *  - Improve address table (internal format & API for browsing through the list)
+ *  - Improve the API for H/W interface modules
+ *  - Add more H/W interfaces:
+ *    > Ethernet (windows)
+ *    > TCP/IP (server AND client?)
+ *    > Serial line
+ *  - Test/port to windows (and probably OS X)
+*/
+
 #ifndef MBN_H
 #define MBN_H
 
@@ -94,6 +106,8 @@
 /* flags for mbnSendMessage() */
 #define MBN_SEND_IGNOREVALID  0x01 /* send the message regardless of our valid bit */
 #define MBN_SEND_FORCEADDR    0x02 /* don't overwrite the AddressTo field with our address */
+#define MBN_SEND_NOCREATE     0x04 /* don't try to parse the structs, just send the "buffer" member */
+#define MBN_SEND_RAWDATA      (0x08 | 0x04 | 0x02) /* don't even create the header, just send the "raw" member */
 
 #define MBN_ADDR_EQ(a, b) ( \
     ((a)->ManufacturerID     == 0 || (b)->ManufacturerID     == 0 || (a)->ManufacturerID     == (b)->ManufacturerID)  && \

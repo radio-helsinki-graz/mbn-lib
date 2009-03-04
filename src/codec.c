@@ -620,18 +620,20 @@ int createmsg_object(struct mbn_message *msg) {
 /* Converts the data in the structs to the "raw" member, which
  * is assumed to be large enough to contain the entire packet. */
 /* returns non-zero on error */
-int create_message(struct mbn_message *msg) {
+int create_message(struct mbn_message *msg, char onlyheader) {
   int datlen, r;
 
   /* encode the data part */
-  if(msg->MessageType == MBN_MSGTYPE_ADDRESS) {
-    if((r = createmsg_address(msg)) != 0)
-      return r | 0x10;
-  } else if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
-    if((r = createmsg_object(msg)) != 0)
-      return r | 0x20;
-  } else
-    return 1;
+  if(!onlyheader) {
+    if(msg->MessageType == MBN_MSGTYPE_ADDRESS) {
+      if((r = createmsg_address(msg)) != 0)
+        return r | 0x10;
+    } else if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
+      if((r = createmsg_object(msg)) != 0)
+        return r | 0x20;
+    } else
+      return 1;
+  }
 
   /* header */
   msg->rawlength = 0;

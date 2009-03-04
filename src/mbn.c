@@ -129,6 +129,12 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   if(!(flags & MBN_SEND_IGNOREVALID) && !(mbn->node.Services & MBN_ADDR_SERVICES_VALID))
     return;
 
+  /* just forward the raw data to the interface, if we don't need to do any processing */
+  if(flags & MBN_SEND_RAWDATA) {
+    mbn->interface.cb_transmit(mbn, raw, msg->rawlength, NULL);
+    return;
+  }
+
   if(!(flags & MBN_SEND_FORCEADDR))
     msg->AddressFrom = mbn->node.MambaNetAddr;
 
@@ -136,7 +142,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   msg->rawlength = 0;
 
   /* create the message */
-  if(create_message(msg) != 0)
+  if(create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0) != 0)
     return;
 
   /* determine interface address */
