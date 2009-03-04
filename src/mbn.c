@@ -114,7 +114,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 
 
 /* TODO: notify application on errors */
-void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
+void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg, int flags) {
   unsigned char raw[MBN_MAX_MESSAGE_SIZE];
   struct mbn_address_node *dest;
   void *ifaddr;
@@ -122,7 +122,11 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg)
   if(mbn->interface.cb_transmit == NULL)
     return;
 
-  /* TODO: check for valid bit, AddressFrom, etc */
+  if(!(flags & MBN_SEND_IGNOREVALID) && !(mbn->node.Services & MBN_ADDR_SERVICES_VALID))
+    return;
+
+  if(!(flags & MBN_SEND_FORCEADDR))
+    msg->AddressFrom = mbn->node.MambaNetAddr;
 
   msg->raw = raw;
   msg->rawlength = 0;

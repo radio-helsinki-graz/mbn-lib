@@ -47,7 +47,7 @@ void send_info(struct mbn_handler *mbn) {
   msg.Data.Address.MambaNetAddr       = mbn->node.MambaNetAddr;
   msg.Data.Address.EngineAddr         = mbn->node.DefaultEngineAddr;
   msg.Data.Address.Services           = mbn->node.Services;
-  mbnSendMessage(mbn, &msg);
+  mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
   mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
   pthread_mutex_unlock(&(mbn->mbn_mutex));
 }
@@ -83,7 +83,7 @@ void *node_timeout_thread(void *arg) {
     }
 
     /* send address reservation information messages, if needed */
-    if(!mbn->validated || --mbn->pongtimeout <= 0)
+    if(!(mbn->node.Services & MBN_ADDR_SERVICES_VALID) || --mbn->pongtimeout <= 0)
       send_info(mbn);
 
     pthread_mutex_unlock(&(mbn->mbn_mutex));
@@ -198,8 +198,7 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
       if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node))) {
         pthread_mutex_lock(&(mbn->mbn_mutex));
         mbn->node.MambaNetAddr = msg->Data.Address.MambaNetAddr;
-        mbn->node.Services |= 0x80;
-        mbn->validated = 1;
+        mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
         if(mbn->cb_OnlineStatus != NULL)
           mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, 1);
         send_info(mbn);

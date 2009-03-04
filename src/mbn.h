@@ -91,6 +91,10 @@
 #define MBN_DATATYPE_OBJINFO 128
 #define MBN_DATATYPE_ERROR   255
 
+/* flags for mbnSendMessage() */
+#define MBN_SEND_IGNOREVALID  0x01 /* send the message regardless of our valid bit */
+#define MBN_SEND_FORCEADDR    0x02 /* don't overwrite the AddressTo field with our address */
+
 #define MBN_ADDR_EQ(a, b) ( \
     ((a)->ManufacturerID     == 0 || (b)->ManufacturerID     == 0 || (a)->ManufacturerID     == (b)->ManufacturerID)  && \
     ((a)->ProductID          == 0 || (b)->ProductID          == 0 || (a)->ProductID          == (b)->ProductID)       && \
@@ -216,7 +220,6 @@ struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
   struct mbn_address_node *addresses;
-  char validated;
   int pongtimeout;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
   pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
@@ -236,7 +239,7 @@ void MBN_IMPORT mbnFree(struct mbn_handler *);
 int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int, void *);
-void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *);
+void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);
 
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned int);
 
