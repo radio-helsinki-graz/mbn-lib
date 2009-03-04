@@ -46,7 +46,8 @@
 /* Debugging */
 #define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 
-#define MBN_ADDR_TIMEOUT 110 /* seconds */
+#define MBN_ADDR_TIMEOUT    110 /* seconds */
+#define MBN_ADDR_MSG_TIMEOUT 30 /* sending address reservation information packets */
 
 #define MBN_BROADCAST_ADDRESS 0x10000000
 
@@ -90,6 +91,11 @@
 #define MBN_DATATYPE_OBJINFO 128
 #define MBN_DATATYPE_ERROR   255
 
+#define MBN_ADDR_EQ(a, b) ( \
+    ((a)->ManufacturerID     == 0 || (b)->ManufacturerID     == 0 || (a)->ManufacturerID     == (b)->ManufacturerID)  && \
+    ((a)->ProductID          == 0 || (b)->ProductID          == 0 || (a)->ProductID          == (b)->ProductID)       && \
+    ((a)->UniqueIDPerProduct == 0 || (b)->UniqueIDPerProduct == 0 || (a)->UniqueIDPerProduct == (b)->UniqueIDPerProduct) \
+  )
 
 /* forward declarations, because many types depend on other types */
 struct mbn_node_info;
@@ -106,6 +112,7 @@ struct mbn_handler;
 /* Callback function prototypes */
 typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
 typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
+typedef void(*mbn_cb_OnlineStatus)(struct mbn_handler *, unsigned long, char);
 
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
@@ -115,6 +122,7 @@ typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, i
 /* All information required for the default objects of a node */
 struct mbn_node_info {
   unsigned int MambaNetAddr;      /* Variable */
+  char Services;                  /* Variable (MSBit) */
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   char Description[64];
   char Name[32];                  /* Variable */
@@ -184,15 +192,15 @@ struct mbn_message {
   unsigned long AddressTo, AddressFrom;
   unsigned long MessageID;
   unsigned short MessageType;
-  unsigned char DataLength;
-  unsigned char *raw;
-  int rawlength;
-  unsigned char buffer[98];
-  int bufferlength;
   union {
     struct mbn_message_address Address;
     struct mbn_message_object Object;
   } Data;
+  /* used internally */
+  unsigned char *raw;
+  int rawlength;
+  unsigned char buffer[98];
+  int bufferlength;
 };
 
 struct mbn_address_node {
@@ -209,10 +217,13 @@ struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
   struct mbn_address_node *addresses;
+  char validated;
+  int pongtimeout;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
   pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
   mbn_cb_AddressTableChange cb_AddressTableChange;
+  mbn_cb_OnlineStatus cb_OnlineStatus;
 };
 
 
@@ -245,6 +256,8 @@ struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigne
 #define mbnUnsetReceiveMessageCallback(mbn)         (mbn->cb_ReceiveMessage = NULL)
 #define mbnSetAddressTableChangeCallback(mbn, func) (mbn->cb_AddressTableChange = func)
 #define mbnUnsetAddressTableChangeCallback(mbn)     (mbn->cb_AddressTableChange = NULL)
+#define mbnSetOnlineStatusCallback(mbn, func)       (mbn->cb_OnlineStatus = func)
+#define mbnUnsetOnlineStatusCallback(mbn)           (mbn->cb_OnlineStatus = NULL)
 
 #endif
 

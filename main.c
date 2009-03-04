@@ -21,7 +21,7 @@
 
 
 struct mbn_node_info this_node = {
-  0x00050000, // MambaNet Addr
+  0x00000000, 0x00, // MambaNet Addr + Services
   1, 50, 0,   // UniqueMediaAccessId
   "MambaNet Stack Test Application",
   "MambaNet Test",
@@ -59,6 +59,11 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 }
 
 
+void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
+  printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
@@ -67,32 +72,8 @@ int main(void) {
   mbn = mbnInit(this_node);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
+  mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnEthernetInit(mbn, "eth0");
-
-  sleep(1);
-
-  printf("Sending random message to MambaNet Browser\n");
-  memset((void *)&msg, 0, sizeof(struct mbn_message));
-  msg.ControlByte = 0x81;
-  msg.AddressTo   = MBN_BROADCAST_ADDRESS; //0x00040000;
-  msg.AddressFrom = this_node.MambaNetAddr;
-  msg.MessageType = 0;
-  msg.Data.Address.Type = MBN_ADDR_TYPE_INFO;
-  msg.Data.Address.ManufacturerID = this_node.ManufacturerID;
-  msg.Data.Address.ProductID = this_node.ProductID;
-  msg.Data.Address.UniqueIDPerProduct = this_node.UniqueIDPerProduct;
-  msg.Data.Address.MambaNetAddr = this_node.MambaNetAddr;
-  msg.Data.Address.EngineAddr = 0x00;
-  msg.Data.Address.Services = 0x80;
-  mbnSendMessage(mbn, &msg);
-
-  /*sleep(2);
-  gettimeofday(&before, NULL);
-  mbnFree(mbn);
-  gettimeofday(&after, NULL);
-  printf("mbnFree() finished in %.3fms\n",
-    (((float) after.tv_sec)+((float) after.tv_usec)/1000000.0f) - (((float) before.tv_sec)+((float) before.tv_usec)/1000000.0f));
-    */
 
   pthread_exit(NULL);
   return 0;

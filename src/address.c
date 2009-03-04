@@ -32,19 +32,34 @@
 #endif
 
 
+/* send an address reservation broadcast message */
+void send_info(struct mbn_handler *mbn) {
+  struct mbn_message msg;
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+  msg.ControlByte = 0x81;
+  msg.AddressTo   = MBN_BROADCAST_ADDRESS;
+  msg.AddressFrom = mbn->node.MambaNetAddr;
+  msg.MessageID   = 0;
+  msg.MessageType = MBN_MSGTYPE_ADDRESS;
+  msg.Data.Address.Type               = MBN_ADDR_TYPE_INFO;
+  msg.Data.Address.ManufacturerID     = mbn->node.ManufacturerID;
+  msg.Data.Address.ProductID          = mbn->node.ProductID;
+  msg.Data.Address.UniqueIDPerProduct = mbn->node.UniqueIDPerProduct;
+  msg.Data.Address.MambaNetAddr       = mbn->node.MambaNetAddr;
+  msg.Data.Address.EngineAddr         = mbn->node.DefaultEngineAddr;
+  msg.Data.Address.Services           = mbn->node.Services;
+  mbnSendMessage(mbn, &msg);
+  mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+}
+
+
 /* Thread waiting for timeouts */
 void *node_timeout_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_address_node *node, *last, *tmp;
 
   while(1) {
-    /* we can safely cancel here */
-    pthread_testcancel();
-
-    /* sleep() is our method of timing
-     * (not really precise, but good enough) */
-    sleep(1);
-
     /* working on mbn_handler, so lock */
     pthread_mutex_lock(&(mbn->mbn_mutex));
 
@@ -67,7 +82,19 @@ void *node_timeout_thread(void *arg) {
       last = node;
       node = node->next;
     }
+
+    /* send address reservation information messages, if needed */
+    if(!mbn->validated || --mbn->pongtimeout <= 0)
+      send_info(mbn);
+
     pthread_mutex_unlock(&(mbn->mbn_mutex));
+
+    /* we can safely cancel here */
+    pthread_testcancel();
+
+    /* sleep() is our method of timing
+     * (not really precise, but good enough) */
+    sleep(1);
   }
 }
 
@@ -86,8 +113,7 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
   if(node == NULL && mbn->addresses != NULL) {
     last = mbn->addresses;
     do {
-      if(last->ManufacturerID == nfo->ManufacturerID && last->ProductID == nfo->ProductID
-          && last->UniqueIDPerProduct == nfo->UniqueIDPerProduct) {
+      if(MBN_ADDR_EQ(last, nfo)) {
         node = last;
         break;
       }
@@ -111,9 +137,9 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
           break;
         }
       } while((last = last->next) != NULL);
-      free(node);
-      node = NULL;
     }
+    free(node);
+    node = NULL;
   }
 
   /* not found but validated? insert new node in the table */
@@ -164,10 +190,35 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
 
 /* Returns nonzero if the message has been processed */
 int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, void *ifaddr) {
-  if(msg->Data.Address.Type == MBN_ADDR_TYPE_INFO)
-    process_reservation_information(mbn, &(msg->Data.Address), ifaddr);
+  switch(msg->Data.Address.Type) {
+    case MBN_ADDR_TYPE_INFO:
+      process_reservation_information(mbn, &(msg->Data.Address), ifaddr);
+      break;
 
-  /* TODO: process other message types */
+    case MBN_ADDR_TYPE_RESPONSE:
+      if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node))) {
+        pthread_mutex_lock(&(mbn->mbn_mutex));
+        mbn->node.MambaNetAddr = msg->Data.Address.MambaNetAddr;
+        mbn->node.Services |= 0x80;
+        mbn->validated = 1;
+        if(mbn->cb_OnlineStatus != NULL)
+          mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, 1);
+        send_info(mbn);
+        pthread_mutex_unlock(&(mbn->mbn_mutex));
+      }
+      break;
+
+    case MBN_ADDR_TYPE_PING:
+      if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node)) &&
+          (msg->Data.Address.MambaNetAddr == 0 || msg->Data.Address.MambaNetAddr == mbn->node.MambaNetAddr) &&
+          (msg->Data.Address.EngineAddr   == 0 || msg->Data.Address.EngineAddr   == mbn->node.DefaultEngineAddr)) {
+        send_info(mbn);
+      }
+      break;
+
+    default:
+      return 0;
+  }
 
   return 1;
 }

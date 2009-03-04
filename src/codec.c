@@ -378,7 +378,7 @@ int parsemsg_object(struct mbn_message *msg) {
  *  allocating memory where necessary.
  * returns non-zero on failure */
 int parse_message(struct mbn_message *msg) {
-  int l, err;
+  int l, err, datlen;
 
   /* Message is too small for a header to fit */
   if(msg->rawlength < 15)
@@ -400,20 +400,20 @@ int parse_message(struct mbn_message *msg) {
   msg->MessageID   |= ((unsigned long)  msg->raw[11]    ) & 0x0000007F;
   msg->MessageType  = ((unsigned short) msg->raw[12]<< 7) &     0x3F80;
   msg->MessageType |= ((unsigned short) msg->raw[13]    ) &     0x007F;
-  msg->DataLength   = ((unsigned char)  msg->raw[14]    ) &       0x7F;
+  datlen            = ((unsigned char)  msg->raw[14]    ) &       0x7F;
 
   /* done parsing if there's no data */
-  if(msg->DataLength == 0)
+  if(datlen == 0)
     return 0;
 
   /* check for the validness of the DataLength */
   for(l=0; msg->raw[l+15] != 0xFF && l+15 < msg->rawlength; l++)
     ;
-  if(msg->DataLength != l)
+  if(datlen != l)
     return 0x03;
 
   /* fill the 8bit buffer */
-  msg->bufferlength = convert_7to8bits(&(msg->raw[15]), msg->DataLength, msg->buffer);
+  msg->bufferlength = convert_7to8bits(&(msg->raw[15]), datlen, msg->buffer);
 
   /* parse the data part */
   if(msg->MessageType == MBN_MSGTYPE_ADDRESS) {
