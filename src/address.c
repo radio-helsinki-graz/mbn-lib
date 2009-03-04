@@ -36,7 +36,6 @@
 void send_info(struct mbn_handler *mbn) {
   struct mbn_message msg;
   pthread_mutex_lock(&(mbn->mbn_mutex));
-  msg.ControlByte = 0x81;
   msg.AddressTo   = MBN_BROADCAST_ADDRESS;
   msg.AddressFrom = mbn->node.MambaNetAddr;
   msg.MessageID   = 0;
@@ -143,7 +142,7 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
   }
 
   /* not found but validated? insert new node in the table */
-  else if(node == NULL) {
+  else if(node == NULL && (nfo->Services & MBN_ADDR_SERVICES_VALID)) {
     node = calloc(1, sizeof(struct mbn_address_node));
     if(mbn->addresses == NULL)
       mbn->addresses = node;

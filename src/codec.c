@@ -385,7 +385,7 @@ int parse_message(struct mbn_message *msg) {
     return 0x01;
 
   /* decode MambaNet header */
-  msg->ControlByte = msg->raw[0];
+  msg->AcknowledgeReply = msg->raw[0] == 0x82 ? 1 : 0;
   msg->AddressTo    = ((unsigned long)  msg->raw[ 0]<<28) & 0x10000000;
   msg->AddressTo   |= ((unsigned long)  msg->raw[ 1]<<21) & 0x0FE00000;
   msg->AddressTo   |= ((unsigned long)  msg->raw[ 2]<<14) & 0x001FC000;
@@ -582,7 +582,7 @@ int create_message(struct mbn_message *msg) {
 
   /* header */
   msg->rawlength = 0;
-  msg->raw[msg->rawlength++] = msg->ControlByte | 0x80;
+  msg->raw[msg->rawlength++] = 0x80 | (msg->AcknowledgeReply?0x82:0x00) | ((msg->AddressTo>>28)&0x01);
   msg->raw[msg->rawlength++] = (msg->AddressTo  >>21) & 0x7F;
   msg->raw[msg->rawlength++] = (msg->AddressTo  >>14) & 0x7F;
   msg->raw[msg->rawlength++] = (msg->AddressTo  >> 7) & 0x7F;

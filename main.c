@@ -53,9 +53,9 @@ int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
 void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, struct mbn_address_node *new) {
   struct mbn_address_node *cur;
   cur = new == NULL ? old : new;
-  printf("%s: %08lX  ->  %04X:%04X:%04X\n",
+  printf("%s: %08lX  ->  %04X:%04X:%04X (%02X)\n",
     old == NULL ? "New node" : new == NULL ? "Removed node" : "Node changed",
-    cur->MambaNetAddr, cur->ManufacturerID, cur->ProductID, cur->UniqueIDPerProduct);
+    cur->MambaNetAddr, cur->ManufacturerID, cur->ProductID, cur->UniqueIDPerProduct, cur->Services);
 }
 
 

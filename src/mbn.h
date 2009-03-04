@@ -140,7 +140,6 @@ struct mbn_interface {
   mbn_cb_FreeInterface cb_free;
   mbn_cb_FreeInterfaceAddress cb_free_addr;
   mbn_cb_InterfaceTransmit cb_transmit;
-  /* unfinished, needs callbacks (among other things...) */
 };
 
 
@@ -188,7 +187,7 @@ struct mbn_message_object {
 };
 
 struct mbn_message {
-  unsigned char ControlByte;
+  unsigned char AcknowledgeReply;
   unsigned long AddressTo, AddressFrom;
   unsigned long MessageID;
   unsigned short MessageType;

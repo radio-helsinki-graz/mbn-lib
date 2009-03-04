@@ -87,8 +87,8 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   }
 
   if(0)
-    MBN_TRACE(printf("Received MambaNet message of %dB from 0x%08lX to 0x%08lX, ctrl 0x%02X, id 0x%06lX, type 0x%04X",
-       length, msg.AddressFrom, msg.AddressTo, msg.ControlByte, msg.MessageID, msg.MessageType));
+    MBN_TRACE(printf("Received MambaNet message of %dB from 0x%08lX to 0x%08lX, id 0x%06lX, type 0x%04X",
+       length, msg.AddressFrom, msg.AddressTo, msg.MessageID, msg.MessageType));
 
   if(0 && msg.MessageType == MBN_MSGTYPE_ADDRESS)
     MBN_TRACE(printf(" -> Address Reservation from %04X:%04X:%04X, type 0x%02X, engine 0x%08lX, services 0x%02X",
