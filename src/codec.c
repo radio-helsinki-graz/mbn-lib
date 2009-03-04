@@ -129,11 +129,14 @@ int convert_varfloat_to_float(unsigned char *buffer, unsigned char length, float
 
 
 /* opposite of above function */
-void convert_float_to_varfloat(unsigned char *buffer, unsigned char length, float flt) {
+int convert_float_to_varfloat(unsigned char *buffer, unsigned char length, float flt) {
   unsigned long tmp;
   int exponent;
   unsigned long mantessa;
   char signbit;
+
+  if(length < 1 || length > 4 || length == 3)
+    return 1;
 
   tmp = *((unsigned long *)&flt);
   mantessa = tmp & 0x007FFFFF;
@@ -143,7 +146,7 @@ void convert_float_to_varfloat(unsigned char *buffer, unsigned char length, floa
 
   if(tmp == 0x00000000) {
     memset((void *)buffer, 0, length);
-    return;
+    return 0;
   }
 
   switch(length) {
@@ -175,6 +178,7 @@ void convert_float_to_varfloat(unsigned char *buffer, unsigned char length, floa
       buffer[3] =  tmp     &0xFF;
       break;
   }
+  return 0;
 }
 
 
@@ -467,7 +471,7 @@ void free_message(struct mbn_message *msg) {
 
 
 /* address struct -> 8bit data */
-void createmsg_address(struct mbn_message *msg) {
+int createmsg_address(struct mbn_message *msg) {
   struct mbn_message_address *addr = &(msg->Data.Address);
 
   msg->bufferlength = 16;
@@ -487,18 +491,23 @@ void createmsg_address(struct mbn_message *msg) {
   msg->buffer[13] = (addr->EngineAddr        >> 8) & 0xFF;
   msg->buffer[14] =  addr->EngineAddr              & 0xFF;
   msg->buffer[15] =  addr->Services;
+  return 0;
 }
 
 
-void create_datatype(unsigned char type, union mbn_message_object_data *dat, int length, unsigned char *buffer) {
+int create_datatype(unsigned char type, union mbn_message_object_data *dat, int length, unsigned char *buffer) {
   int i;
 
   switch(type) {
     case MBN_DATATYPE_NODATA:
-      return;
+      if(length != 0)
+        return 1;
+      break;
 
     case MBN_DATATYPE_UINT:
     case MBN_DATATYPE_STATE:
+      if(length < 1 || length > 4)
+        return 1;
       if(type == MBN_DATATYPE_STATE)
         memmove((void *)&(dat->UInt), (void *)&(dat->State), sizeof(dat->UInt));
       for(i=0; i<length; i++)
@@ -506,6 +515,8 @@ void create_datatype(unsigned char type, union mbn_message_object_data *dat, int
       break;
 
     case MBN_DATATYPE_SINT:
+      if(length < 1 || length > 4)
+        return 1;
       /* again, this assumes unsigned int is 4 bytes in two's complement */
       if(dat->SInt >= 0 || length == 4)
         for(i=0; i<length; i++)
@@ -519,13 +530,20 @@ void create_datatype(unsigned char type, union mbn_message_object_data *dat, int
 
     case MBN_DATATYPE_OCTETS:
     case MBN_DATATYPE_ERROR:
+      if((type == MBN_DATATYPE_OCTETS && length < 1) || length > 64)
+        return 1;
+      memcpy((void *)buffer, (void *)(type == MBN_DATATYPE_ERROR ? dat->Error : dat->Octets), length);
+      break;
+
     case MBN_DATATYPE_BITS:
-      memcpy((void *)buffer, (void *)
-        (type == MBN_DATATYPE_ERROR ? dat->Error : type == MBN_DATATYPE_OCTETS ? dat->Octets : dat->Bits), length);
+      if(length < 1 || length > 8)
+        return 1;
+      memcpy((void *)buffer, (void *)dat->Bits, length);
       break;
 
     case MBN_DATATYPE_FLOAT:
-      convert_float_to_varfloat(buffer, length, dat->Float);
+      if(convert_float_to_varfloat(buffer, length, dat->Float) != 0)
+        return 1;
       break;
 
     case MBN_DATATYPE_OBJINFO:
@@ -534,25 +552,50 @@ void create_datatype(unsigned char type, union mbn_message_object_data *dat, int
       buffer[i++] = dat->Info->Services;
       buffer[i++] = dat->Info->SensorType;
       buffer[i++] = dat->Info->SensorSize;
-      create_datatype(dat->Info->SensorType, &(dat->Info->SensorMin), dat->Info->SensorSize, &(buffer[i]));
+      if((dat->Info->SensorSize*2)+i > length)
+        return 4;
+      if(create_datatype(dat->Info->SensorType, &(dat->Info->SensorMin), dat->Info->SensorSize, &(buffer[i])) != 0)
+        return 3;
       i += dat->Info->SensorSize;
-      create_datatype(dat->Info->SensorType, &(dat->Info->SensorMax), dat->Info->SensorSize, &(buffer[i]));
+      if(create_datatype(dat->Info->SensorType, &(dat->Info->SensorMax), dat->Info->SensorSize, &(buffer[i])) != 0)
+        return 3;
       i += dat->Info->SensorSize;
       buffer[i++] = dat->Info->ActuatorType;
       buffer[i++] = dat->Info->ActuatorSize;
-      create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMin), dat->Info->ActuatorSize, &(buffer[i]));
+      if((dat->Info->ActuatorSize*3)+i > length)
+        return 4;
+      if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMin), dat->Info->ActuatorSize, &(buffer[i])) != 0)
+        return 3;
       i += dat->Info->ActuatorSize;
-      create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMax), dat->Info->ActuatorSize, &(buffer[i]));
+      if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMax), dat->Info->ActuatorSize, &(buffer[i])) != 0)
+        return 3;
       i += dat->Info->ActuatorSize;
-      create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorDefault), dat->Info->ActuatorSize, &(buffer[i]));
+      if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorDefault), dat->Info->ActuatorSize, &(buffer[i])) != 0)
+        return 3;
+      break;
+
+    default:
+      return 2;
   }
+  return 0;
 }
 
 
 /* object message struct -> 8bit data 8 */
-void createmsg_object(struct mbn_message *msg) {
+int createmsg_object(struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Data.Object);
-  int l = 0;
+  int l = 0, r;
+
+  /* set the data size for some fixed types */
+  if(obj->DataType == MBN_DATATYPE_NODATA)
+    obj->DataSize = 0;
+  if(obj->DataType == MBN_DATATYPE_OBJINFO) {
+    if(obj->Data.Info->SensorType == MBN_DATATYPE_NODATA)
+      obj->Data.Info->SensorSize = 0;
+    if(obj->Data.Info->ActuatorType == MBN_DATATYPE_NODATA)
+      obj->Data.Info->ActuatorSize = 0;
+    obj->DataSize = 37 + 2*obj->Data.Info->SensorSize + 3*obj->Data.Info->ActuatorSize;
+  }
 
   /* header */
   msg->buffer[l++] = (obj->Number>>8) & 0xFF;
@@ -560,25 +603,35 @@ void createmsg_object(struct mbn_message *msg) {
   msg->buffer[l++] = obj->Action;
   msg->buffer[l++] = obj->DataType;
   msg->buffer[l++] = obj->DataSize;
-  l += obj->DataSize;
 
+  if(obj->DataSize + l > MBN_MAX_MESSAGE_SIZE)
+    return 1;
+
+  /* data */
+  if((r = create_datatype(obj->DataType, &(obj->Data), obj->DataSize, &(msg->buffer[l]))) != 0)
+    return r<<1;
+  l += obj->DataSize;
   msg->bufferlength = l;
+
+  return 0;
 }
 
 
 /* Converts the data in the structs to the "raw" member, which
  * is assumed to be large enough to contain the entire packet. */
-/* TODO: error checking? */
+/* returns non-zero on error */
 int create_message(struct mbn_message *msg) {
-  int datlen;
+  int datlen, r;
 
   /* encode the data part */
-  if(msg->MessageType == MBN_MSGTYPE_ADDRESS)
-    createmsg_address(msg);
-  else if(msg->MessageType == MBN_MSGTYPE_OBJECT)
-    createmsg_object(msg);
-  else
-    return 0;
+  if(msg->MessageType == MBN_MSGTYPE_ADDRESS) {
+    if((r = createmsg_address(msg)) != 0)
+      return r | 0x10;
+  } else if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
+    if((r = createmsg_object(msg)) != 0)
+      return r | 0x20;
+  } else
+    return 1;
 
   /* header */
   msg->rawlength = 0;
@@ -603,7 +656,7 @@ int create_message(struct mbn_message *msg) {
   msg->rawlength += datlen;
   msg->raw[msg->rawlength++] = 0xFF;
 
-  return msg->rawlength;
+  return 0;
 }
 
 

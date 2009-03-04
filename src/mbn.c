@@ -106,6 +106,10 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   if(!processed && process_address_message(mbn, &msg, ifaddr) != 0)
     processed++;
 
+  /* we can't handle any other messages if we don't have a validated address */
+  if(!(mbn->node.Services & MBN_ADDR_SERVICES_VALID))
+    processed++;
+
   /* TODO: process message and send callbacks */
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
@@ -132,7 +136,8 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   msg->rawlength = 0;
 
   /* create the message */
-  create_message(msg);
+  if(create_message(msg) != 0)
+    return;
 
   /* determine interface address */
   if(msg->AddressTo == MBN_BROADCAST_ADDRESS)
