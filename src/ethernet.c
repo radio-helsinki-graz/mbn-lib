@@ -217,10 +217,10 @@ void transmit(struct mbn_handler *mbn, unsigned char *buffer, int length, void *
   struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
   unsigned char *addr = (unsigned char *) ifaddr;
   struct sockaddr_ll saddr;
-  int rd;
+  int rd, sent;
 
   if(addr != NULL) {
-    MBN_TRACE(printf("Transmit request of %dB to %02X:%02X:%02X:%02X:%02X:%02X",
+    MBN_TRACE(printf("Transmit message of %dB to %02X:%02X:%02X:%02X:%02X:%02X",
       length, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]));
   } else
     MBN_TRACE(printf("Broadcasting message of %dB", length));
@@ -238,9 +238,16 @@ void transmit(struct mbn_handler *mbn, unsigned char *buffer, int length, void *
   else
     memset(saddr.sll_addr, 0xFF, 6);
 
-  /* send data */
-  rd = sendto(eth->socket, buffer, length, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll));
-  /* TODO: error checking */
+  /* send data
+   * TODO: notify application on error */
+  sent = 0;
+  while((rd = sendto(eth->socket, &(buffer[sent]), length-sent, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll))) < length-sent) {
+    if(rd < 0) {
+      perror("sendto()");
+      return;
+    }
+    sent += rd;
+  }
 }
 
 

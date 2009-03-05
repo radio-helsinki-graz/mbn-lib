@@ -189,6 +189,9 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
 
 /* Returns nonzero if the message has been processed */
 int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, void *ifaddr) {
+  if(msg->MessageType != MBN_MSGTYPE_ADDRESS)
+    return 0;
+
   switch(msg->Data.Address.Type) {
     case MBN_ADDR_TYPE_INFO:
       process_reservation_information(mbn, &(msg->Data.Address), ifaddr);

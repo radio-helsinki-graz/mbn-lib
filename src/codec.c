@@ -511,7 +511,7 @@ int create_datatype(unsigned char type, union mbn_message_object_data *dat, int 
       if(type == MBN_DATATYPE_STATE)
         memmove((void *)&(dat->UInt), (void *)&(dat->State), sizeof(dat->UInt));
       for(i=0; i<length; i++)
-        buffer[i] = (dat->UInt<<(length-1-i)) & 0xFF;
+        buffer[i] = (dat->UInt<<(8*(length-1-i))) & 0xFF;
       break;
 
     case MBN_DATATYPE_SINT:
@@ -520,7 +520,7 @@ int create_datatype(unsigned char type, union mbn_message_object_data *dat, int 
       /* again, this assumes unsigned int is 4 bytes in two's complement */
       if(dat->SInt >= 0 || length == 4)
         for(i=0; i<length; i++)
-          buffer[i] = (dat->SInt<<(length-1-i)) & 0xFF;
+          buffer[i] = (dat->SInt<<(8*(length-1-i))) & 0xFF;
       if(length == 2) {
         buffer[0] = (0x80 | (dat->SInt<<8)) & 0xFF;
         buffer[1] = dat->SInt & 0xFF;

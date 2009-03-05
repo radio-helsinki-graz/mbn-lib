@@ -64,6 +64,9 @@
 
 #define MBN_BROADCAST_ADDRESS 0x10000000
 
+#define MBN_PROTOCOL_VERSION_MAJOR 0
+#define MBN_PROTOCOL_VERSION_MINOR 0
+
 #define MBN_MAX_MESSAGE_SIZE 128
 #define MBN_MIN_MESSAGE_SIZE 16
 
@@ -143,8 +146,8 @@ struct mbn_node_info {
   unsigned int MambaNetAddr;      /* Variable */
   char Services;                  /* Variable (MSBit) */
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
-  char Description[64];
-  char Name[32];                  /* Variable */
+  unsigned char Description[64];
+  unsigned char Name[32];         /* Variable */
   unsigned char HardwareMajorRevision, HardwareMinorRevision;
   unsigned char FirmwareMajorRevision, FirmwareMinorRevision;
   unsigned short NumberOfObjects;

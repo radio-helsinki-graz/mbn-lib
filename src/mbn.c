@@ -25,15 +25,26 @@
 #include "mbn.h"
 #include "address.h"
 #include "codec.h"
+#include "object.h"
 
 
 struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
   struct mbn_handler *mbn;
+  int l;
   pthread_mutexattr_t mattr;
 
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
   mbn->node.Services &= 0x7F; /* turn off validated bit */
+
+  /* pad description and name with zero (makes sending object responses easier) */
+  l = strlen((char *)mbn->node.Description);
+  if(l < 64)
+    memset((void *)&(mbn->node.Description[l]), 0, 64-l);
+  l = strlen((char *)mbn->node.Name);
+  if(l < 32)
+    memset((void *)&(mbn->node.Name[l]), 0, 32-l);
+
 
   /* init the mutex for locking the mbn_handler data.
    * Recursive type, because we call other functions
@@ -95,6 +106,10 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
       msg.Data.Address.ManufacturerID, msg.Data.Address.ProductID, msg.Data.Address.UniqueIDPerProduct,
       msg.Data.Address.Type, msg.Data.Address.EngineAddr, msg.Data.Address.Services));
 
+  if(0 && msg.MessageType == MBN_MSGTYPE_OBJECT)
+    MBN_TRACE(printf(" -> Object message, action %d, object #%d, datatype %d",
+      msg.Data.Object.Action, msg.Data.Object.Number, msg.Data.Object.DataType));
+
   /* we're going to be accessing the mbn struct, lock! */
   pthread_mutex_lock(&(mbn->mbn_mutex));
 
@@ -109,8 +124,13 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   /* we can't handle any other messages if we don't have a validated address */
   if(!(mbn->node.Services & MBN_ADDR_SERVICES_VALID))
     processed++;
+  /* ...or if it's not targeted at us */
+  if(msg.AddressTo != MBN_BROADCAST_ADDRESS && msg.AddressTo != mbn->node.MambaNetAddr)
+    processed++;
 
-  /* TODO: process message and send callbacks */
+  /* object messages */
+  if(!processed && process_object_message(mbn, &msg) != 0)
+    processed++;
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
   free_message(&msg);
