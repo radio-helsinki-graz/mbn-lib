@@ -25,6 +25,7 @@
  *    > TCP/IP (server AND client?)
  *    > Serial line
  *  - Test/port to windows (and probably OS X)
+ *  - Option to automatically save and load node and object configuration?
 */
 
 #ifndef MBN_H
@@ -121,9 +122,10 @@
 
 /* forward declarations, because many types depend on other types */
 struct mbn_node_info;
+struct mbn_object;
 struct mbn_interface;
 struct mbn_message_address;
-union  mbn_message_object_data;
+union  mbn_data;
 struct mbn_message_object_information;
 struct mbn_message_object;
 struct mbn_message;
@@ -137,11 +139,25 @@ typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_addres
 typedef void(*mbn_cb_OnlineStatus)(struct mbn_handler *, unsigned long, char);
 typedef int(*mbn_cb_NameChange)(struct mbn_handler *, unsigned char *);
 typedef int(*mbn_cb_DefaultEngineAddrChange)(struct mbn_handler *, unsigned long);
+typedef int(*mbn_cb_SetActuatorData)(struct mbn_handler *, unsigned short, union mbn_data);
 
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, int, void *);
 
+
+/* large data types should be allocated (and freed)
+ * manually, to preserve memory for smaller data types */
+union mbn_data {
+  long SInt;
+  float Float;
+  unsigned long UInt;
+  unsigned long State;
+  unsigned char Bits[8];
+  unsigned char *Octets;
+  unsigned char *Error;
+  struct mbn_message_object_information *Info;
+};
 
 /* All information required for the default objects of a node */
 struct mbn_node_info {
@@ -155,6 +171,23 @@ struct mbn_node_info {
   unsigned short NumberOfObjects;
   unsigned int DefaultEngineAddr; /* Variable */
   unsigned char HardwareParent[6];
+};
+
+
+struct mbn_object {
+  unsigned char Description[32];
+  unsigned int EngineAddr;        /* Variable */
+  unsigned char Services;
+  unsigned char UpdateFrequency;  /* Variable */
+  unsigned char SensorType;
+  unsigned char SensorSize;
+  union mbn_data SensorMin, SensorMax;
+  union mbn_data SensorData;   /* Variable (only from the application) */
+  unsigned char ActuatorType;
+  unsigned char ActuatorSize;
+  union mbn_data ActuatorMin, ActuatorMax;
+  union mbn_data ActuatorDefault;
+  union mbn_data ActuatorData; /* Variable */
 };
 
 
@@ -175,31 +208,18 @@ struct mbn_message_address {
   unsigned char Services;
 };
 
-/* large data types should be allocated (and freed)
- * manually, to preserve memory for smaller data types */
-union mbn_message_object_data {
-  float Float;
-  unsigned long UInt;
-  long SInt;
-  unsigned long State;
-  unsigned char Bits[8];
-  unsigned char *Octets;
-  unsigned char *Error;
-  struct mbn_message_object_information *Info;
-};
-
 struct mbn_message_object_information {
   unsigned char Description[33];
   unsigned char Services;
   unsigned char SensorType;
   unsigned char SensorSize;
-  union mbn_message_object_data SensorMin;
-  union mbn_message_object_data SensorMax;
+  union mbn_data SensorMin;
+  union mbn_data SensorMax;
   unsigned char ActuatorType;
   unsigned char ActuatorSize;
-  union mbn_message_object_data ActuatorMin;
-  union mbn_message_object_data ActuatorMax;
-  union mbn_message_object_data ActuatorDefault;
+  union mbn_data ActuatorMin;
+  union mbn_data ActuatorMax;
+  union mbn_data ActuatorDefault;
 };
 
 struct mbn_message_object {
@@ -207,7 +227,7 @@ struct mbn_message_object {
   unsigned char Action;
   unsigned char DataType;
   unsigned char DataSize;
-  union mbn_message_object_data Data;
+  union mbn_data Data;
 };
 
 struct mbn_message {
@@ -240,6 +260,7 @@ struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
   struct mbn_address_node *addresses;
+  struct mbn_object *objects;
   int pongtimeout;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
   pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
@@ -248,6 +269,7 @@ struct mbn_handler {
   mbn_cb_OnlineStatus cb_OnlineStatus;
   mbn_cb_NameChange cb_NameChange;
   mbn_cb_DefaultEngineAddrChange cb_DefaultEngineAddrChange;
+  mbn_cb_SetActuatorData cb_SetActuatorData;
 };
 
 
@@ -256,7 +278,7 @@ struct mbn_handler {
 extern "C" {
 #endif
 
-struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info);
+struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info, struct mbn_object *);
 void MBN_IMPORT mbnFree(struct mbn_handler *);
 int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
 
@@ -287,6 +309,8 @@ struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigne
 #define mbnUnsetNameChangeCallback(mbn)                  (mbn->cb_NameChange = NULL)
 #define mbnSetDefaultEngineAddrChangeCallback(mbn, func) (mbn->cb_DefaultEngineAddrChange = func)
 #define mbnUnsetDefaultEngineAddrChangeCallback(mbn)     (mbn->cb_DefaultEngineAddrChange = NULL)
+#define mbnSetSetActuatorDataCallback(mbn, func)         (mbn->cb_SetActuatorData = func)
+#define mbnUnsetSetActuatorDataCallback(mbn)             (mbn->cb_SetActuatorData = NULL)
 
 #endif
 

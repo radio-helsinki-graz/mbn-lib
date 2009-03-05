@@ -21,15 +21,22 @@
 
 
 struct mbn_node_info this_node = {
-  0x00031337, 0x00, // MambaNet Addr + Services
-  1, 50, 0,   // UniqueMediaAccessId
+  0x00031337, 0x00, /* MambaNet Addr + Services */
+  1, 50, 0,   /* UniqueMediaAccessId */
   "MambaNet Stack Test Application",
   ">> YorHel's Power Node! <<",
-  0, 0,       // Hardware revision
-  0, 0,       // Firmware revision
-  0,          // NumberOfObjects
-  0,          // DefaultEngineAddr
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // Hardwareparent
+  0, 0,       /* Hardware revision */
+  0, 0,       /* Firmware revision */
+  2,          /* NumberOfObjects */
+  0,          /* DefaultEngineAddr */
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } /* Hardwareparent */
+};
+
+struct mbn_object objects[] = {
+  /* Only works on a C99 compiler */
+  /* Description  Engine  Serv  Freq  Sensor: type       size  min        max          cur          Actuator: type      size  min        max          def          cur       */
+  { "Object #1",    0x00, 0x00,    0, MBN_DATATYPE_UINT,    2, {.UInt=0}, {.UInt=512}, {.UInt=256}, MBN_DATATYPE_NODATA,   0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, {.UInt=  0} },
+  { "Object #2",    0x00, 0x00,    0, MBN_DATATYPE_NODATA,  0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, MBN_DATATYPE_UINT,     2, {.UInt=0}, {.UInt=512}, {.UInt=256}, {.UInt=256} },
 };
 
 
@@ -61,16 +68,31 @@ int DefaultEngineAddrChange(struct mbn_handler *mbn, unsigned long engine) {
 }
 
 
+int SetActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+  printf("SetActuatorData(%d, {.", object);
+  switch(objects[object].ActuatorType) {
+    case MBN_DATATYPE_UINT:  printf("UInt = %d", dat.UInt); break;
+    case MBN_DATATYPE_SINT:  printf("SInt = %d", dat.SInt); break;
+    case MBN_DATATYPE_STATE: printf("State = %04X", dat.State); break;
+    case MBN_DATATYPE_FLOAT: printf("Float = %f", dat.Float); break;
+    default: printf("Something_else");
+  }
+  printf("})\n");
+  return 0;
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
   struct mbn_message msg;
 
-  mbn = mbnInit(this_node);
+  mbn = mbnInit(this_node, objects);
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetNameChangeCallback(mbn, NameChange);
   mbnSetDefaultEngineAddrChangeCallback(mbn, DefaultEngineAddrChange);
+  mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
   mbnEthernetInit(mbn, "eth0");
 
   pthread_exit(NULL);

@@ -14,6 +14,7 @@
 **
 ****************************************************************************/
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -204,7 +205,7 @@ int parsemsg_address(struct mbn_message *msg) {
 
 /* Converts a data type into a union, allocating memory for the
  * types that need it. Returns non-zero on failure. */
-int parse_datatype(unsigned char type, unsigned char *buffer, int length, union mbn_message_object_data *result) {
+int parse_datatype(unsigned char type, unsigned char *buffer, int length, union mbn_data *result) {
   struct mbn_message_object_information *nfo;
   int i;
 
@@ -433,7 +434,7 @@ int parse_message(struct mbn_message *msg) {
 
 
 /* recursively free()'s data type unions/structs allocated by parse_datatype() */
-void free_datatype(unsigned char type, union mbn_message_object_data *data) {
+void free_datatype(unsigned char type, union mbn_data *data) {
   if(type == MBN_DATATYPE_ERROR)
     free(data->Error);
   if(type == MBN_DATATYPE_OCTETS)
@@ -495,7 +496,7 @@ int createmsg_address(struct mbn_message *msg) {
 }
 
 
-int create_datatype(unsigned char type, union mbn_message_object_data *dat, int length, unsigned char *buffer) {
+int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigned char *buffer) {
   int i;
 
   switch(type) {
@@ -511,7 +512,7 @@ int create_datatype(unsigned char type, union mbn_message_object_data *dat, int 
       if(type == MBN_DATATYPE_STATE)
         memmove((void *)&(dat->UInt), (void *)&(dat->State), sizeof(dat->UInt));
       for(i=0; i<length; i++)
-        buffer[i] = (dat->UInt<<(8*(length-1-i))) & 0xFF;
+        buffer[i] = (dat->UInt>>(8*(length-1-i))) & 0xFF;
       break;
 
     case MBN_DATATYPE_SINT:
@@ -520,9 +521,9 @@ int create_datatype(unsigned char type, union mbn_message_object_data *dat, int 
       /* again, this assumes unsigned int is 4 bytes in two's complement */
       if(dat->SInt >= 0 || length == 4)
         for(i=0; i<length; i++)
-          buffer[i] = (dat->SInt<<(8*(length-1-i))) & 0xFF;
+          buffer[i] = (dat->SInt>>(8*(length-1-i))) & 0xFF;
       if(length == 2) {
-        buffer[0] = (0x80 | (dat->SInt<<8)) & 0xFF;
+        buffer[0] = (0x80 | (dat->SInt>>8)) & 0xFF;
         buffer[1] = dat->SInt & 0xFF;
       } else
         buffer[0] = (0x80 | dat->SInt) & 0xFF;

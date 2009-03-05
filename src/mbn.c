@@ -28,23 +28,28 @@
 #include "object.h"
 
 
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node) {
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects) {
   struct mbn_handler *mbn;
-  int l;
+  int i, l;
   pthread_mutexattr_t mattr;
 
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
   mbn->node.Services &= 0x7F; /* turn off validated bit */
+  mbn->objects = objects;
 
-  /* pad description and name with zero (makes sending object responses easier) */
+  /* pad descriptions and name with zero (makes sending object responses easier) */
   l = strlen((char *)mbn->node.Description);
   if(l < 64)
     memset((void *)&(mbn->node.Description[l]), 0, 64-l);
   l = strlen((char *)mbn->node.Name);
   if(l < 32)
     memset((void *)&(mbn->node.Name[l]), 0, 32-l);
-
+  for(i=0;i<mbn->node.NumberOfObjects;i++) {
+    l = strlen((char *)mbn->objects[i].Description);
+    if(l < 32)
+      memset((void *)&(mbn->objects[i].Description[l]), 0, 32-l);
+  }
 
   /* init the mutex for locking the mbn_handler data.
    * Recursive type, because we call other functions

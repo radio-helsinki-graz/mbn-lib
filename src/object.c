@@ -25,7 +25,7 @@
 
 /* convenience function to reply to an object message */
 void send_object_reply(struct mbn_handler *mbn, struct mbn_message *msg, unsigned char action,
-                       unsigned char type, int length, union mbn_message_object_data *dat) {
+                       unsigned char type, int length, union mbn_data *dat) {
   struct mbn_message reply;
   memset((void *)&reply, 0, sizeof(struct mbn_message));
   reply.AddressTo = msg->AddressFrom;
@@ -37,14 +37,14 @@ void send_object_reply(struct mbn_handler *mbn, struct mbn_message *msg, unsigne
   reply.Data.Object.Number = msg->Data.Object.Number;
   reply.Data.Object.DataType = type;
   reply.Data.Object.DataSize = length;
-  memcpy((void *)&(reply.Data.Object.Data), (void *)dat, sizeof(union mbn_message_object_data));
+  memcpy((void *)&(reply.Data.Object.Data), (void *)dat, sizeof(union mbn_data));
   mbnSendMessage(mbn, &reply, 0);
 }
 
 
 int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Data.Object);
-  union mbn_message_object_data dat;
+  union mbn_data dat;
   unsigned char a = MBN_OBJ_ACTION_SENSOR_RESPONSE;
 
   switch(obj->Number) {
@@ -114,7 +114,7 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Data.Object);
-  union mbn_message_object_data dat;
+  union mbn_data dat;
   unsigned char a = MBN_OBJ_ACTION_ACTUATOR_RESPONSE;
 
   switch(obj->Number) {
@@ -132,9 +132,13 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
       break;
     default:
-      /* TODO: check for custom objects */
-      dat.Error = (unsigned char *) "Object not found";
-      send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+      if(obj->Number >= 1024 && obj->Number < 1024+mbn->node.NumberOfObjects)
+        send_object_reply(mbn, msg, a, mbn->objects[obj->Number-1024].ActuatorType,
+          mbn->objects[obj->Number-1024].ActuatorSize, &(mbn->objects[obj->Number-1024].ActuatorData));
+      else {
+        dat.Error = (unsigned char *) "Object not found";
+        send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+      }
       break;
   }
   return 1;
@@ -143,11 +147,11 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Data.Object);
-  union mbn_message_object_data dat;
-  int r;
+  union mbn_data dat;
+  int r, i = obj->Number-1024;
 
   /* Name */
-  if(obj->Number == 1) {
+  if(obj->Number == 1 && obj->DataType == MBN_DATATYPE_OCTETS && obj->DataSize <= 32) {
     r = mbn->cb_NameChange == NULL ? 0 : mbn->cb_NameChange(mbn, obj->Data.Octets);
     if(r == 0) {
       memset((void *)mbn->node.Name, 0, 32);
@@ -159,7 +163,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
     }
 
   /* Default Engine Address */
-  } else if(obj->Number == 12) {
+  } else if(obj->Number == 12 && obj->DataType == MBN_DATATYPE_UINT && obj->DataSize == 4) {
     r = mbn->cb_DefaultEngineAddrChange == NULL ? 0 : mbn->cb_DefaultEngineAddrChange(mbn, obj->Data.UInt);
     if(r == 0) {
       dat.UInt = mbn->node.DefaultEngineAddr = obj->Data.UInt;
@@ -167,9 +171,17 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
     }
 
+  /* custom object */
+  } else if(i >= 0 && i < mbn->node.NumberOfObjects && mbn->cb_SetActuatorData != NULL &&
+      mbn->objects[i].ActuatorType != MBN_DATATYPE_NODATA && mbn->objects[i].ActuatorType == obj->DataType) {
+    if(mbn->cb_SetActuatorData(mbn, i, obj->Data) == 0) {
+      dat = mbn->objects[i].ActuatorData = obj->Data;
+      if(msg->MessageID > 0)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, obj->DataType, mbn->objects[i].ActuatorSize, &dat);
+    }
+
   /* something else */
   } else {
-    /* TODO: check for custom objects */
     dat.Error = (unsigned char *) "Not implemented";
     send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
   }
