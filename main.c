@@ -21,10 +21,10 @@
 
 
 struct mbn_node_info this_node = {
-  0x00000000, 0x00, // MambaNet Addr + Services
+  0x00031337, 0x00, // MambaNet Addr + Services
   1, 50, 0,   // UniqueMediaAccessId
   "MambaNet Stack Test Application",
-  "MambaNet Test",
+  ">> YorHel's Power Node! <<",
   0, 0,       // Hardware revision
   0, 0,       // Firmware revision
   0,          // NumberOfObjects
@@ -32,23 +32,6 @@ struct mbn_node_info this_node = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // Hardwareparent
 };
 
-
-int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
-  int i;
-  return 0;
-
-  if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
-    printf("Object Message: number %02X, action %2d, type %3d, size %2dB\n",
-      msg->Data.Object.Number, msg->Data.Object.Action, msg->Data.Object.DataType, msg->Data.Object.DataSize);
-
-    for(i=0; i<msg->bufferlength; i++)
-      printf(" %02X", msg->buffer[i]);
-    printf("\n");
-    if(msg->Data.Object.DataType == MBN_DATATYPE_SINT)
-      printf(" -> SInt: %ld\n", msg->Data.Object.Data.SInt);
-  }
-  return 0;
-}
 
 void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, struct mbn_address_node *new) {
   struct mbn_address_node *cur;
@@ -66,15 +49,28 @@ void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
 }
 
 
+int NameChange(struct mbn_handler *mbn, unsigned char *name) {
+  printf("NameChange(\"%s\")\n", name);
+  return 0;
+}
+
+
+int DefaultEngineAddrChange(struct mbn_handler *mbn, unsigned long engine) {
+  printf("DefaultEngineAddrChange(0x%08lX)\n", engine);
+  return 0;
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
   struct mbn_message msg;
 
   mbn = mbnInit(this_node);
-  mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
+  mbnSetNameChangeCallback(mbn, NameChange);
+  mbnSetDefaultEngineAddrChangeCallback(mbn, DefaultEngineAddrChange);
   mbnEthernetInit(mbn, "eth0");
 
   pthread_exit(NULL);

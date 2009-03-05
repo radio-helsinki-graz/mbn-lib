@@ -91,6 +91,13 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   msg.raw = buffer;
   msg.rawlength = length;
 
+  if(0) {
+    printf("RAW -> ");
+    for(r=0;r<msg.rawlength;r++)
+      printf(" %02X", msg.raw[r]);
+    printf("\n");
+  }
+
   /* parse message */
   if((r = parse_message(&msg)) != 0) {
     MBN_TRACE(printf("Received invalid message (error %02X), dropping", r));
@@ -115,6 +122,10 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 
   /* send ReceiveMessage() callback, and stop processing if it returned non-zero */
   if(!processed && mbn->cb_ReceiveMessage != NULL && mbn->cb_ReceiveMessage(mbn, &msg) != 0)
+    processed++;
+
+  /* we don't handle acknowledge replies yet, ignore them for now */
+  if(!processed && msg.AcknowledgeReply)
     processed++;
 
   /* handle address reservation messages */
@@ -142,6 +153,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   unsigned char raw[MBN_MAX_MESSAGE_SIZE];
   struct mbn_address_node *dest;
   void *ifaddr;
+  int r;
 
   if(mbn->interface.cb_transmit == NULL)
     return;
@@ -162,8 +174,10 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   msg->rawlength = 0;
 
   /* create the message */
-  if(create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0) != 0)
+  if((r = create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0)) != 0) {
+    MBN_TRACE(printf("Error creating message: %02X", r));
     return;
+  }
 
   /* determine interface address */
   if(msg->AddressTo == MBN_BROADCAST_ADDRESS)

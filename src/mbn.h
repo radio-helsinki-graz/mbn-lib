@@ -135,6 +135,8 @@ struct mbn_handler;
 typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
 typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
 typedef void(*mbn_cb_OnlineStatus)(struct mbn_handler *, unsigned long, char);
+typedef int(*mbn_cb_NameChange)(struct mbn_handler *, unsigned char *);
+typedef int(*mbn_cb_DefaultEngineAddrChange)(struct mbn_handler *, unsigned long);
 
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
@@ -244,6 +246,8 @@ struct mbn_handler {
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
   mbn_cb_AddressTableChange cb_AddressTableChange;
   mbn_cb_OnlineStatus cb_OnlineStatus;
+  mbn_cb_NameChange cb_NameChange;
+  mbn_cb_DefaultEngineAddrChange cb_DefaultEngineAddrChange;
 };
 
 
@@ -272,13 +276,17 @@ struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigne
  *  the library smaller because no extra functions have to be exported)
  * These macros may still be replaced with proper functions when needed in the future.
  */
-#define mbnSetInterface(mbn, itf)                   (mbn->interface = interface)
-#define mbnSetReceiveMessageCallback(mbn, func)     (mbn->cb_ReceiveMessage = func)
-#define mbnUnsetReceiveMessageCallback(mbn)         (mbn->cb_ReceiveMessage = NULL)
-#define mbnSetAddressTableChangeCallback(mbn, func) (mbn->cb_AddressTableChange = func)
-#define mbnUnsetAddressTableChangeCallback(mbn)     (mbn->cb_AddressTableChange = NULL)
-#define mbnSetOnlineStatusCallback(mbn, func)       (mbn->cb_OnlineStatus = func)
-#define mbnUnsetOnlineStatusCallback(mbn)           (mbn->cb_OnlineStatus = NULL)
+#define mbnSetInterface(mbn, itf)                        (mbn->interface = interface)
+#define mbnSetReceiveMessageCallback(mbn, func)          (mbn->cb_ReceiveMessage = func)
+#define mbnUnsetReceiveMessageCallback(mbn)              (mbn->cb_ReceiveMessage = NULL)
+#define mbnSetAddressTableChangeCallback(mbn, func)      (mbn->cb_AddressTableChange = func)
+#define mbnUnsetAddressTableChangeCallback(mbn)          (mbn->cb_AddressTableChange = NULL)
+#define mbnSetOnlineStatusCallback(mbn, func)            (mbn->cb_OnlineStatus = func)
+#define mbnUnsetOnlineStatusCallback(mbn)                (mbn->cb_OnlineStatus = NULL)
+#define mbnSetNameChangeCallback(mbn, func)              (mbn->cb_NameChange = func)
+#define mbnUnsetNameChangeCallback(mbn)                  (mbn->cb_NameChange = NULL)
+#define mbnSetDefaultEngineAddrChangeCallback(mbn, func) (mbn->cb_DefaultEngineAddrChange = func)
+#define mbnUnsetDefaultEngineAddrChangeCallback(mbn)     (mbn->cb_DefaultEngineAddrChange = NULL)
 
 #endif
 

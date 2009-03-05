@@ -24,8 +24,8 @@
 
 
 /* convenience function to reply to an object message */
-void send_object_reply(struct mbn_handler *mbn, struct mbn_message *msg, char action,
-                       char type, int length, union mbn_message_object_data *dat) {
+void send_object_reply(struct mbn_handler *mbn, struct mbn_message *msg, unsigned char action,
+                       unsigned char type, int length, union mbn_message_object_data *dat) {
   struct mbn_message reply;
   memset((void *)&reply, 0, sizeof(struct mbn_message));
   reply.AddressTo = msg->AddressFrom;
@@ -45,12 +45,15 @@ void send_object_reply(struct mbn_handler *mbn, struct mbn_message *msg, char ac
 int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Data.Object);
   union mbn_message_object_data dat;
-  char a = MBN_OBJ_ACTION_SENSOR_RESPONSE;
+  unsigned char a = MBN_OBJ_ACTION_SENSOR_RESPONSE;
 
   switch(obj->Number) {
     case 0: /* Description */
       dat.Octets = mbn->node.Description;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 64, &dat);
+      break;
+    case 1: /* Name (not a sensor) */
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
     case 2: /* Manufacturer ID */
       dat.UInt = mbn->node.ManufacturerID;
@@ -92,15 +95,85 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
       dat.UInt = mbn->node.NumberOfObjects;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 2, &dat);
       break;
-    case 12: /* Default engine address */
-      dat.UInt = mbn->node.DefaultEngineAddr;
-      send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
+    case 12: /* Default engine address (not a sensor) */
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
     case 13: /* Hardware Parent */
       dat.Octets = mbn->node.HardwareParent;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 6, &dat);
       break;
+    default:
+      /* TODO: check for custom objects */
+      dat.Error = (unsigned char *) "Object not found";
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+      break;
   }
+  return 1;
+}
+
+
+int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
+  struct mbn_message_object *obj = &(msg->Data.Object);
+  union mbn_message_object_data dat;
+  unsigned char a = MBN_OBJ_ACTION_ACTUATOR_RESPONSE;
+
+  switch(obj->Number) {
+    case 0: /* These are not actuators */
+    case 2: case 3: case  4: case  5: case  6:
+    case 7: case 9: case 10: case 11: case 13:
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
+      break;
+    case 1: /* Name */
+      dat.Octets = mbn->node.Name;
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 32, &dat);
+      break;
+    case 12: /* Default Engine Address */
+      dat.UInt = mbn->node.DefaultEngineAddr;
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
+      break;
+    default:
+      /* TODO: check for custom objects */
+      dat.Error = (unsigned char *) "Object not found";
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+      break;
+  }
+  return 1;
+}
+
+
+int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
+  struct mbn_message_object *obj = &(msg->Data.Object);
+  union mbn_message_object_data dat;
+  int r;
+
+  /* Name */
+  if(obj->Number == 1) {
+    r = mbn->cb_NameChange == NULL ? 0 : mbn->cb_NameChange(mbn, obj->Data.Octets);
+    if(r == 0) {
+      memset((void *)mbn->node.Name, 0, 32);
+      memcpy((void *)mbn->node.Name, (void *)obj->Data.Octets, obj->DataSize);
+      if(msg->MessageID > 0 && r == 0) {
+        dat.Octets = obj->Data.Octets;
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_OCTETS, obj->DataSize, &dat);
+      }
+    }
+
+  /* Default Engine Address */
+  } else if(obj->Number == 12) {
+    r = mbn->cb_DefaultEngineAddrChange == NULL ? 0 : mbn->cb_DefaultEngineAddrChange(mbn, obj->Data.UInt);
+    if(r == 0) {
+      dat.UInt = mbn->node.DefaultEngineAddr = obj->Data.UInt;
+      if(msg->MessageID > 0 && r == 0)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
+    }
+
+  /* something else */
+  } else {
+    /* TODO: check for custom objects */
+    dat.Error = (unsigned char *) "Not implemented";
+    send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+  }
+
   return 1;
 }
 
@@ -109,11 +182,14 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
   if(msg->MessageType != MBN_MSGTYPE_OBJECT)
     return 0;
 
-  MBN_TRACE(printf("Got OBJ action: %d, Object: %d", msg->Data.Object.Action, msg->Data.Object.Number));
   switch(msg->Data.Object.Action) {
     case MBN_OBJ_ACTION_GET_SENSOR:
       return get_sensor(mbn, msg);
-      break;
+    case MBN_OBJ_ACTION_GET_ACTUATOR:
+      return get_actuator(mbn, msg);
+    case MBN_OBJ_ACTION_SET_ACTUATOR:
+      return set_actuator(mbn, msg);
+    /* TODO: handle other actions */
   }
   return 0;
 }
