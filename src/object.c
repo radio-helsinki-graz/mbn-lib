@@ -241,15 +241,16 @@ int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
+  struct mbn_message_object *obj = &(msg->Data.Object);
   union mbn_data dat;
   int i;
 
   if(msg->MessageType != MBN_MSGTYPE_OBJECT)
     return 0;
 
-  i = msg->Data.Object.Number-1024;
+  i = obj->Number-1024;
 
-  switch(msg->Data.Object.Action) {
+  switch(obj->Action) {
     /* Get object info */
     case MBN_OBJ_ACTION_GET_INFO:
       return get_info(mbn, msg);
@@ -280,9 +281,9 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
       } else {
         /* TODO: check boundaries? */
-        if(mbn->objects[i].UpdateFrequency != msg->Data.Object.Data.State && mbn->cb_ObjectFrequencyChange != NULL)
-          mbn->cb_ObjectFrequencyChange(mbn, i, msg->Data.Object.Data.State);
-        mbn->objects[i].UpdateFrequency = msg->Data.Object.Data.State;
+        if(mbn->objects[i].UpdateFrequency != obj->Data.State && mbn->cb_ObjectFrequencyChange != NULL)
+          mbn->cb_ObjectFrequencyChange(mbn, i, obj->Data.State);
+        mbn->objects[i].UpdateFrequency = obj->Data.State;
         if(msg->MessageID)
           send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
       }
@@ -296,7 +297,38 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
     case MBN_OBJ_ACTION_SET_ACTUATOR:
       return set_actuator(mbn, msg);
 
-    /* TODO: handle other actions */
+    /* Various responses, directly forward them to the application, and reply if necessary */
+    /* MBN_OBJ_ACTION_ENGINE_RESPONSE not implemented, because we can't receive it */
+    case MBN_OBJ_ACTION_INFO_RESPONSE:
+      if(mbn->cb_ObjectInformationResponse != NULL
+          && mbn->cb_ObjectInformationResponse(mbn, msg, obj->Number, obj->Data.Info) == 0
+          && msg->MessageID)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_OBJINFO, obj->DataSize, &(obj->Data));
+      return 1;
+    case MBN_OBJ_ACTION_FREQUENCY_RESPONSE:
+      if(mbn->cb_ObjectFrequencyResponse != NULL
+          && mbn->cb_ObjectFrequencyResponse(mbn, msg, obj->Number, obj->Data.State) == 0
+          && msg->MessageID)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+      return 1;
+    case MBN_OBJ_ACTION_SENSOR_RESPONSE:
+      if(mbn->cb_SensorDataResponse != NULL
+          && mbn->cb_SensorDataResponse(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
+          && msg->MessageID)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+      return 1;
+    case MBN_OBJ_ACTION_SENSOR_CHANGED:
+      if(mbn->cb_SensorDataChanged != NULL
+          && mbn->cb_SensorDataChanged(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
+          && msg->MessageID)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+      return 1;
+    case MBN_OBJ_ACTION_ACTUATOR_RESPONSE:
+      if(mbn->cb_ActuatorDataResponse != NULL
+          && mbn->cb_ActuatorDataResponse(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
+          && msg->MessageID)
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+      return 1;
   }
   return 0;
 }

@@ -143,6 +143,10 @@ typedef int(*mbn_cb_SetActuatorData)(struct mbn_handler *, unsigned short, union
 typedef int(*mbn_cb_GetSensorData)(struct mbn_handler *, unsigned short, union mbn_data *);
 typedef void(*mbn_cb_ObjectFrequencyChange)(struct mbn_handler *, unsigned short, unsigned char);
 
+typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, struct mbn_message_object_information *);
+typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char);
+typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
+
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, int, void *);
@@ -266,6 +270,7 @@ struct mbn_handler {
   int pongtimeout;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
   pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
+  /* callbacks */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
   mbn_cb_AddressTableChange cb_AddressTableChange;
   mbn_cb_OnlineStatus cb_OnlineStatus;
@@ -274,6 +279,11 @@ struct mbn_handler {
   mbn_cb_SetActuatorData cb_SetActuatorData;
   mbn_cb_GetSensorData cb_GetSensorData;
   mbn_cb_ObjectFrequencyChange cb_ObjectFrequencyChange;
+  mbn_cb_ObjectInformationResponse cb_ObjectInformationResponse;
+  mbn_cb_ObjectFrequencyResponse cb_ObjectFrequencyResponse;
+  mbn_cb_ObjectDataResponse cb_SensorDataResponse;
+  mbn_cb_ObjectDataResponse cb_SensorDataChanged;
+  mbn_cb_ObjectDataResponse cb_ActuatorDataResponse;
 };
 
 
@@ -304,23 +314,33 @@ void MBN_IMPORT mbnSensorDataChange(struct mbn_handler *, unsigned short, union 
  *  the library smaller because no extra functions have to be exported)
  * These macros may still be replaced with proper functions when needed in the future.
  */
-#define mbnSetInterface(mbn, itf)                        (mbn->interface = interface)
-#define mbnSetReceiveMessageCallback(mbn, func)          (mbn->cb_ReceiveMessage = func)
-#define mbnUnsetReceiveMessageCallback(mbn)              (mbn->cb_ReceiveMessage = NULL)
-#define mbnSetAddressTableChangeCallback(mbn, func)      (mbn->cb_AddressTableChange = func)
-#define mbnUnsetAddressTableChangeCallback(mbn)          (mbn->cb_AddressTableChange = NULL)
-#define mbnSetOnlineStatusCallback(mbn, func)            (mbn->cb_OnlineStatus = func)
-#define mbnUnsetOnlineStatusCallback(mbn)                (mbn->cb_OnlineStatus = NULL)
-#define mbnSetNameChangeCallback(mbn, func)              (mbn->cb_NameChange = func)
-#define mbnUnsetNameChangeCallback(mbn)                  (mbn->cb_NameChange = NULL)
-#define mbnSetDefaultEngineAddrChangeCallback(mbn, func) (mbn->cb_DefaultEngineAddrChange = func)
-#define mbnUnsetDefaultEngineAddrChangeCallback(mbn)     (mbn->cb_DefaultEngineAddrChange = NULL)
-#define mbnSetSetActuatorDataCallback(mbn, func)         (mbn->cb_SetActuatorData = func)
-#define mbnUnsetSetActuatorDataCallback(mbn)             (mbn->cb_SetActuatorData = NULL)
-#define mbnSetGetSensorDataCallback(mbn, func)           (mbn->cb_GetSensorData = func)
-#define mbnUnsetGetSensorDataCallback(mbn)               (mbn->cb_GetSensorData = NULL)
-#define mbnSetObjectFrequencyChangeCallback(mbn, func)   (mbn->cb_ObjectFrequencyChange = func)
-#define mbnUnsetObjectFrequencyChangeCallback(mbn)       (mbn->cb_ObjectFrequencyChange = NULL)
+#define mbnSetInterface(mbn, itf)                          (mbn->interface = interface)
+#define mbnSetReceiveMessageCallback(mbn, func)            (mbn->cb_ReceiveMessage = func)
+#define mbnUnsetReceiveMessageCallback(mbn)                (mbn->cb_ReceiveMessage = NULL)
+#define mbnSetAddressTableChangeCallback(mbn, func)        (mbn->cb_AddressTableChange = func)
+#define mbnUnsetAddressTableChangeCallback(mbn)            (mbn->cb_AddressTableChange = NULL)
+#define mbnSetOnlineStatusCallback(mbn, func)              (mbn->cb_OnlineStatus = func)
+#define mbnUnsetOnlineStatusCallback(mbn)                  (mbn->cb_OnlineStatus = NULL)
+#define mbnSetNameChangeCallback(mbn, func)                (mbn->cb_NameChange = func)
+#define mbnUnsetNameChangeCallback(mbn)                    (mbn->cb_NameChange = NULL)
+#define mbnSetDefaultEngineAddrChangeCallback(mbn, func)   (mbn->cb_DefaultEngineAddrChange = func)
+#define mbnUnsetDefaultEngineAddrChangeCallback(mbn)       (mbn->cb_DefaultEngineAddrChange = NULL)
+#define mbnSetSetActuatorDataCallback(mbn, func)           (mbn->cb_SetActuatorData = func)
+#define mbnUnsetSetActuatorDataCallback(mbn)               (mbn->cb_SetActuatorData = NULL)
+#define mbnSetGetSensorDataCallback(mbn, func)             (mbn->cb_GetSensorData = func)
+#define mbnUnsetGetSensorDataCallback(mbn)                 (mbn->cb_GetSensorData = NULL)
+#define mbnSetObjectFrequencyChangeCallback(mbn, func)     (mbn->cb_ObjectFrequencyChange = func)
+#define mbnUnsetObjectFrequencyChangeCallback(mbn)         (mbn->cb_ObjectFrequencyChange = NULL)
+#define mbnSetObjectInformationResponseCallback(mbn, func) (mbn->cb_ObjectInformationResponse = func)
+#define mbnUnsetObjectInformationResponseCallback(mbn)     (mbn->cb_ObjectInformationResponse = NULL)
+#define mbnSetObjectFrequencyResponseCallback(mbn, func)   (mbn->cb_ObjectFrequencyResponse = func)
+#define mbnUnsetObjectFrequencyResponseCallback(mbn)       (mbn->cb_ObjectFrequencyResponse = NULL)
+#define mbnSetSensorDataResponseCallback(mbn, func)        (mbn->cb_SensorDataResponse = func)
+#define mbnUnsetSensorDataResponseCallback(mbn)            (mbn->cb_SensorDataResponse = NULL)
+#define mbnSetSensorDataChangedCallback(mbn, func)         (mbn->cb_SensorDataChanged = func)
+#define mbnUnsetSensorDataChangedCallback(mbn)             (mbn->cb_SensorDataChanged = NULL)
+#define mbnSetActuatorDataResponseCallback(mbn, func)      (mbn->cb_ActuatorDataResponse = func)
+#define mbnUnsetActuatorDataResponseCallback(mbn)          (mbn->cb_ActuatorDataResponse = NULL)
 
 #endif
 
