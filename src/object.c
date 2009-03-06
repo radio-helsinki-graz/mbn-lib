@@ -207,6 +207,38 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 }
 
 
+int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
+  int i = msg->Data.Object.Number-1024;
+  struct mbn_message_object_information nfo;
+  struct mbn_object *obj;
+  union mbn_data dat;
+
+  /* Wrong object number! */
+  if(i < 0 || i >= mbn->node.NumberOfObjects) {
+    dat.Error = (unsigned char *) "Object not found";
+    send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+    return 1;
+  }
+
+  obj = &(mbn->objects[i]);
+  dat.Info = &nfo;
+  memcpy((void *)nfo.Description, (void *)obj->Description, 32);
+  nfo.Services        = obj->Services;
+  nfo.SensorType      = obj->SensorType;
+  nfo.SensorSize      = obj->SensorSize;
+  nfo.SensorMin       = obj->SensorMin;
+  nfo.SensorMax       = obj->SensorMax;
+  nfo.ActuatorType    = obj->ActuatorType;
+  nfo.ActuatorSize    = obj->ActuatorSize;
+  nfo.ActuatorMin     = obj->ActuatorMin;
+  nfo.ActuatorMax     = obj->ActuatorMax;
+  nfo.ActuatorDefault = obj->ActuatorDefault;
+  send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_OBJINFO, 0, &dat);
+
+  return 1;
+}
+
+
 int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
   union mbn_data dat;
 
@@ -214,15 +246,18 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
     return 0;
 
   switch(msg->Data.Object.Action) {
+    /* Get object info */
+    case MBN_OBJ_ACTION_GET_INFO:
+      return get_info(mbn, msg);
     /* Object specific engines addresses are reserved for future use, so don't accept them now */
     case MBN_OBJ_ACTION_SET_ENGINE:
       dat.Error = (unsigned char *) "Not implemented";
       send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
-      break;
+      return 1;
     case MBN_OBJ_ACTION_GET_ENGINE:
       dat.UInt = 0;
       send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
-      break;
+      return 1;
     /* Sensor/Actuator get/set actions */
     case MBN_OBJ_ACTION_GET_SENSOR:
       return get_sensor(mbn, msg);
