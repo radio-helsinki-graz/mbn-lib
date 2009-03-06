@@ -121,10 +121,9 @@ int main(void) {
   mbnEthernetInit(mbn, "eth0");
 
   sleep(3);
-  printf("Requesting sensor data\n");
-  mbnGetSensorData(mbn, 0x00000008, 0, 0);
+  union mbn_data dat = {.Octets="4321"};
+  mbnSetActuatorData(mbn, 0x00000008, 1, MBN_DATATYPE_OCTETS, 5, dat, 0);
   sleep(1);
-  printf("Requesting actuator data\n");
   mbnGetActuatorData(mbn, 0x00000008, 1, 0);
 
   pthread_exit(NULL);

@@ -25,7 +25,7 @@
  *    > TCP/IP (server AND client?)
  *    > Serial line
  *  - Test/port to windows (and probably OS X)
- *  - Option to automatically save and load node and object configuration?
+ *  - Functions for fetching another node's default objects?
 */
 
 #ifndef MBN_H
@@ -307,6 +307,8 @@ void MBN_IMPORT mbnGetSensorData(struct mbn_handler *, unsigned long, unsigned s
 void MBN_IMPORT mbnGetActuatorData(struct mbn_handler *, unsigned long, unsigned short, char);
 void MBN_IMPORT mbnGetObjectInformation(struct mbn_handler *, unsigned long, unsigned short, char);
 void MBN_IMPORT mbnGetObjectFrequency(struct mbn_handler *, unsigned long, unsigned short, char);
+void MBN_IMPORT mbnSetActuatorData(struct mbn_handler *, unsigned long, unsigned short, unsigned char, unsigned char, union mbn_data, char);
+void MBN_IMPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsigned short, unsigned char, char);
 
 #ifdef __cplusplus
 }

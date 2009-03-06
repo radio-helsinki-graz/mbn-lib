@@ -393,3 +393,35 @@ void MBN_EXPORT mbnGetObjectFrequency(struct mbn_handler *mbn, unsigned long add
 }
 
 
+void MBN_EXPORT mbnSetActuatorData(struct mbn_handler *mbn, unsigned long addr, unsigned short object,
+                                   unsigned char type, unsigned char length, union mbn_data dat, char ack) {
+  struct mbn_message msg;
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.AddressTo = addr;
+  msg.MessageType = MBN_MSGTYPE_OBJECT;
+  msg.Data.Object.Action = MBN_OBJ_ACTION_SET_ACTUATOR;
+  msg.Data.Object.Number = object;
+  msg.Data.Object.DataType = type;
+  msg.Data.Object.DataSize = length;
+  msg.Data.Object.Data = dat;
+  mbnSendMessage(mbn, &msg, 0);
+  ack = !ack;
+}
+
+
+void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *mbn, unsigned long addr, unsigned short object,
+                                      unsigned char freq, char ack) {
+  struct mbn_message msg;
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.AddressTo = addr;
+  msg.MessageType = MBN_MSGTYPE_OBJECT;
+  msg.Data.Object.Action = MBN_OBJ_ACTION_SET_FREQUENCY;
+  msg.Data.Object.Number = object;
+  msg.Data.Object.DataType = MBN_DATATYPE_STATE;
+  msg.Data.Object.DataSize = 1;
+  msg.Data.Object.Data.State = freq;
+  mbnSendMessage(mbn, &msg, 0);
+  ack = !ack;
+}
+
+
