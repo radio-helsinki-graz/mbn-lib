@@ -95,6 +95,14 @@ void ObjectFrequencyChange(struct mbn_handler *mbn, unsigned short object, unsig
 }
 
 
+int SensorDataResponse(struct mbn_handler *mbn, struct mbn_message *msg, unsigned short object, unsigned char type, union mbn_data dat) {
+  if(type != MBN_DATATYPE_OCTETS)
+    return 0;
+  printf("(Sensor|Actuator)DataResponse({.AddressFrom = 0x%08lX }, %d, %d, \"%s\")\n", msg->AddressFrom, object, type, dat.Octets);
+  return 1;
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
@@ -108,7 +116,16 @@ int main(void) {
   mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
   mbnSetGetSensorDataCallback(mbn, GetSensorData);
   mbnSetObjectFrequencyChangeCallback(mbn, ObjectFrequencyChange);
+  mbnSetSensorDataResponseCallback(mbn, SensorDataResponse);
+  mbnSetActuatorDataResponseCallback(mbn, SensorDataResponse);
   mbnEthernetInit(mbn, "eth0");
+
+  sleep(3);
+  printf("Requesting sensor data\n");
+  mbnGetSensorData(mbn, 0x00000008, 0, 0);
+  sleep(1);
+  printf("Requesting actuator data\n");
+  mbnGetActuatorData(mbn, 0x00000008, 1, 0);
 
   pthread_exit(NULL);
   return 0;

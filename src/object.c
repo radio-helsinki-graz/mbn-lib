@@ -360,3 +360,36 @@ void MBN_EXPORT mbnSensorDataChange(struct mbn_handler *mbn, unsigned short obje
 }
 
 
+/* convenience function */
+/* TODO: Assign message IDs and handle acknowledging */
+void request_info(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack, unsigned char act) {
+  struct mbn_message msg;
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.AddressTo = addr;
+  msg.MessageType = MBN_MSGTYPE_OBJECT;
+  msg.Data.Object.Action = act;
+  msg.Data.Object.Number = object;
+  msg.Data.Object.DataType = MBN_DATATYPE_NODATA;
+  mbnSendMessage(mbn, &msg, 0);
+
+  /* (temp hack to get rid of compiler warning) */
+  ack = !ack;
+}
+
+void MBN_EXPORT mbnGetSensorData(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack) {
+  request_info(mbn, addr, object, ack, MBN_OBJ_ACTION_GET_SENSOR);
+}
+
+void MBN_EXPORT mbnGetActuatorData(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack) {
+  request_info(mbn, addr, object, ack, MBN_OBJ_ACTION_GET_ACTUATOR);
+}
+
+void MBN_EXPORT mbnGetObjectInformation(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack) {
+  request_info(mbn, addr, object, ack, MBN_OBJ_ACTION_GET_INFO);
+}
+
+void MBN_EXPORT mbnGetObjectFrequency(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack) {
+  request_info(mbn, addr, object, ack, MBN_OBJ_ACTION_GET_FREQUENCY);
+}
+
+

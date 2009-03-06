@@ -303,6 +303,10 @@ void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned long);
 
 void MBN_IMPORT mbnSensorDataChange(struct mbn_handler *, unsigned short, union mbn_data);
+void MBN_IMPORT mbnGetSensorData(struct mbn_handler *, unsigned long, unsigned short, char);
+void MBN_IMPORT mbnGetActuatorData(struct mbn_handler *, unsigned long, unsigned short, char);
+void MBN_IMPORT mbnGetObjectInformation(struct mbn_handler *, unsigned long, unsigned short, char);
+void MBN_IMPORT mbnGetObjectFrequency(struct mbn_handler *, unsigned long, unsigned short, char);
 
 #ifdef __cplusplus
 }
