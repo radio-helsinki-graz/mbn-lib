@@ -208,16 +208,29 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
+  union mbn_data dat;
+
   if(msg->MessageType != MBN_MSGTYPE_OBJECT)
     return 0;
 
   switch(msg->Data.Object.Action) {
+    /* Object specific engines addresses are reserved for future use, so don't accept them now */
+    case MBN_OBJ_ACTION_SET_ENGINE:
+      dat.Error = (unsigned char *) "Not implemented";
+      send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+      break;
+    case MBN_OBJ_ACTION_GET_ENGINE:
+      dat.UInt = 0;
+      send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
+      break;
+    /* Sensor/Actuator get/set actions */
     case MBN_OBJ_ACTION_GET_SENSOR:
       return get_sensor(mbn, msg);
     case MBN_OBJ_ACTION_GET_ACTUATOR:
       return get_actuator(mbn, msg);
     case MBN_OBJ_ACTION_SET_ACTUATOR:
       return set_actuator(mbn, msg);
+
     /* TODO: handle other actions */
   }
   return 0;
