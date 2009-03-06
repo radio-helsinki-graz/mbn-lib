@@ -82,6 +82,13 @@ int SetActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_da
 }
 
 
+int GetSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data *dat) {
+  printf("GetSensorData(%d, &dat)\n", object);
+  dat->UInt = 9999;
+  return 0;
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
@@ -93,6 +100,7 @@ int main(void) {
   mbnSetNameChangeCallback(mbn, NameChange);
   mbnSetDefaultEngineAddrChangeCallback(mbn, DefaultEngineAddrChange);
   mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
+  mbnSetGetSensorDataCallback(mbn, GetSensorData);
   mbnEthernetInit(mbn, "eth0");
 
   pthread_exit(NULL);

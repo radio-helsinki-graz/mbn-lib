@@ -46,6 +46,7 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Data.Object);
   union mbn_data dat;
   unsigned char a = MBN_OBJ_ACTION_SENSOR_RESPONSE;
+  int i, r;
 
   switch(obj->Number) {
     case 0: /* Description */
@@ -103,9 +104,23 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 6, &dat);
       break;
     default:
-      /* TODO: check for custom objects */
-      dat.Error = (unsigned char *) "Object not found";
-      send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+      i = obj->Number-1024;
+      /* we don't have this object! */
+      if(i < 0 || i > mbn->node.NumberOfObjects) {
+        dat.Error = (unsigned char *) "Object not found";
+        send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+      /* we have, send callback if exists, and reply if we're allowed to */
+      } else {
+        r = 0;
+        if(mbn->cb_GetSensorData == NULL || mbn->objects[i].SensorType == MBN_DATATYPE_NODATA)
+          dat = mbn->objects[i].SensorData;
+        else {
+          if((r = mbn->cb_GetSensorData(mbn, i, &dat)) == 0)
+            mbn->objects[i].SensorData = dat;
+        }
+        if(r == 0)
+          send_object_reply(mbn, msg, a, mbn->objects[i].SensorType, mbn->objects[i].SensorSize, &dat);
+      }
       break;
   }
   return 1;
