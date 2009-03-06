@@ -78,6 +78,7 @@ int SetActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_da
     default: printf("Something_else");
   }
   printf("})\n");
+  mbnSensorDataChange(mbn, 0, dat);
   return 0;
 }
 

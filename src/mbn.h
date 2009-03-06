@@ -290,6 +290,8 @@ void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);
 void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned long);
 
+void MBN_IMPORT mbnSensorDataChange(struct mbn_handler *, unsigned short, union mbn_data);
+
 #ifdef __cplusplus
 }
 #endif

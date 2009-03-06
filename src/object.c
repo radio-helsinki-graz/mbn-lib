@@ -222,3 +222,29 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 }
 
 
+/* TODO: send mambanet messages based on object frequency settings */
+void MBN_EXPORT mbnSensorDataChange(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+  struct mbn_message msg;
+  unsigned long dest;
+
+  /* determine destination address (but don't look at object engine address (yet)) */
+  dest = mbn->node.DefaultEngineAddr;
+  if(dest == 0)
+    dest = MBN_BROADCAST_ADDRESS;
+
+  /* update internal sensor data */
+  mbn->objects[object].SensorData = dat;
+
+  /* create & send message */
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.AddressTo = dest;
+  msg.MessageType = MBN_MSGTYPE_OBJECT;
+  msg.Data.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
+  msg.Data.Object.Number = object+1024;
+  msg.Data.Object.DataType = mbn->objects[object].SensorType;
+  msg.Data.Object.DataSize = mbn->objects[object].SensorSize;
+  msg.Data.Object.Data = dat;
+  mbnSendMessage(mbn, &msg, 0);
+}
+
+
