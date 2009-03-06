@@ -200,10 +200,20 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
     case MBN_ADDR_TYPE_RESPONSE:
       if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node))) {
         pthread_mutex_lock(&(mbn->mbn_mutex));
-        mbn->node.MambaNetAddr = msg->Data.Address.MambaNetAddr;
-        mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
-        if(mbn->cb_OnlineStatus != NULL)
-          mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, 1);
+        /* check for mambanet address/valid bit change */
+        if(mbn->node.MambaNetAddr != msg->Data.Address.MambaNetAddr || !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
+          mbn->node.MambaNetAddr = msg->Data.Address.MambaNetAddr;
+          mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
+          if(mbn->cb_OnlineStatus != NULL)
+            mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, 1);
+        }
+        /* check for engine address change */
+        if(mbn->node.DefaultEngineAddr != msg->Data.Address.EngineAddr) {
+          mbn->node.DefaultEngineAddr = msg->Data.Address.EngineAddr;
+          if(mbn->cb_DefaultEngineAddrChange != NULL)
+            mbn->cb_DefaultEngineAddrChange(mbn, mbn->node.DefaultEngineAddr);
+        }
+        /* always reply with a broadcast */
         send_info(mbn);
         pthread_mutex_unlock(&(mbn->mbn_mutex));
       }

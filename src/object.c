@@ -165,6 +165,8 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   union mbn_data dat;
   int r, i = obj->Number-1024;
 
+  /* TODO: check for AddressFrom == EngineAddress? */
+
   /* Name */
   if(obj->Number == 1 && obj->DataType == MBN_DATATYPE_OCTETS && obj->DataSize <= 32) {
     r = mbn->cb_NameChange == NULL ? 0 : mbn->cb_NameChange(mbn, obj->Data.Octets);
