@@ -166,6 +166,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   int r, i = obj->Number-1024;
 
   /* TODO: check for AddressFrom == EngineAddress? */
+  /* TODO: check object min/max? */
 
   /* Name */
   if(obj->Number == 1 && obj->DataType == MBN_DATATYPE_OCTETS && obj->DataSize <= 32) {
@@ -241,14 +242,18 @@ int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
   union mbn_data dat;
+  int i;
 
   if(msg->MessageType != MBN_MSGTYPE_OBJECT)
     return 0;
+
+  i = msg->Data.Object.Number-1024;
 
   switch(msg->Data.Object.Action) {
     /* Get object info */
     case MBN_OBJ_ACTION_GET_INFO:
       return get_info(mbn, msg);
+
     /* Object specific engines addresses are reserved for future use, so don't accept them now */
     case MBN_OBJ_ACTION_SET_ENGINE:
       dat.Error = (unsigned char *) "Not implemented";
@@ -258,6 +263,31 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
       dat.UInt = 0;
       send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
       return 1;
+
+    /* Frequency information */
+    case MBN_OBJ_ACTION_GET_FREQUENCY:
+      if(i < 0 || i >= mbn->node.NumberOfObjects) {
+        dat.Error = (unsigned char *) "Object not found";
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+      } else {
+        dat.State = mbn->objects[i].UpdateFrequency;
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
+      }
+      return 1;
+    case MBN_OBJ_ACTION_SET_FREQUENCY:
+      if(i < 0 || i >= mbn->node.NumberOfObjects) {
+        dat.Error = (unsigned char *) "Object not found";
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+      } else {
+        /* TODO: check boundaries? */
+        if(mbn->objects[i].UpdateFrequency != msg->Data.Object.Data.State && mbn->cb_ObjectFrequencyChange != NULL)
+          mbn->cb_ObjectFrequencyChange(mbn, i, msg->Data.Object.Data.State);
+        mbn->objects[i].UpdateFrequency = msg->Data.Object.Data.State;
+        if(msg->MessageID)
+          send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
+      }
+      return 1;
+
     /* Sensor/Actuator get/set actions */
     case MBN_OBJ_ACTION_GET_SENSOR:
       return get_sensor(mbn, msg);

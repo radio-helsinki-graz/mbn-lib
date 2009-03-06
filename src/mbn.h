@@ -141,6 +141,7 @@ typedef int(*mbn_cb_NameChange)(struct mbn_handler *, unsigned char *);
 typedef int(*mbn_cb_DefaultEngineAddrChange)(struct mbn_handler *, unsigned long);
 typedef int(*mbn_cb_SetActuatorData)(struct mbn_handler *, unsigned short, union mbn_data);
 typedef int(*mbn_cb_GetSensorData)(struct mbn_handler *, unsigned short, union mbn_data *);
+typedef void(*mbn_cb_ObjectFrequencyChange)(struct mbn_handler *, unsigned short, unsigned char);
 
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
@@ -272,6 +273,7 @@ struct mbn_handler {
   mbn_cb_DefaultEngineAddrChange cb_DefaultEngineAddrChange;
   mbn_cb_SetActuatorData cb_SetActuatorData;
   mbn_cb_GetSensorData cb_GetSensorData;
+  mbn_cb_ObjectFrequencyChange cb_ObjectFrequencyChange;
 };
 
 
@@ -317,6 +319,8 @@ void MBN_IMPORT mbnSensorDataChange(struct mbn_handler *, unsigned short, union 
 #define mbnUnsetSetActuatorDataCallback(mbn)             (mbn->cb_SetActuatorData = NULL)
 #define mbnSetGetSensorDataCallback(mbn, func)           (mbn->cb_GetSensorData = func)
 #define mbnUnsetGetSensorDataCallback(mbn)               (mbn->cb_GetSensorData = NULL)
+#define mbnSetObjectFrequencyChangeCallback(mbn, func)   (mbn->cb_ObjectFrequencyChange = func)
+#define mbnUnsetObjectFrequencyChangeCallback(mbn)       (mbn->cb_ObjectFrequencyChange = NULL)
 
 #endif
 

@@ -90,6 +90,11 @@ int GetSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data
 }
 
 
+void ObjectFrequencyChange(struct mbn_handler *mbn, unsigned short object, unsigned char freq) {
+  printf("ObjectFrequencyChange(%d, 0x%02X)\n", object, freq);
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
@@ -102,6 +107,7 @@ int main(void) {
   mbnSetDefaultEngineAddrChangeCallback(mbn, DefaultEngineAddrChange);
   mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
   mbnSetGetSensorDataCallback(mbn, GetSensorData);
+  mbnSetObjectFrequencyChangeCallback(mbn, ObjectFrequencyChange);
   mbnEthernetInit(mbn, "eth0");
 
   pthread_exit(NULL);
