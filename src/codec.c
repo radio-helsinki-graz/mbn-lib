@@ -663,3 +663,42 @@ int create_message(struct mbn_message *msg, char onlyheader) {
 }
 
 
+/* recursively allocates memory and copies data type unions/structs */
+void copy_datatype(unsigned char type, int size, const union mbn_data *src, union mbn_data *dest) {
+  if(type == MBN_DATATYPE_OCTETS) {
+    dest->Octets = malloc(size);
+    memcpy((void *)dest->Octets, (void *)src->Octets, size);
+  } else if(type == MBN_DATATYPE_ERROR) {
+    dest->Error = malloc(size);
+    memcpy((void *)dest->Error, (void *)src->Error, size);
+  } else if(type == MBN_DATATYPE_OBJINFO) {
+    dest->Info = malloc(sizeof(struct mbn_message_object_information));
+    memcpy((void *)dest->Info, (void *)src->Info, sizeof(struct mbn_message_object_information));
+    if(src->Info->SensorSize > 0) {
+      copy_datatype(src->Info->SensorType, src->Info->SensorSize, &(src->Info->SensorMin), &(dest->Info->SensorMin));
+      copy_datatype(src->Info->SensorType, src->Info->SensorSize, &(src->Info->SensorMax), &(dest->Info->SensorMax));
+    }
+    if(src->Info->ActuatorSize > 0) {
+      copy_datatype(src->Info->ActuatorType, src->Info->ActuatorSize, &(src->Info->ActuatorMin), &(dest->Info->ActuatorMin));
+      copy_datatype(src->Info->ActuatorType, src->Info->ActuatorSize, &(src->Info->ActuatorMax), &(dest->Info->ActuatorMax));
+      copy_datatype(src->Info->ActuatorType, src->Info->ActuatorSize, &(src->Info->ActuatorDefault), &(dest->Info->ActuatorDefault));
+    }
+  }
+}
+
+
+/* makes a deep copy of a msg struct, can be deallocated later with free_message() */
+void copy_message(const struct mbn_message *src, struct mbn_message *dest) {
+  memcpy((void *)dest, (void *)src, sizeof(struct mbn_message));
+  if(src->bufferlength == 0)
+    return;
+
+  if(src->MessageType == MBN_MSGTYPE_ADDRESS)
+    return;
+  else if(src->MessageType == MBN_MSGTYPE_OBJECT) {
+    if(src->Data.Object.DataSize > 0)
+      copy_datatype(src->Data.Object.DataType, src->Data.Object.DataSize, &(src->Data.Object.Data), &(dest->Data.Object.Data));
+  }
+}
+
+
