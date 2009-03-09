@@ -28,6 +28,17 @@
 #include "object.h"
 
 
+/* IMPORTANT: keep this in the same order as enum mbn_errors */
+const char *mbn_errormessages[] = {
+  "No interface registered",
+  "Cannot send message without valid address",
+  "Cannot create message: invalid mbn_message struct",
+  "Received invalid message",
+  "Could not read for interface",
+  "Could not write to interface"
+};
+
+
 struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects) {
   struct mbn_handler *mbn;
   int i, l;
@@ -115,7 +126,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
         printf(" %02X", msg.buffer[r]);
       printf("\n");
     }
-    MBN_TRACE(printf("Received invalid message (error %02X), dropping", r));
+    MBN_ERROR(mbn, MBN_ERROR_PARSE_MESSAGE);
     return;
   }
 
@@ -163,18 +174,21 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 }
 
 
-/* TODO: notify application on errors */
 void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg, int flags) {
   unsigned char raw[MBN_MAX_MESSAGE_SIZE];
   struct mbn_address_node *dest;
   void *ifaddr;
   int r;
 
-  if(mbn->interface.cb_transmit == NULL)
+  if(mbn->interface.cb_transmit == NULL) {
+    MBN_ERROR(mbn, MBN_ERROR_NO_INTERFACE);
     return;
+  }
 
-  if(!(flags & MBN_SEND_IGNOREVALID) && !(mbn->node.Services & MBN_ADDR_SERVICES_VALID))
+  if(!(flags & MBN_SEND_IGNOREVALID) && !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
+    MBN_ERROR(mbn, MBN_ERROR_INVALID_ADDR);
     return;
+  }
 
   /* just forward the raw data to the interface, if we don't need to do any processing */
   if(flags & MBN_SEND_RAWDATA) {
@@ -190,6 +204,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
 
   /* create the message */
   if((r = create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0)) != 0) {
+    MBN_ERROR(mbn, MBN_ERROR_CREATE_MESSAGE);
     MBN_TRACE(printf("Error creating message: %02X", r));
     return;
   }

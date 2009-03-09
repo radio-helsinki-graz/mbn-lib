@@ -205,8 +205,7 @@ void *receive_packets(void *ptr) {
     }
   }
 
-  /* TODO: Notify application on error */
-
+  MBN_ERROR(mbn, MBN_ERROR_ITF_READ);
   MBN_TRACE(printf("Closing the receiver thread..."));
 
   return NULL;
@@ -238,11 +237,11 @@ void transmit(struct mbn_handler *mbn, unsigned char *buffer, int length, void *
   else
     memset(saddr.sll_addr, 0xFF, 6);
 
-  /* send data
-   * TODO: notify application on error */
+  /* send data */
   sent = 0;
   while((rd = sendto(eth->socket, &(buffer[sent]), length-sent, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll))) < length-sent) {
     if(rd < 0) {
+      MBN_ERROR(mbn, MBN_ERROR_ITF_READ);
       perror("sendto()");
       return;
     }

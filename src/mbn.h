@@ -15,8 +15,6 @@
 ****************************************************************************/
 
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
- *  - Provide error handling for about everything (using callbacks, most likely)
- *  - Handle object messages
  *  - Improve address table (internal format & API for browsing through the list)
  *  - Improve the API for H/W interface modules
  *  - Add automated acknowledge handling
@@ -56,9 +54,6 @@
 # define MBN_IMPORT
 # define MBN_EXPORT
 #endif
-
-/* Debugging */
-#define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 
 #define MBN_ADDR_TIMEOUT    110 /* seconds */
 #define MBN_ADDR_MSG_TIMEOUT 30 /* sending address reservation information packets */
@@ -114,11 +109,26 @@
 #define MBN_SEND_NOCREATE     0x04 /* don't try to parse the structs, just send the "buffer" member */
 #define MBN_SEND_RAWDATA      (0x08 | 0x04 | 0x02) /* don't even create the header, just send the "raw" member */
 
+/* Global error codes */
+enum mbn_error {
+  MBN_ERROR_NO_INTERFACE,
+  MBN_ERROR_INVALID_ADDR,
+  MBN_ERROR_CREATE_MESSAGE,
+  MBN_ERROR_PARSE_MESSAGE,
+  MBN_ERROR_ITF_READ,
+  MBN_ERROR_ITF_WRITE
+};
+/* must be in the same order as the above enum */
+extern const char *mbn_errormessages[];
+
+/* useful macros */
+#define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 #define MBN_ADDR_EQ(a, b) ( \
     ((a)->ManufacturerID     == 0 || (b)->ManufacturerID     == 0 || (a)->ManufacturerID     == (b)->ManufacturerID)  && \
     ((a)->ProductID          == 0 || (b)->ProductID          == 0 || (a)->ProductID          == (b)->ProductID)       && \
     ((a)->UniqueIDPerProduct == 0 || (b)->UniqueIDPerProduct == 0 || (a)->UniqueIDPerProduct == (b)->UniqueIDPerProduct) \
   )
+#define MBN_ERROR(mbn, e) if((mbn)->cb_Error != NULL) { (mbn)->cb_Error(mbn, e, mbn_errormessages[e]); }
 
 /* forward declarations, because many types depend on other types */
 struct mbn_node_info;
@@ -147,6 +157,7 @@ typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_
 typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char);
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
 
+typedef void(*mbn_cb_Error)(struct mbn_handler *, int, const char *);
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, int, void *);
@@ -287,6 +298,7 @@ struct mbn_handler {
   mbn_cb_ObjectDataResponse cb_SensorDataResponse;
   mbn_cb_ObjectDataResponse cb_SensorDataChanged;
   mbn_cb_ObjectDataResponse cb_ActuatorDataResponse;
+  mbn_cb_Error cb_Error;
 };
 
 
@@ -350,6 +362,8 @@ void MBN_IMPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 #define mbnUnsetSensorDataChangedCallback(mbn)             (mbn->cb_SensorDataChanged = NULL)
 #define mbnSetActuatorDataResponseCallback(mbn, func)      (mbn->cb_ActuatorDataResponse = func)
 #define mbnUnsetActuatorDataResponseCallback(mbn)          (mbn->cb_ActuatorDataResponse = NULL)
+#define mbnSetErrorCallback(mbn, func)                     (mbn->cb_Error = func)
+#define mbnUnsetErrorCallback(mbn)                         (mbn->cb_Error = NULL)
 
 #endif
 

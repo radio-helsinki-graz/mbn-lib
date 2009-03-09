@@ -103,6 +103,11 @@ int SensorDataResponse(struct mbn_handler *mbn, struct mbn_message *msg, unsigne
 }
 
 
+void Error(struct mbn_handler *mbn, int code, const char *msg) {
+  printf("Error(%d, \"%s\")\n", code, msg);
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
@@ -118,6 +123,7 @@ int main(void) {
   mbnSetObjectFrequencyChangeCallback(mbn, ObjectFrequencyChange);
   mbnSetSensorDataResponseCallback(mbn, SensorDataResponse);
   mbnSetActuatorDataResponseCallback(mbn, SensorDataResponse);
+  mbnSetErrorCallback(mbn, Error);
   mbnEthernetInit(mbn, "eth0");
 
   /*
