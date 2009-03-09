@@ -35,6 +35,7 @@
 /* send an address reservation broadcast message */
 void send_info(struct mbn_handler *mbn) {
   struct mbn_message msg;
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo   = MBN_BROADCAST_ADDRESS;
   msg.AddressFrom = mbn->node.MambaNetAddr;
   msg.MessageID   = 0;
@@ -47,6 +48,7 @@ void send_info(struct mbn_handler *mbn) {
   msg.Data.Address.EngineAddr         = mbn->node.DefaultEngineAddr;
   msg.Data.Address.Services           = mbn->node.Services;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
+
   pthread_mutex_lock(&(mbn->mbn_mutex));
   mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
   pthread_mutex_unlock(&(mbn->mbn_mutex));

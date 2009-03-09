@@ -22,7 +22,7 @@
 
 struct mbn_node_info this_node = {
   0x00031337, 0x00, /* MambaNet Addr + Services */
-  1, 50, 0,   /* UniqueMediaAccessId */
+  1, 50, 1,   /* UniqueMediaAccessId */
   "MambaNet Stack Test Application",
   ">> YorHel's Power Node! <<",
   0, 0,       /* Hardware revision */
@@ -34,9 +34,9 @@ struct mbn_node_info this_node = {
 
 struct mbn_object objects[] = {
   /* Only works on a C99 compiler */
-  /* Description  Engine  Serv  Freq  Sensor: type       size  min        max          cur          Actuator: type      size  min        max          def          cur       */
-  { "Object #1",    0x00, 0x00,    0, MBN_DATATYPE_UINT,    2, {.UInt=0}, {.UInt=512}, {.UInt=256}, MBN_DATATYPE_NODATA,   0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, {.UInt=  0} },
-  { "Object #2",    0x00, 0x00,    0, MBN_DATATYPE_NODATA,  0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, MBN_DATATYPE_UINT,     2, {.UInt=0}, {.UInt=512}, {.UInt=256}, {.UInt=256} },
+  /* Description  Engine  Freq, Sensor: type       size  min        max          cur          Actuator: type      size  min        max          def          cur       */
+  { "Object #1",    0x00,    1, MBN_DATATYPE_UINT,    2, {.UInt=0}, {.UInt=512}, {.UInt=256}, MBN_DATATYPE_NODATA,   0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, {.UInt=  0} },
+  { "Object #2",    0x00,    0, MBN_DATATYPE_NODATA,  0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, MBN_DATATYPE_UINT,     2, {.UInt=0}, {.UInt=512}, {.UInt=256}, {.UInt=256} },
 };
 
 
@@ -120,11 +120,13 @@ int main(void) {
   mbnSetActuatorDataResponseCallback(mbn, SensorDataResponse);
   mbnEthernetInit(mbn, "eth0");
 
+  /*
   sleep(3);
   union mbn_data dat = {.Octets="4321"};
   mbnSetActuatorData(mbn, 0x00000008, 1, MBN_DATATYPE_OCTETS, 5, dat, 0);
   sleep(1);
   mbnGetActuatorData(mbn, 0x00000008, 1, 0);
+  */
 
   pthread_exit(NULL);
   return 0;

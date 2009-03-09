@@ -183,7 +183,6 @@ struct mbn_node_info {
 struct mbn_object {
   unsigned char Description[32];
   unsigned int EngineAddr;        /* Variable */
-  unsigned char Services;
   unsigned char UpdateFrequency;  /* Variable */
   unsigned char SensorType;
   unsigned char SensorSize;
@@ -194,6 +193,9 @@ struct mbn_object {
   union mbn_data ActuatorMin, ActuatorMax;
   union mbn_data ActuatorDefault;
   union mbn_data ActuatorData; /* Variable */
+  /* Services is always 0x03 for sensors and 0x00 for actuators */
+  unsigned int timeout; /* internal, sensor change will be sent when timeout reaches 0 */
+  char changed; /* internal, used for signaling a change */
 };
 
 
@@ -269,6 +271,7 @@ struct mbn_handler {
   struct mbn_object *objects;
   int pongtimeout;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
+  pthread_t throttle_thread;
   pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
   /* callbacks */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;

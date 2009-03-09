@@ -19,8 +19,88 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <unistd.h>
+#include <sys/select.h>
+#include <sys/time.h>
+
 #include "mbn.h"
 #include "object.h"
+
+
+void send_object_changed(struct mbn_handler *mbn, unsigned short obj) {
+  struct mbn_message msg;
+  unsigned long dest;
+
+  /* determine destination address */
+  dest = mbn->node.DefaultEngineAddr;
+  if(dest == 0)
+    dest = MBN_BROADCAST_ADDRESS;
+
+  /* create and send message */
+  memset((void *)&msg, 0, sizeof(struct mbn_message));
+  msg.AddressTo = dest;
+  msg.MessageType = MBN_MSGTYPE_OBJECT;
+  msg.Data.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
+  msg.Data.Object.Number = obj+1024;
+  msg.Data.Object.DataType = mbn->objects[obj].SensorType;
+  msg.Data.Object.DataSize = mbn->objects[obj].SensorSize;
+  msg.Data.Object.Data = mbn->objects[obj].SensorData;
+  mbnSendMessage(mbn, &msg, 0);
+}
+
+
+/* special thread to throttle sensor change messages */
+/* Timing info:
+ *   S  Freq     Sec     timeout (*0.05s)
+ *   2  25  Hz   0.04s    1   -> Actual max. frequency = 20Hz
+ *   3  10  Hz   0.10s    2
+ *   4   5  Hz   0.20s    4
+ *   5   1  Hz   1.00s   20
+ *   6   0.2Hz   5.00s  100
+ *   7   0.1Hz  10.00s  200
+ * Note: this method of timing is not precise, actual send frequencies
+ *  are likely lower, depening on CPU speed and kernel interrupt resolution
+ */
+void *throttle_thread(void *arg) {
+  struct mbn_handler *mbn = (struct mbn_handler *) arg;
+  struct timeval tv;
+  int i, f;
+
+  while(1) {
+    pthread_testcancel();
+    /* wait 50ms */
+    tv.tv_sec = 0;
+    tv.tv_usec = 50000;
+    select(0, NULL, NULL, NULL, &tv);
+
+    /* lock */
+    pthread_mutex_lock(&(mbn->mbn_mutex));
+
+    /* check for changed sensors */
+    for(i=0; i<mbn->node.NumberOfObjects; i++) {
+      if(mbn->objects[i].timeout != 0) {
+        mbn->objects[i].timeout--;
+        continue;
+      }
+      if(!mbn->objects[i].changed)
+        continue;
+      /* we can send the message */
+      send_object_changed(mbn, i);
+      /* reset the timeout (see timing info above for detailed explanation) */
+      f = mbn->objects[i].UpdateFrequency;
+      mbn->objects[i].timeout =
+        f == 2 ?   1 : f == 3 ?   2 :
+        f == 4 ?   4 : f == 5 ?  20 :
+        f == 6 ? 100 : f == 7 ? 200 : 0;
+      mbn->objects[i].changed = 0;
+    }
+
+    /* unlock */
+    pthread_mutex_unlock(&(mbn->mbn_mutex));
+  }
+
+  return NULL;
+}
 
 
 /* convenience function to reply to an object message */
@@ -224,7 +304,7 @@ int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
   obj = &(mbn->objects[i]);
   dat.Info = &nfo;
   memcpy((void *)nfo.Description, (void *)obj->Description, 32);
-  nfo.Services        = obj->Services;
+  nfo.Services        = obj->SensorType != MBN_DATATYPE_NODATA ? 0x03 : 0x00;
   nfo.SensorType      = obj->SensorType;
   nfo.SensorSize      = obj->SensorSize;
   nfo.SensorMin       = obj->SensorMin;
@@ -275,12 +355,11 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
       }
       return 1;
-    case MBN_OBJ_ACTION_SET_FREQUENCY:
-      if(i < 0 || i >= mbn->node.NumberOfObjects) {
+    case MBN_OBJ_ACTION_SET_FREQUENCY: /* this one is pretty much internal, is the callback really useful? */
+      if(i < 0 || i >= mbn->node.NumberOfObjects || obj->DataType != MBN_DATATYPE_STATE || obj->DataType > 7) {
         dat.Error = (unsigned char *) "Object not found";
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
       } else {
-        /* TODO: check boundaries? */
         if(mbn->objects[i].UpdateFrequency != obj->Data.State && mbn->cb_ObjectFrequencyChange != NULL)
           mbn->cb_ObjectFrequencyChange(mbn, i, obj->Data.State);
         mbn->objects[i].UpdateFrequency = obj->Data.State;
@@ -334,29 +413,21 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 }
 
 
-/* TODO: send mambanet messages based on object frequency settings */
 void MBN_EXPORT mbnSensorDataChange(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
-  struct mbn_message msg;
-  unsigned long dest;
-
-  /* determine destination address (but don't look at object engine address (yet)) */
-  dest = mbn->node.DefaultEngineAddr;
-  if(dest == 0)
-    dest = MBN_BROADCAST_ADDRESS;
+  pthread_mutex_lock(&(mbn->mbn_mutex));
 
   /* update internal sensor data */
   mbn->objects[object].SensorData = dat;
 
-  /* create & send message */
-  memset((void *)&msg, 0, sizeof(struct mbn_message));
-  msg.AddressTo = dest;
-  msg.MessageType = MBN_MSGTYPE_OBJECT;
-  msg.Data.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
-  msg.Data.Object.Number = object+1024;
-  msg.Data.Object.DataType = mbn->objects[object].SensorType;
-  msg.Data.Object.DataSize = mbn->objects[object].SensorSize;
-  msg.Data.Object.Data = dat;
-  mbnSendMessage(mbn, &msg, 0);
+  /* object frequency = 1, create & send message now */
+  if(mbn->objects[object].UpdateFrequency == 1)
+    send_object_changed(mbn, object);
+
+  /* object frequency > 1, messages are throttled, let the sending be handled by a separate thread */
+  else if(mbn->objects[object].UpdateFrequency > 1)
+    mbn->objects[object].changed = 1;
+
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
 }
 
 

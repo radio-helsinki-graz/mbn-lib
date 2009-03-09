@@ -38,7 +38,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   mbn->node.Services &= 0x7F; /* turn off validated bit */
   mbn->objects = objects;
 
-  /* pad descriptions and name with zero (makes sending object responses easier) */
+  /* pad descriptions and name with zero and clear some other things */
   l = strlen((char *)mbn->node.Description);
   if(l < 64)
     memset((void *)&(mbn->node.Description[l]), 0, 64-l);
@@ -46,6 +46,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   if(l < 32)
     memset((void *)&(mbn->node.Name[l]), 0, 32-l);
   for(i=0;i<mbn->node.NumberOfObjects;i++) {
+    mbn->objects[i].changed = mbn->objects[i].timeout = 0;
     l = strlen((char *)mbn->objects[i].Description);
     if(l < 32)
       memset((void *)&(mbn->objects[i].Description[l]), 0, 32-l);
@@ -58,9 +59,10 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&(mbn->mbn_mutex), &mattr);
 
-  /* create thread to keep track of timeouts */
-  if(pthread_create(&(mbn->timeout_thread), NULL, node_timeout_thread, (void *) mbn) != 0) {
-    perror("Error creating timeout thread");
+  /* create threads to keep track of timeouts */
+  if(    pthread_create(&(mbn->timeout_thread),  NULL, node_timeout_thread, (void *) mbn) != 0
+      || pthread_create(&(mbn->throttle_thread), NULL, throttle_thread,     (void *) mbn) != 0) {
+    perror("Error creating threads");
     free(mbn);
     return NULL;
   }
@@ -71,8 +73,9 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
 
 /* IMPORTANT: must not be called in a thread which has a lock on mbn_mutex */
 void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
-  /* request cancellation for the timeout thread */
+  /* request cancellation for the threads */
   pthread_cancel(mbn->timeout_thread);
+  pthread_cancel(mbn->throttle_thread);
 
   /* free interface */
   if(mbn->interface.cb_free != NULL)
@@ -81,9 +84,10 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   /* free address list */
   free_addresses(mbn);
 
-  /* wait for the timeout thread
+  /* wait for the threads
    * (make sure no locks on mbn->mbn_mutex are present here) */
   pthread_join(mbn->timeout_thread, NULL);
+  pthread_join(mbn->throttle_thread, NULL);
 }
 
 
@@ -105,6 +109,12 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 
   /* parse message */
   if((r = parse_message(&msg)) != 0) {
+    if(0 && msg.bufferlength) {
+      printf("BUF -> ");
+      for(r=0;r<msg.bufferlength;r++)
+        printf(" %02X", msg.buffer[r]);
+      printf("\n");
+    }
     MBN_TRACE(printf("Received invalid message (error %02X), dropping", r));
     return;
   }
@@ -192,6 +202,16 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       ifaddr = NULL;
     else
       ifaddr = dest->ifaddr;
+  }
+
+  if(0) {
+    printf("RAW: ");
+    for(r=0; r<msg->rawlength; r++)
+      printf(" %02X", msg->raw[r]);
+    printf("\nBUF: ");
+    for(r=0; r<msg->bufferlength; r++)
+      printf(" %02X", msg->buffer[r]);
+    printf("\n");
   }
 
   /* send the data to the interface transmit callback */

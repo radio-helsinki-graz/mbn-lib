@@ -20,6 +20,7 @@
 #include "mbn.h"
 
 int process_object_message(struct mbn_handler *, struct mbn_message *);
+void *throttle_thread(void *);
 
 #endif
 
