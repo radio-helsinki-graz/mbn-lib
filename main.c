@@ -108,6 +108,18 @@ void Error(struct mbn_handler *mbn, int code, const char *msg) {
 }
 
 
+void AcknowledgeTimeout(struct mbn_handler *mbn, struct mbn_message *msg) {
+  printf("AcknowledgeTimeout({.AddressTo = %08lX, .MessageID = %06X})\n",
+    msg->AddressTo, msg->MessageID);
+}
+
+
+void AcknowledgeReply(struct mbn_handler *mbn, struct mbn_message *msg, struct mbn_message *reply, int retries) {
+  printf("AcknowledgeReply({.AddressTo = %08lX, .MessageID = %06X}, {.MessageID = %06X}, %d)\n",
+    msg->AddressTo, msg->MessageID, reply->MessageID, retries);
+}
+
+
 int main(void) {
   struct mbn_handler *mbn;
   struct timeval before, after;
@@ -124,15 +136,15 @@ int main(void) {
   mbnSetSensorDataResponseCallback(mbn, SensorDataResponse);
   mbnSetActuatorDataResponseCallback(mbn, SensorDataResponse);
   mbnSetErrorCallback(mbn, Error);
+  mbnSetAcknowledgeTimeoutCallback(mbn, AcknowledgeTimeout);
+  mbnSetAcknowledgeReplyCallback(mbn, AcknowledgeReply);
   mbnEthernetInit(mbn, "eth0");
 
-  /*
   sleep(3);
   union mbn_data dat = {.Octets="4321"};
-  mbnSetActuatorData(mbn, 0x00000008, 1, MBN_DATATYPE_OCTETS, 5, dat, 0);
-  sleep(1);
-  mbnGetActuatorData(mbn, 0x00000008, 1, 0);
-  */
+  mbnSetActuatorData(mbn, 0x00000008, 1, MBN_DATATYPE_OCTETS, 5, dat, 1);
+  /*sleep(1);
+  mbnGetActuatorData(mbn, 0x00000008, 1, 0);*/
 
   pthread_exit(NULL);
   return 0;

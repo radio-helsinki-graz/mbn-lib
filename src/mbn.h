@@ -17,13 +17,11 @@
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
  *  - Improve address table (internal format & API for browsing through the list)
  *  - Improve the API for H/W interface modules
- *  - Add automated acknowledge handling
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
  *    > TCP/IP (server AND client?)
  *    > Serial line
  *  - Test/port to windows (and probably OS X)
- *  - Functions for fetching another node's default objects?
 */
 
 #ifndef MBN_H
@@ -57,6 +55,8 @@
 
 #define MBN_ADDR_TIMEOUT    110 /* seconds */
 #define MBN_ADDR_MSG_TIMEOUT 30 /* sending address reservation information packets */
+
+#define MBN_ACKNOWLEDGE_RETRIES 5 /* number of times to retry a message requiring an acknowledge */
 
 #define MBN_BROADCAST_ADDRESS 0x10000000
 
@@ -107,7 +107,9 @@
 #define MBN_SEND_IGNOREVALID  0x01 /* send the message regardless of our valid bit */
 #define MBN_SEND_FORCEADDR    0x02 /* don't overwrite the AddressTo field with our address */
 #define MBN_SEND_NOCREATE     0x04 /* don't try to parse the structs, just send the "buffer" member */
-#define MBN_SEND_RAWDATA      (0x08 | 0x04 | 0x02) /* don't even create the header, just send the "raw" member */
+#define MBN_SEND_RAWDATA      0x08 /* don't even create the header, just send the "raw" member */
+#define MBN_SEND_ACKNOWLEDGE  0x10 /* require acknowledge, and re-send message after a timeout */
+#define MBN_SEND_FORCEID      0x20 /* don't overwrite MessageID field */
 
 /* Global error codes */
 enum mbn_error {
@@ -139,6 +141,7 @@ union  mbn_data;
 struct mbn_message_object_information;
 struct mbn_message_object;
 struct mbn_message;
+struct mbn_msgqueue;
 struct mbn_address_node;
 struct mbn_handler;
 
@@ -158,6 +161,8 @@ typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_me
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
 
 typedef void(*mbn_cb_Error)(struct mbn_handler *, int, const char *);
+typedef void(*mbn_cb_AcknowledgeTimeout)(struct mbn_handler *, struct mbn_message *);
+typedef void(*mbn_cb_AcknowledgeReply)(struct mbn_handler *, struct mbn_message *, struct mbn_message *, int);
 typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, int, void *);
@@ -252,7 +257,7 @@ struct mbn_message_object {
 struct mbn_message {
   unsigned char AcknowledgeReply;
   unsigned long AddressTo, AddressFrom;
-  unsigned long MessageID;
+  unsigned int MessageID;
   unsigned short MessageType;
   union {
     struct mbn_message_address Address;
@@ -263,6 +268,13 @@ struct mbn_message {
   int rawlength;
   unsigned char buffer[98];
   int bufferlength;
+};
+
+struct mbn_msgqueue {
+  unsigned int id;
+  struct mbn_message msg;
+  unsigned int retries;
+  struct mbn_msgqueue *next;
 };
 
 struct mbn_address_node {
@@ -280,9 +292,11 @@ struct mbn_handler {
   struct mbn_interface interface;
   struct mbn_address_node *addresses;
   struct mbn_object *objects;
+  struct mbn_msgqueue *queue;
   int pongtimeout;
   pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
   pthread_t throttle_thread;
+  pthread_t msgqueue_thread;
   pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
   /* callbacks */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
@@ -299,6 +313,8 @@ struct mbn_handler {
   mbn_cb_ObjectDataResponse cb_SensorDataChanged;
   mbn_cb_ObjectDataResponse cb_ActuatorDataResponse;
   mbn_cb_Error cb_Error;
+  mbn_cb_AcknowledgeTimeout cb_AcknowledgeTimeout;
+  mbn_cb_AcknowledgeReply cb_AcknowledgeReply;
 };
 
 
@@ -364,6 +380,10 @@ void MBN_IMPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 #define mbnUnsetActuatorDataResponseCallback(mbn)          (mbn->cb_ActuatorDataResponse = NULL)
 #define mbnSetErrorCallback(mbn, func)                     (mbn->cb_Error = func)
 #define mbnUnsetErrorCallback(mbn)                         (mbn->cb_Error = NULL)
+#define mbnSetAcknowledgeTimeoutCallback(mbn, func)        (mbn->cb_AcknowledgeTimeout = func)
+#define mbnUnsetAcknowledgeTimeoutCallback(mbn)            (mbn->cb_AcknowledgeTimeout = NULL)
+#define mbnSetAcknowledgeReplyCallback(mbn, func)          (mbn->cb_AcknowledgeReply = func)
+#define mbnUnsetAcknowledgeReplyCallback(mbn)              (mbn->cb_AcknowledgeReply = NULL)
 
 #endif
 

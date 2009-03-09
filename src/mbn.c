@@ -27,6 +27,14 @@
 #include "codec.h"
 #include "object.h"
 
+/* sleep() */
+#ifdef MBN_LINUX
+# include <unistd.h>
+#elif
+# include <windows.h>
+# define sleep(x) Sleep(x*1000)
+#endif
+
 
 /* IMPORTANT: keep this in the same order as enum mbn_errors */
 const char *mbn_errormessages[] = {
@@ -37,6 +45,46 @@ const char *mbn_errormessages[] = {
   "Could not read for interface",
   "Could not write to interface"
 };
+
+
+/* thread that keeps track of messages requiring an acknowledge reply,
+ * and retries the message after a timeout (of one second, currently) */
+void *msgqueue_thread(void *arg) {
+  struct mbn_handler *mbn = (struct mbn_handler *) arg;
+  struct mbn_msgqueue *q, *last, *tmp;
+
+  while(1) {
+    /* working on mbn_handler, so lock */
+    pthread_mutex_lock(&(mbn->mbn_mutex));
+
+    for(q=last=mbn->queue; q!=NULL; ) {
+      /* Oh my, no reply after all those retries :( */
+      if(++q->retries >= MBN_ACKNOWLEDGE_RETRIES) {
+        /* send callback */
+        if(mbn->cb_AcknowledgeTimeout != NULL)
+          mbn->cb_AcknowledgeTimeout(mbn, &(q->msg));
+        /* remove item from the queue */
+        if(last == mbn->queue)
+          mbn->queue = q->next;
+        else
+          last->next = q->next;
+        tmp = q->next;
+        free_message(&(q->msg));
+        free(q);
+        q = tmp;
+        continue;
+      }
+      /* No reply yet, let's try again */
+      mbnSendMessage(mbn, &(q->msg), MBN_SEND_NOCREATE | MBN_SEND_FORCEID);
+      last = q;
+      q = q->next;
+    }
+
+    pthread_mutex_unlock(&(mbn->mbn_mutex));
+    pthread_testcancel();
+    sleep(1);
+  }
+}
 
 
 struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects) {
@@ -72,7 +120,8 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
 
   /* create threads to keep track of timeouts */
   if(    pthread_create(&(mbn->timeout_thread),  NULL, node_timeout_thread, (void *) mbn) != 0
-      || pthread_create(&(mbn->throttle_thread), NULL, throttle_thread,     (void *) mbn) != 0) {
+      || pthread_create(&(mbn->throttle_thread), NULL, throttle_thread,     (void *) mbn) != 0
+      || pthread_create(&(mbn->msgqueue_thread), NULL, msgqueue_thread,     (void *) mbn) != 0) {
     perror("Error creating threads");
     free(mbn);
     return NULL;
@@ -87,6 +136,7 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   /* request cancellation for the threads */
   pthread_cancel(mbn->timeout_thread);
   pthread_cancel(mbn->throttle_thread);
+  pthread_cancel(mbn->msgqueue_thread);
 
   /* free interface */
   if(mbn->interface.cb_free != NULL)
@@ -99,6 +149,40 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
    * (make sure no locks on mbn->mbn_mutex are present here) */
   pthread_join(mbn->timeout_thread, NULL);
   pthread_join(mbn->throttle_thread, NULL);
+  pthread_join(mbn->msgqueue_thread, NULL);
+}
+
+
+int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) {
+  struct mbn_msgqueue *q, *last;
+
+  if(!msg->AcknowledgeReply || msg->MessageID == 0)
+    return 0;
+
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+  /* search for the message ID in our queue */
+  for(q=last=mbn->queue; q!=NULL; q=q->next) {
+    if(q->id == msg->MessageID)
+      break;
+    last = q;
+  }
+
+  /* found! */
+  if(q != NULL && q->id == msg->MessageID) {
+    /* send callback (if any) */
+    if(mbn->cb_AcknowledgeReply != NULL)
+      mbn->cb_AcknowledgeReply(mbn, &(q->msg), msg, q->retries);
+    /* ...and remove the message from the queue */
+    if(last == NULL)
+      mbn->queue = q->next;
+    else
+      last->next = q->next;
+    free_message(&(q->msg));
+    free(q);
+  }
+
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+  return 1;
 }
 
 
@@ -131,7 +215,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   }
 
   if(0)
-    MBN_TRACE(printf("Received MambaNet message of %dB from 0x%08lX to 0x%08lX, id 0x%06lX, type 0x%04X",
+    MBN_TRACE(printf("Received MambaNet message of %dB from 0x%08lX to 0x%08lX, id 0x%06X, type 0x%04X",
        length, msg.AddressFrom, msg.AddressTo, msg.MessageID, msg.MessageType));
 
   if(0 && msg.MessageType == MBN_MSGTYPE_ADDRESS)
@@ -165,6 +249,10 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   if(msg.AddressTo != MBN_BROADCAST_ADDRESS && msg.AddressTo != mbn->node.MambaNetAddr)
     processed++;
 
+  /* acknowledge reply, yay! */
+  if(!processed && process_acknowledge_reply(mbn, &msg) != 0)
+    processed++;
+
   /* object messages */
   if(!processed && process_object_message(mbn, &msg) != 0)
     processed++;
@@ -177,6 +265,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
 void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg, int flags) {
   unsigned char raw[MBN_MAX_MESSAGE_SIZE];
   struct mbn_address_node *dest;
+  struct mbn_msgqueue *q, *n;
   void *ifaddr;
   int r;
 
@@ -199,6 +288,25 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   if(!(flags & MBN_SEND_FORCEADDR))
     msg->AddressFrom = mbn->node.MambaNetAddr;
 
+  /* lock, to make sure we have a unique message ID */
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+
+  if(!(flags & MBN_SEND_FORCEID)) {
+    msg->MessageID = 0;
+    if(flags & MBN_SEND_ACKNOWLEDGE) {
+      /* get a new message ID */
+      msg->MessageID = 1;
+      if(mbn->queue != NULL) {
+        q = mbn->queue;
+        do {
+          if(q->id >= msg->MessageID)
+            msg->MessageID = q->id+1;
+        } while((q = q->next) != NULL);
+      }
+      MBN_TRACE(printf("Assigning MessageID %06X", msg->MessageID));
+    }
+  }
+
   msg->raw = raw;
   msg->rawlength = 0;
 
@@ -206,8 +314,29 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   if((r = create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0)) != 0) {
     MBN_ERROR(mbn, MBN_ERROR_CREATE_MESSAGE);
     MBN_TRACE(printf("Error creating message: %02X", r));
+    pthread_mutex_unlock(&(mbn->mbn_mutex));
     return;
   }
+
+  /* save the message to the queue if we need to check for acknowledge replies */
+  if(flags & MBN_SEND_ACKNOWLEDGE) {
+    /* create struct */
+    n = malloc(sizeof(struct mbn_msgqueue));
+    n->id = msg->MessageID;
+    copy_message(msg, &(n->msg));
+    n->retries = 0;
+    n->next = NULL;
+    /* add to the list */
+    if(mbn->queue == NULL)
+      mbn->queue = n;
+    else {
+      q = mbn->queue;
+      while(q->next != NULL)
+        q = q->next;
+      q->next = n;
+    }
+  }
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
 
   /* determine interface address */
   if(msg->AddressTo == MBN_BROADCAST_ADDRESS)

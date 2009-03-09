@@ -79,6 +79,7 @@ void *node_timeout_thread(void *arg) {
         tmp = node->next;
         free(node);
         node = tmp;
+        continue;
       }
       last = node;
       node = node->next;

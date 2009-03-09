@@ -432,7 +432,6 @@ void MBN_EXPORT mbnSensorDataChange(struct mbn_handler *mbn, unsigned short obje
 
 
 /* convenience function */
-/* TODO: Assign message IDs and handle acknowledging */
 void request_info(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack, unsigned char act) {
   struct mbn_message msg;
   memset((void *)&msg, 0, sizeof(struct mbn_message));
@@ -441,10 +440,7 @@ void request_info(struct mbn_handler *mbn, unsigned long addr, unsigned short ob
   msg.Data.Object.Action = act;
   msg.Data.Object.Number = object;
   msg.Data.Object.DataType = MBN_DATATYPE_NODATA;
-  mbnSendMessage(mbn, &msg, 0);
-
-  /* (temp hack to get rid of compiler warning) */
-  ack = !ack;
+  mbnSendMessage(mbn, &msg, ack ? MBN_SEND_ACKNOWLEDGE : 0);
 }
 
 void MBN_EXPORT mbnGetSensorData(struct mbn_handler *mbn, unsigned long addr, unsigned short object, char ack) {
@@ -475,8 +471,7 @@ void MBN_EXPORT mbnSetActuatorData(struct mbn_handler *mbn, unsigned long addr, 
   msg.Data.Object.DataType = type;
   msg.Data.Object.DataSize = length;
   msg.Data.Object.Data = dat;
-  mbnSendMessage(mbn, &msg, 0);
-  ack = !ack;
+  mbnSendMessage(mbn, &msg, ack ? MBN_SEND_ACKNOWLEDGE : 0);
 }
 
 
@@ -491,8 +486,7 @@ void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *mbn, unsigned long add
   msg.Data.Object.DataType = MBN_DATATYPE_STATE;
   msg.Data.Object.DataSize = 1;
   msg.Data.Object.Data.State = freq;
-  mbnSendMessage(mbn, &msg, 0);
-  ack = !ack;
+  mbnSendMessage(mbn, &msg, ack ? MBN_SEND_ACKNOWLEDGE : 0);
 }
 
 
