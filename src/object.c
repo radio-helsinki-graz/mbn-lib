@@ -425,7 +425,7 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 }
 
 
-void MBN_EXPORT mbnSensorDataChange(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
   pthread_mutex_lock(&(mbn->mbn_mutex));
 
   /* update internal sensor data */
@@ -440,6 +440,10 @@ void MBN_EXPORT mbnSensorDataChange(struct mbn_handler *mbn, unsigned short obje
     mbn->objects[object].changed = 1;
 
   pthread_mutex_unlock(&(mbn->mbn_mutex));
+}
+
+void MBN_EXPORT mbnUpdateActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+  mbn->objects[object].ActuatorData = dat;
 }
 
 

@@ -401,3 +401,15 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
 }
 
 
+void MBN_EXPORT mbnUpdateNodeName(struct mbn_handler *mbn, char *name) {
+  memset((void *)mbn->node.Name, 0, 32);
+  memcpy((void *)mbn->node.Name, (void *)name, strlen(name));
+}
+void MBN_EXPORT mbnUpdateEngineAddr(struct mbn_handler *mbn, unsigned long addr) {
+  mbn->node.DefaultEngineAddr = addr;
+}
+void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *mbn, char srv) {
+  mbn->node.ServiceRequest = srv;
+}
+
+

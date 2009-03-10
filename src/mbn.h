@@ -15,7 +15,6 @@
 ****************************************************************************/
 
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
- *  - Get/set node information after init?
  *  - Improve the API for H/W interface modules
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
@@ -338,7 +337,11 @@ void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNextNode(struct mbn_handler *, struct mbn_address_node *);
 
-void MBN_IMPORT mbnSensorDataChange(struct mbn_handler *, unsigned short, union mbn_data);
+void MBN_IMPORT mbnUpdateNodeName(struct mbn_handler *, char *);
+void MBN_IMPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
+void MBN_IMPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
+void MBN_IMPORT mbnUpdateSensorData(struct mbn_handler *, unsigned short, union mbn_data);
+void MBN_IMPORT mbnUpdateActuatorData(struct mbn_handler *, unsigned short, union mbn_data);
 void MBN_IMPORT mbnGetSensorData(struct mbn_handler *, unsigned long, unsigned short, char);
 void MBN_IMPORT mbnGetActuatorData(struct mbn_handler *, unsigned long, unsigned short, char);
 void MBN_IMPORT mbnGetObjectInformation(struct mbn_handler *, unsigned long, unsigned short, char);
@@ -398,9 +401,6 @@ void MBN_IMPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 #include <stdarg.h>
 #include <string.h>
 
-/* Description  Engine  Freq, Sensor: type       size  min        max          cur          Actuator: type      size  min        max          def          cur       *
-{ "Object #1",    0x00,    1, MBN_DATATYPE_UINT,    2, {.UInt=0}, {.UInt=512}, {.UInt=256}, MBN_DATATYPE_NODATA,   0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, {.UInt=  0} },
-*/
 struct mbn_object MBN_OBJ(char *desc, unsigned char freq, ...) {
   struct mbn_object obj;
   va_list va;
