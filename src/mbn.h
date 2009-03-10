@@ -15,7 +15,7 @@
 ****************************************************************************/
 
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
- *  - Improve address table (internal format & API for browsing through the list)
+ *  - Get/set node information after init?
  *  - Improve the API for H/W interface modules
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
@@ -181,18 +181,21 @@ union mbn_data {
   struct mbn_message_object_information *Info;
 };
 
+
 /* All information required for the default objects of a node */
 struct mbn_node_info {
   unsigned int MambaNetAddr;      /* Variable */
   char Services;                  /* Variable (MSBit) */
-  unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned char Description[64];
   unsigned char Name[32];         /* Variable */
+  unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned char HardwareMajorRevision, HardwareMinorRevision;
   unsigned char FirmwareMajorRevision, FirmwareMinorRevision;
+  unsigned char FPGAFirmwareMajorRevision, FPGAFirmwareMinorRevision;
   unsigned short NumberOfObjects;
   unsigned int DefaultEngineAddr; /* Variable */
   unsigned char HardwareParent[6];
+  unsigned char ServiceRequest;
 };
 
 

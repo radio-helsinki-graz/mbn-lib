@@ -164,24 +164,36 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
       dat.UInt = mbn->node.FirmwareMinorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 9: /* Protocol Major Revision */
+    case 9: /* FPGAFirmware Major Revision */
+      dat.UInt = mbn->node.FPGAFirmwareMajorRevision;
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
+      break;
+    case 10: /* FPGAFirmware Minor Revision */
+      dat.UInt = mbn->node.FPGAFirmwareMinorRevision;
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
+      break;
+    case 11: /* Protocol Major Revision */
       dat.UInt = MBN_PROTOCOL_VERSION_MAJOR;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 10: /* Protocol Minor Revision */
+    case 12: /* Protocol Minor Revision */
       dat.UInt = MBN_PROTOCOL_VERSION_MINOR;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 11: /* Number of objects */
+    case 13: /* Number of objects */
       dat.UInt = mbn->node.NumberOfObjects;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 2, &dat);
       break;
-    case 12: /* Default engine address (not a sensor) */
+    case 14: /* Default engine address (not a sensor) */
       send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
-    case 13: /* Hardware Parent */
+    case 15: /* Hardware Parent */
       dat.Octets = mbn->node.HardwareParent;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 6, &dat);
+      break;
+    case 16: /* Service request */
+      dat.State = mbn->node.ServiceRequest;
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_STATE, 1, &dat);
       break;
     default:
       i = obj->Number-1024;
@@ -214,15 +226,15 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   switch(obj->Number) {
     case 0: /* These are not actuators */
-    case 2: case 3: case  4: case  5: case  6:
-    case 7: case 9: case 10: case 11: case 13:
+    case 2: case  3: case  4: case  5: case  6:  case 7: case  8:
+    case 9: case 10: case 11: case 12: case 13: case 15: case 16:
       send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
     case 1: /* Name */
       dat.Octets = mbn->node.Name;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 32, &dat);
       break;
-    case 12: /* Default Engine Address */
+    case 14: /* Default Engine Address */
       dat.UInt = mbn->node.DefaultEngineAddr;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
       break;
@@ -261,7 +273,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
     }
 
   /* Default Engine Address */
-  } else if(obj->Number == 12 && obj->DataType == MBN_DATATYPE_UINT && obj->DataSize == 4) {
+  } else if(obj->Number == 14 && obj->DataType == MBN_DATATYPE_UINT && obj->DataSize == 4) {
     r = mbn->cb_DefaultEngineAddrChange == NULL ? 0 : mbn->cb_DefaultEngineAddrChange(mbn, obj->Data.UInt);
     if(r == 0) {
       dat.UInt = mbn->node.DefaultEngineAddr = obj->Data.UInt;

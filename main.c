@@ -22,14 +22,16 @@
 
 struct mbn_node_info this_node = {
   0x00031337, 0x00, /* MambaNet Addr + Services */
-  0xFFFF, 0x0001, 0x0001,   /* UniqueMediaAccessId */
   "MambaNet Stack Test Application",
   ">> YorHel's Power Node! <<",
-  0, 0,       /* Hardware revision */
-  0, 0,       /* Firmware revision */
-  2,          /* NumberOfObjects */
-  0,          /* DefaultEngineAddr */
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } /* Hardwareparent */
+  0xFFFF, 0x0001, 0x0001,   /* UniqueMediaAccessId */
+  0, 0,          /* Hardware revision */
+  0, 0,          /* Firmware revision */
+  0, 0,          /* FPGAFirmware revision */
+  2,             /* NumberOfObjects */
+  0,             /* DefaultEngineAddr */
+  {0,0,0,0,0,0}, /* Hardwareparent */
+  0              /* Service request */
 };
 
 struct mbn_object objects[] = {
