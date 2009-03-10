@@ -283,13 +283,14 @@ struct mbn_address_node {
   unsigned char Services;
   int Alive; /* time since we last heard anything from the node */
   void *ifaddr; /* to be used by HW interfaces */
-  struct mbn_address_node *next; /* singly linked list */
+  char used;
 };
 
 /* All internal data should go into this struct */
 struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface interface;
+  int addrsize;
   struct mbn_address_node *addresses;
   struct mbn_object *objects;
   struct mbn_msgqueue *queue;

@@ -146,7 +146,9 @@ int main(void) {
   /*sleep(1);
   mbnGetActuatorData(mbn, 0x00000008, 1, 0);*/
 
+  /*sleep(60);*/
   pthread_exit(NULL);
+  mbnFree(mbn);
   return 0;
 }
 

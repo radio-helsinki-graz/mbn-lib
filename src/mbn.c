@@ -118,6 +118,9 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&(mbn->mbn_mutex), &mattr);
 
+  /* initialize address list */
+  init_addresses(mbn);
+
   /* create threads to keep track of timeouts */
   if(    pthread_create(&(mbn->timeout_thread),  NULL, node_timeout_thread, (void *) mbn) != 0
       || pthread_create(&(mbn->throttle_thread), NULL, throttle_thread,     (void *) mbn) != 0

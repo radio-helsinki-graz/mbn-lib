@@ -19,6 +19,7 @@
 
 #include "mbn.h"
 
+void init_addresses(struct mbn_handler *);
 void *node_timeout_thread(void *);
 int process_address_message(struct mbn_handler *, struct mbn_message *, void *);
 void free_addresses(struct mbn_handler *);

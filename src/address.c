@@ -32,6 +32,70 @@
 #endif
 
 
+void init_addresses(struct mbn_handler *mbn) {
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+  mbn->addrsize = 32;
+  mbn->addresses = calloc(mbn->addrsize, sizeof(struct mbn_address_node));
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+}
+
+
+void remove_node(struct mbn_handler *mbn, struct mbn_address_node *node) {
+  int i;
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+
+  /* send callback */
+  if(mbn->cb_AddressTableChange != NULL)
+    mbn->cb_AddressTableChange(mbn, node, NULL);
+
+  /* remove node (and free the ifaddr pointer) */
+  node->used = 0;
+  if(node->ifaddr != 0 && mbn->interface.cb_free_addr != NULL) {
+    for(i=0; i<mbn->addrsize; i++)
+      if(mbn->addresses[i].used && &(mbn->addresses[i]) != node && mbn->addresses[i].ifaddr == node->ifaddr)
+        break;
+    if(i >= mbn->addrsize)
+      mbn->interface.cb_free_addr(node->ifaddr);
+  }
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+}
+
+
+/* Get information about a node address reservation information given
+ * a MambaNet address. Returns NULL if not found. */
+struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsigned long addr) {
+  int i;
+
+  for(i=0; i<mbn->addrsize; i++)
+    if(mbn->addresses[i].used && mbn->addresses[i].MambaNetAddr == addr)
+      return &(mbn->addresses[i]);
+  return NULL;
+}
+
+
+/* free()'s the entire address list */
+void free_addresses(struct mbn_handler *mbn) {
+  int i, j;
+  pthread_mutex_lock(&(mbn->mbn_mutex));
+
+  /* free all ifaddr pointers */
+  for(i=0; i<mbn->addrsize; i++) {
+    if(mbn->addresses[i].used && mbn->addresses[i].ifaddr != NULL) {
+      for(j=i+1; i<mbn->addrsize; i++)
+        if(mbn->addresses[j].used && mbn->addresses[j].ifaddr == mbn->addresses[j].ifaddr)
+          break;
+      if(j >= mbn->addrsize)
+        mbn->interface.cb_free_addr(mbn->addresses[i].ifaddr);
+    }
+  }
+  /* free the array */
+  free(mbn->addresses);
+  mbn->addrsize = 0;
+  mbn->addresses = NULL;
+  pthread_mutex_unlock(&(mbn->mbn_mutex));
+}
+
+
 /* send an address reservation broadcast message */
 void send_info(struct mbn_handler *mbn) {
   struct mbn_message msg;
@@ -58,31 +122,22 @@ void send_info(struct mbn_handler *mbn) {
 /* Thread waiting for timeouts */
 void *node_timeout_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
-  struct mbn_address_node *node, *last, *tmp;
+  int i;
 
   while(1) {
     /* working on mbn_handler, so lock */
     pthread_mutex_lock(&(mbn->mbn_mutex));
 
     /* check the address list */
-    node = last = mbn->addresses;
-    while(node != NULL) {
-      if(--node->Alive <= 0) {
-        /* send callback */
-        if(mbn->cb_AddressTableChange != NULL)
-          mbn->cb_AddressTableChange(mbn, node, NULL);
-        /* remove node from list */
-        if(last == mbn->addresses)
-          mbn->addresses = node->next;
-        else
-          last->next = node->next;
-        tmp = node->next;
-        free(node);
-        node = tmp;
+    for(i=0; i<mbn->addrsize; i++) {
+      if(!mbn->addresses[i].used)
         continue;
-      }
-      last = node;
-      node = node->next;
+
+      if(--mbn->addresses[i].Alive > 0)
+        continue;
+
+      /* if we're here, it means this node timed out - remove it */
+      remove_node(mbn, &(mbn->addresses[i]));
     }
 
     /* send address reservation information messages, if needed */
@@ -104,7 +159,8 @@ void *node_timeout_thread(void *arg) {
 /* handle address reservation information packets and update
  * the internal address list */
 void process_reservation_information(struct mbn_handler *mbn, struct mbn_message_address *nfo, void *ifaddr) {
-  struct mbn_address_node *node, *last, new;
+  struct mbn_address_node *node, new;
+  int i;
 
   pthread_mutex_lock(&(mbn->mbn_mutex));
 
@@ -113,48 +169,36 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
 
   /* address could've changed, search for UniqueMediaAccessID */
   if(node == NULL && mbn->addresses != NULL) {
-    last = mbn->addresses;
-    do {
-      if(MBN_ADDR_EQ(last, nfo)) {
-        node = last;
+    for(i=0; i<mbn->addrsize; i++)
+      if(mbn->addresses[i].used && MBN_ADDR_EQ(&(mbn->addresses[i]), nfo)) {
+        node = &(mbn->addresses[i]);
         break;
       }
-    } while((last = last->next) != NULL);
   }
 
   /* we found the node in our list, but its address isn't
    * validated (anymore), so remove it. */
   if(node != NULL && !(nfo->Services & MBN_ADDR_SERVICES_VALID)) {
-    /* send callback */
-    if(mbn->cb_AddressTableChange != NULL)
-      mbn->cb_AddressTableChange(mbn, node, NULL);
-    /* remove node */
-    if(mbn->addresses == node)
-      mbn->addresses = node->next;
-    else {
-      last = mbn->addresses;
-      do {
-        if(last->next == node) {
-          last->next = node->next;
-          break;
-        }
-      } while((last = last->next) != NULL);
-    }
-    free(node);
+    remove_node(mbn, node);
     node = NULL;
   }
 
   /* not found but validated? insert new node in the table */
   else if(node == NULL && (nfo->Services & MBN_ADDR_SERVICES_VALID)) {
-    node = calloc(1, sizeof(struct mbn_address_node));
-    if(mbn->addresses == NULL)
-      mbn->addresses = node;
-    else {
-      last = mbn->addresses;
-      while(last->next != NULL)
-        last = last->next;
-      last->next = node;
+    /* look for some free space */
+    for(i=0; i<mbn->addrsize; i++)
+      if(!mbn->addresses[i].used)
+        break;
+    /* none found, allocate new memory */
+    if(i >= mbn->addrsize) {
+      mbn->addresses = realloc(mbn->addresses, mbn->addrsize*2*sizeof(struct mbn_address_node));
+      memset((void *)&(mbn->addresses[mbn->addrsize]), 0, mbn->addrsize*sizeof(struct mbn_address_node));
+      i = mbn->addrsize;
+      mbn->addrsize *= 2;
     }
+    node = &(mbn->addresses[i]);
+    node->MambaNetAddr = 0;
+    node->used = 1;
   }
 
   if(node != NULL) {
@@ -175,12 +219,10 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
     /* update hardware address */
     if(node->ifaddr != NULL && ifaddr != node->ifaddr && mbn->interface.cb_free_addr != NULL) {
       /* check for nodes with the same pointer, and free the memory if none found */
-      last = mbn->addresses;
-      do
-        if(last != node && last->ifaddr == node->ifaddr)
+      for(i=0; i<mbn->addrsize; i++)
+        if(mbn->addresses[i].used && mbn->addresses[i].ifaddr == node->ifaddr)
           break;
-      while((last = last->next) != NULL);
-      if(last == NULL)
+      if(i >= mbn->addrsize)
         mbn->interface.cb_free_addr(node->ifaddr);
     }
     node->ifaddr = ifaddr;
@@ -235,46 +277,6 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
   }
 
   return 1;
-}
-
-
-/* free()'s the entire address list */
-void free_addresses(struct mbn_handler *mbn) {
-  struct mbn_address_node *tmp, *next, *node = mbn->addresses;
-
-  pthread_mutex_lock(&(mbn->mbn_mutex));
-  while(node != NULL) {
-    /* check for ifaddr and free it */
-    if(node->ifaddr != NULL && mbn->interface.cb_free_addr != NULL) {
-      next = node;
-      while((next = next->next) != NULL)
-        if(next->ifaddr == node->ifaddr)
-          break;
-      if(next == NULL)
-        mbn->interface.cb_free_addr(node->ifaddr);
-    }
-    /* free node and go to next */
-    tmp = node->next;
-    free(node);
-    node = tmp;
-  }
-  mbn->addresses = NULL;
-  pthread_mutex_unlock(&(mbn->mbn_mutex));
-}
-
-
-/* Get information about a node address reservation information given
- * a MambaNet address. Returns NULL if not found. */
-struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsigned long addr) {
-  struct mbn_address_node *node = mbn->addresses;
-
-  if(node == NULL)
-    return NULL;
-  do {
-    if(node->MambaNetAddr == addr)
-      return node;
-  } while((node = node->next) != NULL);
-  return NULL;
 }
 
 
