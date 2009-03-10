@@ -89,13 +89,13 @@ void *msgqueue_thread(void *arg) {
 
 struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects) {
   struct mbn_handler *mbn;
+  struct mbn_object *obj;
   int i, l;
   pthread_mutexattr_t mattr;
 
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
   mbn->node.Services &= 0x7F; /* turn off validated bit */
-  mbn->objects = objects;
 
   /* pad descriptions and name with zero and clear some other things */
   l = strlen((char *)mbn->node.Description);
@@ -104,7 +104,23 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   l = strlen((char *)mbn->node.Name);
   if(l < 32)
     memset((void *)&(mbn->node.Name[l]), 0, 32-l);
+
+  /* create a copy of the objects, and make some small changes for later use */
+  mbn->objects = (struct mbn_object *) malloc(mbn->node.NumberOfObjects*sizeof(struct mbn_object));
+  memcpy((void *)mbn->objects, (void *)objects, mbn->node.NumberOfObjects*sizeof(struct mbn_object));
   for(i=0;i<mbn->node.NumberOfObjects;i++) {
+    obj = &(mbn->objects[i]);
+    if(objects[i].SensorSize > 0) {
+      copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
+      copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
+      copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorData), &(mbn->objects[i].SensorData));
+    }
+    if(objects[i].ActuatorSize > 0) {
+      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
+      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
+      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
+      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorData), &(mbn->objects[i].ActuatorData));
+    }
     mbn->objects[i].changed = mbn->objects[i].timeout = 0;
     l = strlen((char *)mbn->objects[i].Description);
     if(l < 32)
@@ -136,6 +152,8 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
 
 /* IMPORTANT: must not be called in a thread which has a lock on mbn_mutex */
 void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
+  int i;
+
   /* request cancellation for the threads */
   pthread_cancel(mbn->timeout_thread);
   pthread_cancel(mbn->throttle_thread);
@@ -147,6 +165,23 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
 
   /* free address list */
   free_addresses(mbn);
+
+  /* free objects */
+  for(i=0; i<mbn->node.NumberOfObjects; i++) {
+    if(mbn->objects[i].SensorSize > 0) {
+      free_datatype(mbn->objects[i].SensorType, &(mbn->objects[i].SensorMin));
+      free_datatype(mbn->objects[i].SensorType, &(mbn->objects[i].SensorMax));
+      free_datatype(mbn->objects[i].SensorType, &(mbn->objects[i].SensorData));
+    }
+    if(mbn->objects[i].ActuatorSize > 0) {
+      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorMin));
+      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorMax));
+      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorDefault));
+      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorData));
+    }
+  }
+  free(mbn->objects);
+
 
   /* wait for the threads
    * (make sure no locks on mbn->mbn_mutex are present here) */

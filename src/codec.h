@@ -21,7 +21,9 @@
 
 int parse_message(struct mbn_message *);
 void free_message(struct mbn_message *);
+void free_datatype(unsigned char, union mbn_data *);
 int create_message(struct mbn_message *, char);
 void copy_message(const struct mbn_message *, struct mbn_message *);
+void copy_datatype(unsigned char, int, const union mbn_data *, union mbn_data *);
 
 #endif
