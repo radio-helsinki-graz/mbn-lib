@@ -22,7 +22,7 @@
 
 struct mbn_node_info this_node = {
   0x00031337, 0x00, /* MambaNet Addr + Services */
-  1, 50, 1,   /* UniqueMediaAccessId */
+  0xFFFF, 0x0001, 0x0001,   /* UniqueMediaAccessId */
   "MambaNet Stack Test Application",
   ">> YorHel's Power Node! <<",
   0, 0,       /* Hardware revision */
@@ -122,8 +122,7 @@ void AcknowledgeReply(struct mbn_handler *mbn, struct mbn_message *msg, struct m
 
 int main(void) {
   struct mbn_handler *mbn;
-  struct timeval before, after;
-  struct mbn_message msg;
+  struct mbn_address_node *node;
 
   mbn = mbnInit(this_node, objects);
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
@@ -140,11 +139,19 @@ int main(void) {
   mbnSetAcknowledgeReplyCallback(mbn, AcknowledgeReply);
   mbnEthernetInit(mbn, "eth0");
 
+  /*
   sleep(3);
   union mbn_data dat = {.Octets="4321"};
   mbnSetActuatorData(mbn, 0x00000008, 1, MBN_DATATYPE_OCTETS, 5, dat, 1);
-  /*sleep(1);
+  sleep(1);
   mbnGetActuatorData(mbn, 0x00000008, 1, 0);*/
+
+  sleep(10);
+  printf(" MambaNetAddr  UniqueMediaAccessID  EngineAddr  Services\n");
+  for(node=NULL; ((node = mbnNextNode(mbn, node)) != NULL); )
+    printf(" 0x%08lX    %04X:%04X:%04X       0x%08lX  %02X\n",
+      node->MambaNetAddr, node->ManufacturerID, node->ProductID,
+      node->UniqueIDPerProduct, node->EngineAddr, node->Services);
 
   /*sleep(60);*/
   pthread_exit(NULL);

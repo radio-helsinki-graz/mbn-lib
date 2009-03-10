@@ -73,6 +73,26 @@ struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsi
 }
 
 
+/* get the address node in the list after the one pointed to
+ * by the argument, fetch the first node in the list if
+ * node == NULL. Returns NULL if node isn't found, or end
+ * of list has been reached */
+struct mbn_address_node * MBN_EXPORT mbnNextNode(struct mbn_handler *mbn, struct mbn_address_node *node) {
+  int i, next = 0;
+
+  if(node == NULL)
+    return mbn->addresses;
+
+  for(i=0; i<mbn->addrsize; i++) {
+    if(next && mbn->addresses[i].used)
+      return &(mbn->addresses[i]);
+    if(&(mbn->addresses[i]) == node)
+      next = 1;
+  }
+  return NULL;
+}
+
+
 /* free()'s the entire address list */
 void free_addresses(struct mbn_handler *mbn) {
   int i, j;
