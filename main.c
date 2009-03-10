@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 
 struct mbn_node_info this_node = {

@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #include "mbn.h"
 #include "object.h"
@@ -74,7 +75,7 @@ void *throttle_thread(void *arg) {
     select(0, NULL, NULL, NULL, &tv);
 
     /* lock */
-    pthread_mutex_lock(&(mbn->mbn_mutex));
+    pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
     /* check for changed sensors */
     for(i=0; i<mbn->node.NumberOfObjects; i++) {
@@ -96,7 +97,7 @@ void *throttle_thread(void *arg) {
     }
 
     /* unlock */
-    pthread_mutex_unlock(&(mbn->mbn_mutex));
+    pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
   }
 
   return NULL;
@@ -426,7 +427,7 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
-  pthread_mutex_lock(&(mbn->mbn_mutex));
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* update internal sensor data */
   mbn->objects[object].SensorData = dat;
@@ -439,7 +440,7 @@ void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short obje
   else if(mbn->objects[object].UpdateFrequency > 1)
     mbn->objects[object].changed = 1;
 
-  pthread_mutex_unlock(&(mbn->mbn_mutex));
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 void MBN_EXPORT mbnUpdateActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {

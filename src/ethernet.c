@@ -57,7 +57,7 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
   if(mbn->interface.cb_free != NULL)
     mbn->interface.cb_free(mbn);
 
-  pthread_mutex_lock(&(mbn->mbn_mutex));
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
   data = (struct mbn_ethernet_data *) malloc(sizeof(struct mbn_ethernet_data));
@@ -123,7 +123,7 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
   mbn->interface.cb_free_addr = free_addr;
   mbn->interface.cb_transmit = transmit;
 
-  pthread_mutex_unlock(&(mbn->mbn_mutex));
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
   return error;
 }
 
@@ -136,10 +136,10 @@ void ethernet_free(struct mbn_handler *mbn) {
   pthread_join(eth->thread, NULL);
 
   /* it's safe to do so, here */
-  pthread_mutex_lock(&(mbn->mbn_mutex));
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
   free(eth);
   memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
-  pthread_mutex_unlock(&(mbn->mbn_mutex));
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 

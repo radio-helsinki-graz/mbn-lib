@@ -26,8 +26,6 @@
 #ifndef MBN_H
 #define MBN_H
 
-#include <pthread.h>
-
 /* Global way to determine platform, considering we only
  * provide this stack for windows and linux at this point,
  * this method should be enough. It might be a better idea
@@ -297,10 +295,11 @@ struct mbn_handler {
   struct mbn_object *objects;
   struct mbn_msgqueue *queue;
   int pongtimeout;
-  pthread_t timeout_thread; /* make this a void pointer? now the app requires pthread.h */
-  pthread_t throttle_thread;
-  pthread_t msgqueue_thread;
-  pthread_mutex_t mbn_mutex; /* mutex to lock all data in the mbn_handler struct (except the mutex itself, of course) */
+  /* pthread objects */
+  void *timeout_thread;
+  void *throttle_thread;
+  void *msgqueue_thread;
+  void *mbn_mutex; /* mutex to lock all data in the mbn_handler struct */
   /* callbacks */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
   mbn_cb_AddressTableChange cb_AddressTableChange;
