@@ -50,12 +50,12 @@ void remove_node(struct mbn_handler *mbn, struct mbn_address_node *node) {
 
   /* remove node (and free the ifaddr pointer) */
   node->used = 0;
-  if(node->ifaddr != 0 && mbn->interface.cb_free_addr != NULL) {
+  if(node->ifaddr != 0 && mbn->itf->cb_free_addr != NULL) {
     for(i=0; i<mbn->addrsize; i++)
       if(mbn->addresses[i].used && &(mbn->addresses[i]) != node && mbn->addresses[i].ifaddr == node->ifaddr)
         break;
     if(i >= mbn->addrsize)
-      mbn->interface.cb_free_addr(node->ifaddr);
+      mbn->itf->cb_free_addr(node->ifaddr);
   }
   pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
@@ -102,7 +102,7 @@ void free_addresses(struct mbn_handler *mbn) {
         if(mbn->addresses[j].used && mbn->addresses[j].ifaddr == mbn->addresses[j].ifaddr)
           break;
       if(j >= mbn->addrsize)
-        mbn->interface.cb_free_addr(mbn->addresses[i].ifaddr);
+        mbn->itf->cb_free_addr(mbn->addresses[i].ifaddr);
     }
   }
   /* free the array */
@@ -234,13 +234,13 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
     }
     node->Alive = MBN_ADDR_TIMEOUT;
     /* update hardware address */
-    if(node->ifaddr != NULL && ifaddr != node->ifaddr && mbn->interface.cb_free_addr != NULL) {
+    if(node->ifaddr != NULL && ifaddr != node->ifaddr && mbn->itf->cb_free_addr != NULL) {
       /* check for nodes with the same pointer, and free the memory if none found */
       for(i=0; i<mbn->addrsize; i++)
         if(mbn->addresses[i].used && mbn->addresses[i].ifaddr == node->ifaddr)
           break;
       if(i >= mbn->addrsize)
-        mbn->interface.cb_free_addr(node->ifaddr);
+        mbn->itf->cb_free_addr(node->ifaddr);
     }
     node->ifaddr = ifaddr;
   }

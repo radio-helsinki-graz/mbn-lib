@@ -15,12 +15,14 @@
 ****************************************************************************/
 
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
- *  - Improve the API for H/W interface modules
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
  *    > TCP/IP (server AND client?)
  *    > Serial line
+ *    > SocketCAN
  *  - Test/port to windows (and probably OS X)
+ *  - Test suite?
+ *  - Documentation (LaTeX? word? manpages?)
 */
 
 #ifndef MBN_H
@@ -160,9 +162,11 @@ typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message
 typedef void(*mbn_cb_Error)(struct mbn_handler *, int, const char *);
 typedef void(*mbn_cb_AcknowledgeTimeout)(struct mbn_handler *, struct mbn_message *);
 typedef void(*mbn_cb_AcknowledgeReply)(struct mbn_handler *, struct mbn_message *, struct mbn_message *, int);
-typedef void(*mbn_cb_FreeInterface)(struct mbn_handler *);
+
+typedef void(*mbn_cb_InitInterface)(struct mbn_handler *, struct mbn_interface *);
+typedef void(*mbn_cb_FreeInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
-typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_handler *, unsigned char *, int, void *);
+typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, int, void *);
 
 
 /* large data types should be allocated (and freed)
@@ -218,6 +222,7 @@ struct mbn_object {
 /* Struct for HW interfaces */
 struct mbn_interface {
   void *data; /* can be used by the interface */
+  mbn_cb_InitInterface cb_init;
   mbn_cb_FreeInterface cb_free;
   mbn_cb_FreeInterfaceAddress cb_free_addr;
   mbn_cb_InterfaceTransmit cb_transmit;
@@ -289,7 +294,7 @@ struct mbn_address_node {
 /* All internal data should go into this struct */
 struct mbn_handler {
   struct mbn_node_info node;
-  struct mbn_interface interface;
+  struct mbn_interface *itf;
   int addrsize;
   struct mbn_address_node *addresses;
   struct mbn_object *objects;
@@ -325,9 +330,9 @@ struct mbn_handler {
 extern "C" {
 #endif
 
-struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info, struct mbn_object *);
+struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info, struct mbn_object *, struct mbn_interface *);
 void MBN_IMPORT mbnFree(struct mbn_handler *);
-int MBN_IMPORT mbnEthernetInit(struct mbn_handler *, char *interface);
+struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
 
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_handler *, unsigned char *, int, void *);
 void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);

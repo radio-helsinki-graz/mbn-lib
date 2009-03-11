@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 
 struct mbn_node_info this_node = {
@@ -131,11 +132,13 @@ void AcknowledgeReply(struct mbn_handler *mbn, struct mbn_message *msg, struct m
 int main(void) {
   struct mbn_handler *mbn;
   struct mbn_address_node *node;
+  struct mbn_interface *itf;
 
   objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
-  mbn = mbnInit(this_node, objects);
+  itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
+  mbn = mbnInit(this_node, objects, mbnEthernetOpen("eth0"));
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetNameChangeCallback(mbn, NameChange);
@@ -148,21 +151,6 @@ int main(void) {
   mbnSetErrorCallback(mbn, Error);
   mbnSetAcknowledgeTimeoutCallback(mbn, AcknowledgeTimeout);
   mbnSetAcknowledgeReplyCallback(mbn, AcknowledgeReply);
-  mbnEthernetInit(mbn, "eth0");
-
-  /*
-  sleep(3);
-  union mbn_data dat = {.Octets="4321"};
-  mbnSetActuatorData(mbn, 0x00000008, 1, MBN_DATATYPE_OCTETS, 5, dat, 1);
-  sleep(1);
-  mbnGetActuatorData(mbn, 0x00000008, 1, 0);*/
-
-  sleep(10);
-  printf(" MambaNetAddr  UniqueMediaAccessID  EngineAddr  Services\n");
-  for(node=NULL; ((node = mbnNextNode(mbn, node)) != NULL); )
-    printf(" 0x%08lX    %04X:%04X:%04X       0x%08lX  %02X\n",
-      node->MambaNetAddr, node->ManufacturerID, node->ProductID,
-      node->UniqueIDPerProduct, node->EngineAddr, node->Services);
 
   /*sleep(60);*/
   pthread_exit(NULL);

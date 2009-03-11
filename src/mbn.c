@@ -87,15 +87,19 @@ void *msgqueue_thread(void *arg) {
 }
 
 
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects) {
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects, struct mbn_interface *itf) {
   struct mbn_handler *mbn;
   struct mbn_object *obj;
   int i, l;
   pthread_mutexattr_t mattr;
 
+  if(itf == NULL)
+    return NULL;
+
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
   mbn->node.Services &= 0x7F; /* turn off validated bit */
+  mbn->itf = itf;
 
   /* pad descriptions and name with zero and clear some other things */
   l = strlen((char *)mbn->node.Description);
@@ -141,6 +145,10 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   /* initialize address list */
   init_addresses(mbn);
 
+  /* init interface */
+  if(mbn->itf->cb_init != NULL)
+    mbn->itf->cb_init(mbn, itf);
+
   /* create threads to keep track of timeouts */
   if(    pthread_create((pthread_t *)mbn->timeout_thread,  NULL, node_timeout_thread, (void *) mbn) != 0
       || pthread_create((pthread_t *)mbn->throttle_thread, NULL, throttle_thread,     (void *) mbn) != 0
@@ -164,8 +172,8 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   pthread_cancel(*((pthread_t *)mbn->msgqueue_thread));
 
   /* free interface */
-  if(mbn->interface.cb_free != NULL)
-    mbn->interface.cb_free(mbn);
+  if(mbn->itf->cb_free != NULL)
+    mbn->itf->cb_free(mbn->itf);
 
   /* free address list */
   free_addresses(mbn);
@@ -316,7 +324,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   void *ifaddr;
   int r;
 
-  if(mbn->interface.cb_transmit == NULL) {
+  if(mbn->itf->cb_transmit == NULL) {
     MBN_ERROR(mbn, MBN_ERROR_NO_INTERFACE);
     return;
   }
@@ -328,7 +336,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
 
   /* just forward the raw data to the interface, if we don't need to do any processing */
   if(flags & MBN_SEND_RAWDATA) {
-    mbn->interface.cb_transmit(mbn, raw, msg->rawlength, NULL);
+    mbn->itf->cb_transmit(mbn->itf, raw, msg->rawlength, NULL);
     return;
   }
 
@@ -406,7 +414,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   }
 
   /* send the data to the interface transmit callback */
-  mbn->interface.cb_transmit(mbn, raw, msg->rawlength, ifaddr);
+  mbn->itf->cb_transmit(mbn->itf, raw, msg->rawlength, ifaddr);
 }
 
 

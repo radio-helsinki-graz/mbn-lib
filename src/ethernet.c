@@ -34,34 +34,31 @@
 #define BUFFERSIZE 512
 
 
-struct mbn_ethernet_data {
+struct ethdat {
   int socket;
   int ifindex;
   unsigned char address[6];
   pthread_t thread;
+  struct mbn_handler *mbn;
 };
 
+void ethernet_init(struct mbn_handler *, struct mbn_interface *);
 void *receive_packets(void *);
-void ethernet_free(struct mbn_handler *);
+void ethernet_free(struct mbn_interface *);
 void free_addr(void *);
-void transmit(struct mbn_handler *, unsigned char *, int, void *);
+void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
-/* Creates a new ethernet interface and links it to the mbn handler */
-int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
-  struct mbn_ethernet_data *data;
+struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
+  struct ethdat *data;
+  struct mbn_interface *itf;
   struct ifreq ethreq;
   int error = 0;
   struct sockaddr_ll sockaddr;
 
-  if(mbn->interface.cb_free != NULL)
-    mbn->interface.cb_free(mbn);
-
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
-
-  memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
-  data = (struct mbn_ethernet_data *) malloc(sizeof(struct mbn_ethernet_data));
-  mbn->interface.data = (void *) data;
+  itf = (struct mbn_interface *) calloc(1, sizeof(struct mbn_interface));
+  data = (struct ethdat *) malloc(sizeof(struct ethdat));
+  itf->data = (void *) data;
 
   /* create a socket
    * Note we use ETH_P_ALL here, because that's the only way to receive
@@ -103,50 +100,46 @@ int MBN_EXPORT mbnEthernetInit(struct mbn_handler *mbn, char *interface) {
     error++;
   }
 
-  /* create thread to wait for packets */
-  if(!error && pthread_create(&(data->thread), NULL, receive_packets, (void *) mbn) != 0) {
-    perror("Error creating thread");
-    error++;
-  }
-
   /* something went wrong in the above statements */
   if(error) {
     close(data->socket);
-    mbn->interface.data = NULL;
+    free(itf);
     free(data);
-  } else
-    MBN_TRACE(printf("Listening on ethernet interface %s (index = %d, MAC = %02X:%02X:%02X:%02X:%02X:%02X)",
-      interface, data->ifindex, data->address[0], data->address[1], data->address[2], data->address[3],
-      data->address[4], data->address[5]));
+    return NULL;
+  }
 
-  mbn->interface.cb_free = ethernet_free;
-  mbn->interface.cb_free_addr = free_addr;
-  mbn->interface.cb_transmit = transmit;
+  itf->cb_init = ethernet_init;
+  itf->cb_free = ethernet_free;
+  itf->cb_free_addr = free_addr;
+  itf->cb_transmit = transmit;
 
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
-  return error;
+  return itf;
 }
 
 
-void ethernet_free(struct mbn_handler *mbn) {
-  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
+void ethernet_init(struct mbn_handler *mbn, struct mbn_interface *itf) {
+  struct ethdat *dat = (struct ethdat *)itf->data;
+  dat->mbn = mbn;
 
-  pthread_cancel(eth->thread);
-  /* note: locking mbn->mbn_mutex here may result in a deadlock */
-  pthread_join(eth->thread, NULL);
+  /* create thread to wait for packets */
+  if(pthread_create(&(dat->thread), NULL, receive_packets, (void *) itf) != 0)
+    perror("Error creating thread");
+}
 
-  /* it's safe to do so, here */
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
-  free(eth);
-  memset(&(mbn->interface), 0, sizeof(struct mbn_interface));
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
+
+void ethernet_free(struct mbn_interface *itf) {
+  struct ethdat *dat = (struct ethdat *)itf->data;
+  pthread_cancel(dat->thread);
+  pthread_join(dat->thread, NULL);
+  free(dat);
+  free(itf);
 }
 
 
 /* Waits for input from network */
 void *receive_packets(void *ptr) {
-  struct mbn_handler *mbn = (struct mbn_handler *) ptr;
-  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
+  struct mbn_interface *itf = (struct mbn_interface *)ptr;
+  struct ethdat *dat = (struct ethdat *) itf->data;
   unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
   int i, msgbuflen = 0;
   fd_set rdfd;
@@ -162,10 +155,10 @@ void *receive_packets(void *ptr) {
 
     /* check for incoming data */
     FD_ZERO(&rdfd);
-    FD_SET(eth->socket, &rdfd);
+    FD_SET(dat->socket, &rdfd);
     tv.tv_sec = 1;
     tv.tv_usec = 0;
-    rd = select(eth->socket+1, &rdfd, NULL, NULL, &tv);
+    rd = select(dat->socket+1, &rdfd, NULL, NULL, &tv);
     if(rd == 0 || (rd < 0 && errno == EINTR))
       continue;
     if(rd < 0) {
@@ -174,7 +167,7 @@ void *receive_packets(void *ptr) {
     }
 
     /* read incoming data */
-    rd = recvfrom(eth->socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&from, &addrlength);
+    rd = recvfrom(dat->socket, buffer, BUFFERSIZE, 0, (struct sockaddr *)&from, &addrlength);
     if(rd == 0 || (rd < 0 && errno == EINTR))
       continue;
     if(rd < 0) {
@@ -195,7 +188,7 @@ void *receive_packets(void *ptr) {
         if(msgbuflen >= MBN_MIN_MESSAGE_SIZE) {
           ifaddr = malloc(from.sll_halen);
           memcpy(ifaddr, (void *)from.sll_addr, from.sll_halen);
-          mbnProcessRawMessage(mbn, msgbuf, msgbuflen, ifaddr);
+          mbnProcessRawMessage(dat->mbn, msgbuf, msgbuflen, ifaddr);
         }
         msgbuflen = 0;
       }
@@ -205,30 +198,23 @@ void *receive_packets(void *ptr) {
     }
   }
 
-  MBN_ERROR(mbn, MBN_ERROR_ITF_READ);
-  MBN_TRACE(printf("Closing the receiver thread..."));
+  MBN_ERROR(dat->mbn, MBN_ERROR_ITF_READ);
 
   return NULL;
 }
 
 
-void transmit(struct mbn_handler *mbn, unsigned char *buffer, int length, void *ifaddr) {
-  struct mbn_ethernet_data *eth = (struct mbn_ethernet_data *) mbn->interface.data;
+void transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void *ifaddr) {
+  struct ethdat *dat = (struct ethdat *) itf->data;
   unsigned char *addr = (unsigned char *) ifaddr;
   struct sockaddr_ll saddr;
   int rd, sent;
-
-  if(addr != NULL) {
-    MBN_TRACE(printf("Transmit message of %dB to %02X:%02X:%02X:%02X:%02X:%02X",
-      length, addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]));
-  } else
-    MBN_TRACE(printf("Broadcasting message of %dB", length));
 
   /* fill sockaddr struct */
   memset((void *)&saddr, 0, sizeof(struct sockaddr_ll));
   saddr.sll_family   = AF_PACKET;
   saddr.sll_protocol = htons(ETH_P_DNR);
-  saddr.sll_ifindex  = eth->ifindex;
+  saddr.sll_ifindex  = dat->ifindex;
   saddr.sll_hatype   = ARPHRD_ETHER;
   saddr.sll_pkttype  = PACKET_OTHERHOST;
   saddr.sll_halen    = ETH_ALEN;
@@ -239,9 +225,9 @@ void transmit(struct mbn_handler *mbn, unsigned char *buffer, int length, void *
 
   /* send data */
   sent = 0;
-  while((rd = sendto(eth->socket, &(buffer[sent]), length-sent, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll))) < length-sent) {
+  while((rd = sendto(dat->socket, &(buffer[sent]), length-sent, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll))) < length-sent) {
     if(rd < 0) {
-      MBN_ERROR(mbn, MBN_ERROR_ITF_READ);
+      MBN_ERROR(dat->mbn, MBN_ERROR_ITF_READ);
       perror("sendto()");
       return;
     }
