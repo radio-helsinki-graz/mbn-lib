@@ -23,10 +23,13 @@
  *  - Test/port to windows (and probably OS X)
  *  - Test suite?
  *  - Documentation (LaTeX? word? manpages?)
+ *  - Dynamic configuration and creation of mbn.h
+ *     (so the application knows which interface modules can be used at compile time)
 */
 
 #ifndef MBN_H
 #define MBN_H
+
 
 /* Global way to determine platform, considering we only
  * provide this stack for windows and linux at this point,
@@ -52,11 +55,19 @@
 # define MBN_EXPORT
 #endif
 
+
+
+/*
+ *    G L O B A L   D E F I N E S
+ */
+
+/* stack configuration */
 #define MBN_ADDR_TIMEOUT    110 /* seconds */
 #define MBN_ADDR_MSG_TIMEOUT 30 /* sending address reservation information packets */
 
 #define MBN_ACKNOWLEDGE_RETRIES 5 /* number of times to retry a message requiring an acknowledge */
 
+/* protocol information */
 #define MBN_BROADCAST_ADDRESS 0x10000000
 
 #define MBN_PROTOCOL_VERSION_MAJOR 0
@@ -65,18 +76,22 @@
 #define MBN_MAX_MESSAGE_SIZE 128
 #define MBN_MIN_MESSAGE_SIZE 16
 
+/* message types */
 #define MBN_MSGTYPE_ADDRESS 0x00
 #define MBN_MSGTYPE_OBJECT  0x01
 
+/* address message types */
 #define MBN_ADDR_TYPE_INFO     0x00
 #define MBN_ADDR_TYPE_PING     0x01
 #define MBN_ADDR_TYPE_RESPONSE 0x02
 
+/* flags for node services */
 #define MBN_ADDR_SERVICES_SERVER 0x01
 #define MBN_ADDR_SERVICES_ENGINE 0x02
 #define MBN_ADDR_SERVICES_ERROR  0x40
 #define MBN_ADDR_SERVICES_VALID  0x80
 
+/* object action messages */
 #define MBN_OBJ_ACTION_GET_INFO           0
 #define MBN_OBJ_ACTION_INFO_RESPONSE      1
 #define MBN_OBJ_ACTION_GET_ENGINE         2
@@ -92,6 +107,7 @@
 #define MBN_OBJ_ACTION_ACTUATOR_RESPONSE 65
 #define MBN_OBJ_ACTION_SET_ACTUATOR      66
 
+/* data types */
 #define MBN_DATATYPE_NODATA    0
 #define MBN_DATATYPE_UINT      1
 #define MBN_DATATYPE_SINT      2
@@ -110,19 +126,14 @@
 #define MBN_SEND_ACKNOWLEDGE  0x10 /* require acknowledge, and re-send message after a timeout */
 #define MBN_SEND_FORCEID      0x20 /* don't overwrite MessageID field */
 
-/* Global error codes */
-enum mbn_error {
-  MBN_ERROR_NO_INTERFACE,
-  MBN_ERROR_INVALID_ADDR,
-  MBN_ERROR_CREATE_MESSAGE,
-  MBN_ERROR_PARSE_MESSAGE,
-  MBN_ERROR_ITF_READ,
-  MBN_ERROR_ITF_WRITE
-};
-/* must be in the same order as the above enum */
-extern const char *mbn_errormessages[];
 
-/* useful macros */
+
+
+/*
+ *    M A C R O S
+ *   (for internal use - shouldn't be here...)
+ */
+
 #define MBN_TRACE(x) if(1) { printf("%s:%d:%s(): ", __FILE__, __LINE__, __func__); x; printf("\n"); }
 #define MBN_ADDR_EQ(a, b) ( \
     ((a)->ManufacturerID     == 0 || (b)->ManufacturerID     == 0 || (a)->ManufacturerID     == (b)->ManufacturerID)  && \
@@ -131,7 +142,30 @@ extern const char *mbn_errormessages[];
   )
 #define MBN_ERROR(mbn, e) if((mbn)->cb_Error != NULL) { (mbn)->cb_Error(mbn, e, mbn_errormessages[e]); }
 
-/* forward declarations, because many types depend on other types */
+
+
+
+/*
+ *    E R R O R   H A N D L I N G
+ */
+
+enum mbn_error {
+  MBN_ERROR_NO_INTERFACE,
+  MBN_ERROR_INVALID_ADDR,
+  MBN_ERROR_CREATE_MESSAGE,
+  MBN_ERROR_PARSE_MESSAGE,
+  MBN_ERROR_ITF_READ,
+  MBN_ERROR_ITF_WRITE
+};
+extern const char *mbn_errormessages[];
+
+
+
+
+/*
+ *    F O R W A R D   D E C L A R A T I O N S  (for structs)
+ */
+
 struct mbn_node_info;
 struct mbn_object;
 struct mbn_interface;
@@ -145,29 +179,44 @@ struct mbn_address_node;
 struct mbn_handler;
 
 
-/* Callback function prototypes */
-typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
-typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
+
+
+/*
+ *    C A L L B A C K   F U N C T I O N   P R O T O T Y P E S
+ */
+
+/* general */
+typedef void(*mbn_cb_Error)(struct mbn_handler *, int, const char *);
 typedef void(*mbn_cb_OnlineStatus)(struct mbn_handler *, unsigned long, char);
 typedef int(*mbn_cb_NameChange)(struct mbn_handler *, unsigned char *);
 typedef int(*mbn_cb_DefaultEngineAddrChange)(struct mbn_handler *, unsigned long);
+typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
+
+/* messages */
+typedef void(*mbn_cb_AcknowledgeTimeout)(struct mbn_handler *, struct mbn_message *);
+typedef void(*mbn_cb_AcknowledgeReply)(struct mbn_handler *, struct mbn_message *, struct mbn_message *, int);
+typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
+
+/* objects */
 typedef int(*mbn_cb_SetActuatorData)(struct mbn_handler *, unsigned short, union mbn_data);
 typedef int(*mbn_cb_GetSensorData)(struct mbn_handler *, unsigned short, union mbn_data *);
 typedef void(*mbn_cb_ObjectFrequencyChange)(struct mbn_handler *, unsigned short, unsigned char);
-
 typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, struct mbn_message_object_information *);
 typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char);
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
 
-typedef void(*mbn_cb_Error)(struct mbn_handler *, int, const char *);
-typedef void(*mbn_cb_AcknowledgeTimeout)(struct mbn_handler *, struct mbn_message *);
-typedef void(*mbn_cb_AcknowledgeReply)(struct mbn_handler *, struct mbn_message *, struct mbn_message *, int);
-
+/* interfaces */
 typedef void(*mbn_cb_InitInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, int, void *);
 
+
+
+
+/*
+ *    S T R U C T   D E F I N I T I O N S
+ */
 
 /* large data types should be allocated (and freed)
  * manually, to preserve memory for smaller data types */
@@ -182,46 +231,44 @@ union mbn_data {
   struct mbn_message_object_information *Info;
 };
 
-
 /* All information required for the default objects of a node */
 struct mbn_node_info {
-  unsigned int MambaNetAddr;      /* Variable */
-  char Services;                  /* Variable (MSBit) */
+  unsigned int MambaNetAddr;
+  char Services;
   unsigned char Description[64];
-  unsigned char Name[32];         /* Variable */
+  unsigned char Name[32];
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned char HardwareMajorRevision, HardwareMinorRevision;
   unsigned char FirmwareMajorRevision, FirmwareMinorRevision;
   unsigned char FPGAFirmwareMajorRevision, FPGAFirmwareMinorRevision;
   unsigned short NumberOfObjects;
-  unsigned int DefaultEngineAddr; /* Variable */
+  unsigned int DefaultEngineAddr;
   unsigned char HardwareParent[6];
   unsigned char ServiceRequest;
 };
 
-
+/* Information about a custom object */
 struct mbn_object {
   unsigned char Description[32];
-  unsigned char UpdateFrequency;  /* Variable */
+  unsigned char UpdateFrequency;
   unsigned char SensorType;
   unsigned char SensorSize;
   union mbn_data SensorMin, SensorMax;
-  union mbn_data SensorData;   /* Variable (only from the application) */
+  union mbn_data SensorData;
   unsigned char ActuatorType;
   unsigned char ActuatorSize;
   union mbn_data ActuatorMin, ActuatorMax;
   union mbn_data ActuatorDefault;
-  union mbn_data ActuatorData; /* Variable */
-  unsigned int EngineAddr;     /* Variable - pretty much unused */
-  /* Services is always 0x03 for sensors and 0x00 for actuators */
-  unsigned int timeout; /* internal, sensor change will be sent when timeout reaches 0 */
-  char changed; /* internal, used for signaling a change */
+  union mbn_data ActuatorData;
+  unsigned int EngineAddr;
+  /* used internally */
+  unsigned int timeout;
+  char changed;
 };
 
-
-/* Struct for HW interfaces */
+/* HW interfaces */
 struct mbn_interface {
-  void *data; /* can be used by the interface */
+  void *data;
   mbn_cb_InitInterface cb_init;
   mbn_cb_FreeInterface cb_free;
   mbn_cb_FreeInterfaceAddress cb_free_addr;
@@ -229,8 +276,7 @@ struct mbn_interface {
   struct mbn_handler *mbn;
 };
 
-
-/* Packet information structs */
+/* Address message */
 struct mbn_message_address {
   unsigned char Type;
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
@@ -238,6 +284,7 @@ struct mbn_message_address {
   unsigned char Services;
 };
 
+/* Object information message */
 struct mbn_message_object_information {
   unsigned char Description[33];
   unsigned char Services;
@@ -252,6 +299,7 @@ struct mbn_message_object_information {
   union mbn_data ActuatorDefault;
 };
 
+/* Object message */
 struct mbn_message_object {
   unsigned short Number;
   unsigned char Action;
@@ -260,6 +308,7 @@ struct mbn_message_object {
   union mbn_data Data;
 };
 
+/* MambaNet Message */
 struct mbn_message {
   unsigned char AcknowledgeReply;
   unsigned long AddressTo, AddressFrom;
@@ -276,6 +325,7 @@ struct mbn_message {
   int bufferlength;
 };
 
+/* Message queue for acknowledges */
 struct mbn_msgqueue {
   unsigned int id;
   struct mbn_message msg;
@@ -283,16 +333,17 @@ struct mbn_msgqueue {
   struct mbn_msgqueue *next;
 };
 
+/* Address table node */
 struct mbn_address_node {
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned long MambaNetAddr, EngineAddr;
   unsigned char Services;
-  int Alive; /* time since we last heard anything from the node */
-  void *ifaddr; /* to be used by HW interfaces */
+  int Alive;
+  void *ifaddr;
   char used;
 };
 
-/* All internal data should go into this struct */
+/* The main handler */
 struct mbn_handler {
   struct mbn_node_info node;
   struct mbn_interface *itf;
@@ -305,7 +356,7 @@ struct mbn_handler {
   void *timeout_thread;
   void *throttle_thread;
   void *msgqueue_thread;
-  void *mbn_mutex; /* mutex to lock all data in the mbn_handler struct */
+  void *mbn_mutex;
   /* callbacks */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;
   mbn_cb_AddressTableChange cb_AddressTableChange;
@@ -326,25 +377,36 @@ struct mbn_handler {
 };
 
 
-/* Function prototypes */
+
+
+/*
+ *     F U N C T I O N   P R O T O T Y P E S
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* mbn.c */
 struct mbn_handler * MBN_IMPORT mbnInit(struct mbn_node_info, struct mbn_object *, struct mbn_interface *);
 void MBN_IMPORT mbnFree(struct mbn_handler *);
-struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
 
 void MBN_IMPORT mbnProcessRawMessage(struct mbn_interface *, unsigned char *, int, void *);
 void MBN_IMPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);
 
+void MBN_IMPORT mbnUpdateNodeName(struct mbn_handler *, char *);
+void MBN_IMPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
+void MBN_IMPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
+
+/* ethernet.c */
+struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
+
+/* address.c */
 void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNextNode(struct mbn_handler *, struct mbn_address_node *);
 
-void MBN_IMPORT mbnUpdateNodeName(struct mbn_handler *, char *);
-void MBN_IMPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
-void MBN_IMPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
+/* object.c */
 void MBN_IMPORT mbnUpdateSensorData(struct mbn_handler *, unsigned short, union mbn_data);
 void MBN_IMPORT mbnUpdateActuatorData(struct mbn_handler *, unsigned short, union mbn_data);
 void MBN_IMPORT mbnGetSensorData(struct mbn_handler *, unsigned long, unsigned short, char);
@@ -359,52 +421,64 @@ void MBN_IMPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 #endif
 
 
+
+
+/*
+ *     M A C R O S
+ */
+
 /* Things that look like functions to the application but are secretly macros.
  * (This is both faster because no extra functions have to be called, and makes
  *  the library smaller because no extra functions have to be exported)
  * These macros may still be replaced with proper functions when needed in the future.
  */
-#define mbnSetInterface(mbn, itf)                          (mbn->interface = interface)
-#define mbnSetReceiveMessageCallback(mbn, func)            (mbn->cb_ReceiveMessage = func)
-#define mbnUnsetReceiveMessageCallback(mbn)                (mbn->cb_ReceiveMessage = NULL)
-#define mbnSetAddressTableChangeCallback(mbn, func)        (mbn->cb_AddressTableChange = func)
-#define mbnUnsetAddressTableChangeCallback(mbn)            (mbn->cb_AddressTableChange = NULL)
-#define mbnSetOnlineStatusCallback(mbn, func)              (mbn->cb_OnlineStatus = func)
-#define mbnUnsetOnlineStatusCallback(mbn)                  (mbn->cb_OnlineStatus = NULL)
-#define mbnSetNameChangeCallback(mbn, func)                (mbn->cb_NameChange = func)
-#define mbnUnsetNameChangeCallback(mbn)                    (mbn->cb_NameChange = NULL)
-#define mbnSetDefaultEngineAddrChangeCallback(mbn, func)   (mbn->cb_DefaultEngineAddrChange = func)
-#define mbnUnsetDefaultEngineAddrChangeCallback(mbn)       (mbn->cb_DefaultEngineAddrChange = NULL)
-#define mbnSetSetActuatorDataCallback(mbn, func)           (mbn->cb_SetActuatorData = func)
-#define mbnUnsetSetActuatorDataCallback(mbn)               (mbn->cb_SetActuatorData = NULL)
-#define mbnSetGetSensorDataCallback(mbn, func)             (mbn->cb_GetSensorData = func)
-#define mbnUnsetGetSensorDataCallback(mbn)                 (mbn->cb_GetSensorData = NULL)
-#define mbnSetObjectFrequencyChangeCallback(mbn, func)     (mbn->cb_ObjectFrequencyChange = func)
-#define mbnUnsetObjectFrequencyChangeCallback(mbn)         (mbn->cb_ObjectFrequencyChange = NULL)
-#define mbnSetObjectInformationResponseCallback(mbn, func) (mbn->cb_ObjectInformationResponse = func)
-#define mbnUnsetObjectInformationResponseCallback(mbn)     (mbn->cb_ObjectInformationResponse = NULL)
-#define mbnSetObjectFrequencyResponseCallback(mbn, func)   (mbn->cb_ObjectFrequencyResponse = func)
-#define mbnUnsetObjectFrequencyResponseCallback(mbn)       (mbn->cb_ObjectFrequencyResponse = NULL)
-#define mbnSetSensorDataResponseCallback(mbn, func)        (mbn->cb_SensorDataResponse = func)
-#define mbnUnsetSensorDataResponseCallback(mbn)            (mbn->cb_SensorDataResponse = NULL)
-#define mbnSetSensorDataChangedCallback(mbn, func)         (mbn->cb_SensorDataChanged = func)
-#define mbnUnsetSensorDataChangedCallback(mbn)             (mbn->cb_SensorDataChanged = NULL)
-#define mbnSetActuatorDataResponseCallback(mbn, func)      (mbn->cb_ActuatorDataResponse = func)
-#define mbnUnsetActuatorDataResponseCallback(mbn)          (mbn->cb_ActuatorDataResponse = NULL)
-#define mbnSetErrorCallback(mbn, func)                     (mbn->cb_Error = func)
-#define mbnUnsetErrorCallback(mbn)                         (mbn->cb_Error = NULL)
-#define mbnSetAcknowledgeTimeoutCallback(mbn, func)        (mbn->cb_AcknowledgeTimeout = func)
-#define mbnUnsetAcknowledgeTimeoutCallback(mbn)            (mbn->cb_AcknowledgeTimeout = NULL)
-#define mbnSetAcknowledgeReplyCallback(mbn, func)          (mbn->cb_AcknowledgeReply = func)
-#define mbnUnsetAcknowledgeReplyCallback(mbn)              (mbn->cb_AcknowledgeReply = NULL)
+#define mbnSetInterface(mbn, itf)                          ((mbn)->interface = interface)
+#define mbnSetReceiveMessageCallback(mbn, func)            ((mbn)->cb_ReceiveMessage = func)
+#define mbnUnsetReceiveMessageCallback(mbn)                ((mbn)->cb_ReceiveMessage = NULL)
+#define mbnSetAddressTableChangeCallback(mbn, func)        ((mbn)->cb_AddressTableChange = func)
+#define mbnUnsetAddressTableChangeCallback(mbn)            ((mbn)->cb_AddressTableChange = NULL)
+#define mbnSetOnlineStatusCallback(mbn, func)              ((mbn)->cb_OnlineStatus = func)
+#define mbnUnsetOnlineStatusCallback(mbn)                  ((mbn)->cb_OnlineStatus = NULL)
+#define mbnSetNameChangeCallback(mbn, func)                ((mbn)->cb_NameChange = func)
+#define mbnUnsetNameChangeCallback(mbn)                    ((mbn)->cb_NameChange = NULL)
+#define mbnSetDefaultEngineAddrChangeCallback(mbn, func)   ((mbn)->cb_DefaultEngineAddrChange = func)
+#define mbnUnsetDefaultEngineAddrChangeCallback(mbn)       ((mbn)->cb_DefaultEngineAddrChange = NULL)
+#define mbnSetSetActuatorDataCallback(mbn, func)           ((mbn)->cb_SetActuatorData = func)
+#define mbnUnsetSetActuatorDataCallback(mbn)               ((mbn)->cb_SetActuatorData = NULL)
+#define mbnSetGetSensorDataCallback(mbn, func)             ((mbn)->cb_GetSensorData = func)
+#define mbnUnsetGetSensorDataCallback(mbn)                 ((mbn)->cb_GetSensorData = NULL)
+#define mbnSetObjectFrequencyChangeCallback(mbn, func)     ((mbn)->cb_ObjectFrequencyChange = func)
+#define mbnUnsetObjectFrequencyChangeCallback(mbn)         ((mbn)->cb_ObjectFrequencyChange = NULL)
+#define mbnSetObjectInformationResponseCallback(mbn, func) ((mbn)->cb_ObjectInformationResponse = func)
+#define mbnUnsetObjectInformationResponseCallback(mbn)     ((mbn)->cb_ObjectInformationResponse = NULL)
+#define mbnSetObjectFrequencyResponseCallback(mbn, func)   ((mbn)->cb_ObjectFrequencyResponse = func)
+#define mbnUnsetObjectFrequencyResponseCallback(mbn)       ((mbn)->cb_ObjectFrequencyResponse = NULL)
+#define mbnSetSensorDataResponseCallback(mbn, func)        ((mbn)->cb_SensorDataResponse = func)
+#define mbnUnsetSensorDataResponseCallback(mbn)            ((mbn)->cb_SensorDataResponse = NULL)
+#define mbnSetSensorDataChangedCallback(mbn, func)         ((mbn)->cb_SensorDataChanged = func)
+#define mbnUnsetSensorDataChangedCallback(mbn)             ((mbn)->cb_SensorDataChanged = NULL)
+#define mbnSetActuatorDataResponseCallback(mbn, func)      ((mbn)->cb_ActuatorDataResponse = func)
+#define mbnUnsetActuatorDataResponseCallback(mbn)          ((mbn)->cb_ActuatorDataResponse = NULL)
+#define mbnSetErrorCallback(mbn, func)                     ((mbn)->cb_Error = func)
+#define mbnUnsetErrorCallback(mbn)                         ((mbn)->cb_Error = NULL)
+#define mbnSetAcknowledgeTimeoutCallback(mbn, func)        ((mbn)->cb_AcknowledgeTimeout = func)
+#define mbnUnsetAcknowledgeTimeoutCallback(mbn)            ((mbn)->cb_AcknowledgeTimeout = NULL)
+#define mbnSetAcknowledgeReplyCallback(mbn, func)          ((mbn)->cb_AcknowledgeReply = func)
+#define mbnUnsetAcknowledgeReplyCallback(mbn)              ((mbn)->cb_AcknowledgeReply = NULL)
 
 
 
-/* One VA_ARG functions embedded in the .h, as exporting them
- *  from .dlls be a bit problematic on some systems */
+
+/*
+ *     O B J E C T   L I S T   C R E A T I O N
+ */
+
 #ifdef MBN_VARARG
 #include <stdarg.h>
 #include <string.h>
+
+/* One VA_ARG functions embedded in the .h, as exporting them
+ *  from .dlls be a bit problematic on some systems */
 
 struct mbn_object MBN_OBJ(char *desc, unsigned char freq, ...) {
   struct mbn_object obj;
@@ -504,11 +578,10 @@ struct mbn_object MBN_OBJ(char *desc, unsigned char freq, ...) {
   return obj;
 }
 
-
-#endif
-
+#endif /* MBN_VARARG */
 
 
-#endif
+
+#endif /* MBN_H */
 
 
