@@ -17,14 +17,15 @@
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
- *    > TCP/IP (server AND client?)
  *    > Serial line
  *    > SocketCAN
+ *  - Better error handling for interface modules?
  *  - Test/port to windows (and probably OS X)
  *  - Test suite?
  *  - Documentation (LaTeX? word? manpages?)
  *  - Dynamic configuration and creation of mbn.h
  *     (so the application knows which interface modules can be used at compile time)
+ *  - Buffering of outgoing packets (to make all mbn* calls non-blocking)
 */
 
 #ifndef MBN_H
@@ -398,8 +399,11 @@ void MBN_IMPORT mbnUpdateNodeName(struct mbn_handler *, char *);
 void MBN_IMPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
 void MBN_IMPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 
-/* ethernet.c */
+/* if_ethernet.c */
 struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
+
+/* if_tcp.c */
+struct mbn_interface * MBN_IMPORT mbnTCPOpen(char *, int, char *, int);
 
 /* address.c */
 void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);

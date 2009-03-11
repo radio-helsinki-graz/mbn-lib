@@ -252,8 +252,8 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   msg.raw = buffer;
   msg.rawlength = length;
 
-  if(0) {
-    printf("RAW -> ");
+  if(1) {
+    printf("< RAW: ");
     for(r=0;r<msg.rawlength;r++)
       printf(" %02X", msg.raw[r]);
     printf("\n");
@@ -262,7 +262,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   /* parse message */
   if((r = parse_message(&msg)) != 0) {
     if(0 && msg.bufferlength) {
-      printf("BUF -> ");
+      printf("  BUF: ");
       for(r=0;r<msg.bufferlength;r++)
         printf(" %02X", msg.buffer[r]);
       printf("\n");
@@ -405,11 +405,11 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       ifaddr = dest->ifaddr;
   }
 
-  if(0) {
-    printf("RAW: ");
+  if(1) {
+    printf("> RAW: ");
     for(r=0; r<msg->rawlength; r++)
       printf(" %02X", msg->raw[r]);
-    printf("\nBUF: ");
+    printf("\n  BUF: ");
     for(r=0; r<msg->bufferlength; r++)
       printf(" %02X", msg->buffer[r]);
     printf("\n");

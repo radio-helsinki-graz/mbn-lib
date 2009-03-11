@@ -137,8 +137,7 @@ int main(void) {
   objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
-  itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
-  mbn = mbnInit(this_node, objects, mbnEthernetOpen("eth0"));
+  mbn = mbnInit(this_node, objects, mbnTCPOpen(NULL, 0, "0.0.0.0", 0));
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetNameChangeCallback(mbn, NameChange);

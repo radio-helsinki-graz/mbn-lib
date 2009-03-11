@@ -1,6 +1,6 @@
 CFLAGS  = -Wall -Wextra -std=c89 -pedantic
 HEADERS = address.h codec.h mbn.h object.h
-OBJECTS = address.o codec.o if_ethernet.o mbn.o object.o
+OBJECTS = address.o codec.o if_ethernet.o if_tcp.o mbn.o object.o
 STATIC  = mbn.a
 
 all: ${STATIC}
