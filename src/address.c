@@ -78,10 +78,7 @@ struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsi
  * node == NULL. Returns NULL if node isn't found, or end
  * of list has been reached */
 struct mbn_address_node * MBN_EXPORT mbnNextNode(struct mbn_handler *mbn, struct mbn_address_node *node) {
-  int i, next = 0;
-
-  if(node == NULL)
-    return mbn->addresses;
+  int i, next = node == NULL ? 1 : 0;
 
   for(i=0; i<mbn->addrsize; i++) {
     if(next && mbn->addresses[i].used)
