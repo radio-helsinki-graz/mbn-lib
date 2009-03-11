@@ -100,6 +100,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   mbn->node = node;
   mbn->node.Services &= 0x7F; /* turn off validated bit */
   mbn->itf = itf;
+  itf->mbn = mbn;
 
   /* pad descriptions and name with zero and clear some other things */
   l = strlen((char *)mbn->node.Description);
@@ -146,8 +147,8 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   init_addresses(mbn);
 
   /* init interface */
-  if(mbn->itf->cb_init != NULL)
-    mbn->itf->cb_init(mbn, itf);
+  if(itf->cb_init != NULL)
+    itf->cb_init(itf);
 
   /* create threads to keep track of timeouts */
   if(    pthread_create((pthread_t *)mbn->timeout_thread,  NULL, node_timeout_thread, (void *) mbn) != 0
@@ -242,7 +243,8 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
 
 
 /* Entry point for all incoming MambaNet messages */
-void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buffer, int length, void *ifaddr) {
+void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *buffer, int length, void *ifaddr) {
+  struct mbn_handler *mbn = itf->mbn;
   int r, processed = 0;
   struct mbn_message msg;
 

@@ -39,10 +39,9 @@ struct ethdat {
   int ifindex;
   unsigned char address[6];
   pthread_t thread;
-  struct mbn_handler *mbn;
 };
 
-void ethernet_init(struct mbn_handler *, struct mbn_interface *);
+void ethernet_init(struct mbn_interface *);
 void *receive_packets(void *);
 void ethernet_free(struct mbn_interface *);
 void free_addr(void *);
@@ -117,9 +116,8 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
 }
 
 
-void ethernet_init(struct mbn_handler *mbn, struct mbn_interface *itf) {
+void ethernet_init(struct mbn_interface *itf) {
   struct ethdat *dat = (struct ethdat *)itf->data;
-  dat->mbn = mbn;
 
   /* create thread to wait for packets */
   if(pthread_create(&(dat->thread), NULL, receive_packets, (void *) itf) != 0)
@@ -188,7 +186,7 @@ void *receive_packets(void *ptr) {
         if(msgbuflen >= MBN_MIN_MESSAGE_SIZE) {
           ifaddr = malloc(from.sll_halen);
           memcpy(ifaddr, (void *)from.sll_addr, from.sll_halen);
-          mbnProcessRawMessage(dat->mbn, msgbuf, msgbuflen, ifaddr);
+          mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }
         msgbuflen = 0;
       }
@@ -198,7 +196,7 @@ void *receive_packets(void *ptr) {
     }
   }
 
-  MBN_ERROR(dat->mbn, MBN_ERROR_ITF_READ);
+  MBN_ERROR(itf->mbn, MBN_ERROR_ITF_READ);
 
   return NULL;
 }
@@ -227,7 +225,7 @@ void transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void
   sent = 0;
   while((rd = sendto(dat->socket, &(buffer[sent]), length-sent, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll))) < length-sent) {
     if(rd < 0) {
-      MBN_ERROR(dat->mbn, MBN_ERROR_ITF_READ);
+      MBN_ERROR(itf->mbn, MBN_ERROR_ITF_READ);
       perror("sendto()");
       return;
     }
