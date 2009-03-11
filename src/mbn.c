@@ -206,7 +206,7 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
   if(!msg->AcknowledgeReply || msg->MessageID == 0)
     return 0;
 
-  pthread_mutex_lock((pthread_mutex_t *)&(mbn->mbn_mutex));
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
   /* search for the message ID in our queue */
   for(q=last=mbn->queue; q!=NULL; q=q->next) {
     if(q->id == msg->MessageID)
@@ -228,7 +228,7 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
     free(q);
   }
 
-  pthread_mutex_unlock((pthread_mutex_t *)&(mbn->mbn_mutex));
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
   return 1;
 }
 
@@ -275,7 +275,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
       msg.Data.Object.Action, msg.Data.Object.Number, msg.Data.Object.DataType));
 
   /* we're going to be accessing the mbn struct, lock! */
-  pthread_mutex_lock((pthread_mutex_t *)&(mbn->mbn_mutex));
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* send ReceiveMessage() callback, and stop processing if it returned non-zero */
   if(!processed && mbn->cb_ReceiveMessage != NULL && mbn->cb_ReceiveMessage(mbn, &msg) != 0)
@@ -304,7 +304,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_handler *mbn, unsigned char *buf
   if(!processed && process_object_message(mbn, &msg) != 0)
     processed++;
 
-  pthread_mutex_unlock((pthread_mutex_t *)&(mbn->mbn_mutex));
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
   free_message(&msg);
 }
 
@@ -336,7 +336,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
     msg->AddressFrom = mbn->node.MambaNetAddr;
 
   /* lock, to make sure we have a unique message ID */
-  pthread_mutex_lock((pthread_mutex_t *)&(mbn->mbn_mutex));
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   if(!(flags & MBN_SEND_FORCEID)) {
     msg->MessageID = 0;
@@ -361,7 +361,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   if((r = create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0)) != 0) {
     MBN_ERROR(mbn, MBN_ERROR_CREATE_MESSAGE);
     MBN_TRACE(printf("Error creating message: %02X", r));
-    pthread_mutex_unlock((pthread_mutex_t *)&(mbn->mbn_mutex));
+    pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
     return;
   }
 
@@ -383,7 +383,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       q->next = n;
     }
   }
-  pthread_mutex_unlock((pthread_mutex_t *)&(mbn->mbn_mutex));
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* determine interface address */
   if(msg->AddressTo == MBN_BROADCAST_ADDRESS)
