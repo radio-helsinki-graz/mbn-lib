@@ -252,7 +252,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   msg.raw = buffer;
   msg.rawlength = length;
 
-  if(1) {
+  if(0) {
     printf("< RAW: ");
     for(r=0;r<msg.rawlength;r++)
       printf(" %02X", msg.raw[r]);

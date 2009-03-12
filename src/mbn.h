@@ -17,8 +17,8 @@
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
  *  - Add more H/W interfaces:
  *    > Ethernet (windows)
- *    > Serial line
- *    > SocketCAN
+ *    > Serial line?
+ *    > SocketCAN?
  *  - Better error handling for interface modules?
  *  - Test/port to windows (and probably OS X)
  *  - Test suite?
@@ -406,6 +406,7 @@ struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
 struct mbn_interface * MBN_IMPORT mbnTCPOpen(char *, char *, char *, char *);
 
 /* address.c */
+void MBN_IMPORT mbnForceAddress(struct mbn_handler *, unsigned long);
 void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNodeStatus(struct mbn_handler *, unsigned long);
 struct mbn_address_node * MBN_IMPORT mbnNextNode(struct mbn_handler *, struct mbn_address_node *);

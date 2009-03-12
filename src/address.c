@@ -308,3 +308,13 @@ void MBN_EXPORT mbnSendPingRequest(struct mbn_handler *mbn, unsigned long addr) 
 }
 
 
+/* Force the use of a MambaNet Address */
+void MBN_EXPORT mbnForceAddress(struct mbn_handler *mbn, unsigned long addr) {
+  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
+  mbn->node.MambaNetAddr = addr;
+  mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
+  send_info(mbn);
+  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
+}
+
+
