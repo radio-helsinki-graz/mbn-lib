@@ -403,7 +403,7 @@ void MBN_IMPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
 
 /* if_tcp.c */
-struct mbn_interface * MBN_IMPORT mbnTCPOpen(char *, int, char *, int);
+struct mbn_interface * MBN_IMPORT mbnTCPOpen(char *, char *, char *, char *);
 
 /* address.c */
 void MBN_IMPORT mbnSendPingRequest(struct mbn_handler *, unsigned long);

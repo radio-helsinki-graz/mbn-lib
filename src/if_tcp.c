@@ -15,26 +15,26 @@
 ****************************************************************************/
 
 
+#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE_EXTENDED 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-#define _BSD_SOURCE /* inet_aton */
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <arpa/inet.h>
+#include <netdb.h>
 #include <pthread.h>
 
 #include "mbn.h"
 
 #define MAX(a, b) ((a)>(b)?(a):(b))
-#define MBN_TCP_PORT 34848
+#define MBN_TCP_PORT "34848"
 /* the actual number of max. connections is also limited by the
  * number of sockets the select() call accepts.
  * Each connection requires about 128 bytes for buffers */
@@ -46,7 +46,6 @@ struct tcpconn {
   unsigned char buf[MBN_MAX_MESSAGE_SIZE];
   int buflen;
   int sock; /* -1 when unused */
-  struct sockaddr_in addr;
 };
 
 struct tcpdat {
@@ -54,18 +53,17 @@ struct tcpdat {
   int listensocket;
   int rconn;
   struct tcpconn conn[MAX_CONNECTIONS];
-  struct sockaddr_in addr;
 };
 
-int setup_client(struct tcpdat *, char *, int);
-int setup_server(struct tcpdat *, char *, int);
+int setup_client(struct tcpdat *, char *, char *);
+int setup_server(struct tcpdat *, char *, char *);
 void init_tcp(struct mbn_interface *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
-struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, int remoteport, char *myip, int myport) {
+struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, char *myip, char *myport) {
   struct mbn_interface *itf;
   struct tcpdat *dat;
   int i, error = 0;
@@ -78,16 +76,15 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, int remoteport, cha
   for(i=0; i<MAX_CONNECTIONS; i++)
     dat->conn[i].sock = -1;
 
-  /* TODO: hostname lookups on remoteip and myip? */
   if(remoteip != NULL) {
-    if(remoteport == 0)
+    if(remoteport == NULL)
       remoteport = MBN_TCP_PORT;
     error += setup_client(dat, remoteip, remoteport);
   } else
     dat->rconn = -1;
 
   if(!error && myip != NULL) {
-    if(myport == 0)
+    if(myport == NULL)
       myport = MBN_TCP_PORT;
     error += setup_server(dat, myip, myport);
   } else
@@ -106,59 +103,70 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, int remoteport, cha
 }
 
 
-int setup_client(struct tcpdat *dat, char *server, int port) {
-  /* create socket */
-  if((dat->rconn = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-    perror("Opening client socket");
+/* TODO: non-blocking connect()? time-out? */
+int setup_client(struct tcpdat *dat, char *server, char *port) {
+  struct addrinfo hint, *res, *rp;
+
+  /* lookup hostname/ip address */
+  memset((void *)&hint, 0, sizeof(struct addrinfo));
+  hint.ai_family = AF_UNSPEC;
+  hint.ai_socktype = SOCK_STREAM;
+  if(getaddrinfo(server, port, &hint, &res) != 0) {
+    perror("getaddrinfo()");
+    return 1;
+  }
+
+  /* loop through possibilities and try to connect */
+  for(rp=res; rp != NULL; rp=rp->ai_next) {
+    /* create socket */
+    if((dat->rconn = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) < 0)
+      continue;
+    /* connect */
+    if(connect(dat->rconn, rp->ai_addr, rp->ai_addrlen) >= 0)
+      break;
+    close(dat->rconn);
+  }
+
+  freeaddrinfo(res);
+  if(rp == NULL) {
+    perror("Couldn't connect\n");
     return 1;
   }
   dat->conn[0].sock = dat->rconn;
   dat->conn[0].buflen = 0;
-
-  /* connect */
-  dat->conn[0].addr.sin_family = AF_INET;
-  dat->conn[0].addr.sin_port = htons(port);
-  dat->conn[0].addr.sin_addr.s_addr = inet_addr(server);
-  if(connect(dat->rconn, (struct sockaddr *)&(dat->conn[0].addr), sizeof(struct sockaddr_in)) < 0) {
-    perror("Connecting to server");
-    return 1;
-  }
-
   return 0;
 }
 
 
-int setup_server(struct tcpdat *dat, char *ip, int port) {
-  struct sockaddr_in myaddr;
+int setup_server(struct tcpdat *dat, char *ip, char *port) {
+  struct addrinfo hint, *res, *rp;
   int n;
 
-  /* create socket */
-  if((dat->listensocket = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-    perror("Opening server socket");
+  /* lookup hostname/ip address */
+  memset((void *)&hint, 0, sizeof(struct addrinfo));
+  hint.ai_family = AF_UNSPEC;
+  hint.ai_socktype = SOCK_STREAM;
+  if(getaddrinfo(ip, port, &hint, &res) != 0) {
+    perror("getaddrinfo()");
     return 1;
   }
 
-  /* allow the address to be reused */
-  if(setsockopt(dat->listensocket, SOL_SOCKET, SO_REUSEADDR, (void *)&n, sizeof(int)) < 0) {
-    perror("Setting SO_REUSEADDR");
+  for(rp=res; rp != NULL; rp=rp->ai_next) {
+    /* create socket */
+    if((dat->listensocket = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol)) < 0)
+      continue;
+    /* bind */
+    if(setsockopt(dat->listensocket, SOL_SOCKET, SO_REUSEADDR, (void *)&n, sizeof(int)) >= 0
+       && bind(dat->listensocket, rp->ai_addr, rp->ai_addrlen) >= 0
+       && listen(dat->listensocket, 5) >= 0)
+      break;
+    close(dat->listensocket);
+  }
+  if(rp == NULL) {
+    perror("Can't bind");
     return 1;
   }
 
-  /* bind socket to an ip/port */
-  memset((void *)&myaddr, 0, sizeof(struct sockaddr_in));
-  myaddr.sin_family = AF_INET;
-  myaddr.sin_port = htons(port);
-  myaddr.sin_addr.s_addr = inet_addr(ip);
-  if(bind(dat->listensocket, (struct sockaddr *)&myaddr, sizeof(struct sockaddr_in)) < 0) {
-    perror("Bind server socket");
-    return 1;
-  }
-
-  /* start listening */
-  if(listen(dat->listensocket, 5) < 0) {
-    perror("Listen()");
-    return 1;
-  }
   return 0;
 }
 
@@ -188,7 +196,6 @@ void free_tcp(struct mbn_interface *itf) {
 
 void new_connection(struct tcpdat *dat) {
   int i;
-  socklen_t n = sizeof(struct sockaddr_in);
 
   for(i=0; i<MAX_CONNECTIONS; i++)
     if(dat->conn[i].sock < 0)
@@ -202,7 +209,7 @@ void new_connection(struct tcpdat *dat) {
   }
 
   /* accept the connection */
-  if((dat->conn[i].sock = accept(dat->listensocket, (struct sockaddr *)&(dat->conn[i].addr), &n)) < 0)
+  if((dat->conn[i].sock = accept(dat->listensocket, NULL, 0)) < 0)
     return;
   dat->conn[i].buflen = 0;
 }
@@ -218,7 +225,7 @@ void read_connection(struct mbn_interface *itf, struct tcpconn *cn) {
     return;
 
   /* error, close connection */
-  if(n == 0 || n < 0) {
+  if(n <= 0) {
     close(cn->sock);
     /* oops, this was our remote connection, we shouldn't lose this one! */
     if(dat->rconn == cn->sock)
