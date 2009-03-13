@@ -4,5 +4,6 @@ src/mbn.h
 *.o
 *~
 *.exe
+*.dll
 *.so
 *.swp

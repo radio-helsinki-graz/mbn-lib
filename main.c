@@ -129,7 +129,11 @@ int main(void) {
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
   itf = calloc(1, sizeof(struct mbn_interface));
-  mbn = mbnInit(this_node, objects, itf); /*mbnEthernetOpen("eth0"));*/
+  mbn = mbnInit(this_node, objects, mbnTCPOpen("localhost", NULL, NULL, NULL));
+  if(mbn == NULL) {
+    printf("mbn = NULL\n");
+    return 1;
+  }
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetNameChangeCallback(mbn, NameChange);

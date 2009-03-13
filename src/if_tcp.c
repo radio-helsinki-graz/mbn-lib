@@ -23,12 +23,20 @@
 #include <string.h>
 #include <errno.h>
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <netdb.h>
+#ifdef MBNP_linux
+# include <unistd.h>
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <sys/select.h>
+# include <sys/time.h>
+# include <netdb.h>
+#else
+# define _WIN32_WINNT 0x0501 /* only works for ws2_32.dll > windows 2000 */
+# include <windows.h>
+# include <winsock2.h>
+# include <ws2tcpip.h>
+# define close closesocket
+#endif
 #include <pthread.h>
 
 #include "mbn.h"
@@ -68,6 +76,16 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
   struct tcpdat *dat;
   int i, error = 0;
 
+  /* Why the hell is this call _required_?
+   * Why doesn't Microsoft just support plain BSD sockets? */
+#ifdef MBNP_mingw
+  WSADATA wsadat;
+  if(WSAStartup(MAKEWORD(2, 0), &wsadat) != 0) {
+    printf("Unsupported winsock version\n");
+    return NULL;
+  }
+#endif
+
   itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
   dat = (struct tcpdat *)malloc(sizeof(struct tcpdat));
   itf->data = (void *)dat;
@@ -93,6 +111,9 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
   if(error) {
     free(dat);
     free(itf);
+#ifdef MBNP_mingw
+    WSACleanup();
+#endif
     return NULL;
   }
 
@@ -111,6 +132,7 @@ int setup_client(struct tcpdat *dat, char *server, char *port) {
   memset((void *)&hint, 0, sizeof(struct addrinfo));
   hint.ai_family = AF_UNSPEC;
   hint.ai_socktype = SOCK_STREAM;
+
   if(getaddrinfo(server, port, &hint, &res) != 0) {
     perror("getaddrinfo()");
     return 1;
@@ -191,6 +213,9 @@ void free_tcp(struct mbn_interface *itf) {
 
   free(dat);
   free(itf);
+#ifdef MBNP_mingw
+  WSACleanup();
+#endif
 }
 
 
@@ -316,7 +341,7 @@ void transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *i
       continue;
 
     sent = 0;
-    while((n = send(dat->conn[i].sock, &(buf[sent]), length-sent, 0)) < length-sent) {
+    while((n = send(dat->conn[i].sock, (char *)&(buf[sent]), length-sent, 0)) < length-sent) {
       if(n < 0 && dat->conn[i].sock == dat->rconn) {
         MBN_ERROR(itf->mbn, MBN_ERROR_ITF_WRITE);
         perror("send()");
