@@ -18,9 +18,12 @@ main: main.c src/mbn.a
 src/mbn.a: force_look
 	${MAKE} -C src/ PLATFORM=${PLATFORM} static
 
+shared:
+	${MAKE} -C src/ PLATFORM=${PLATFORM} shared
+
 clean:
 	rm -f main
-	${MAKE} -C src/ clean
+	${MAKE} -C src/ PLATFORM=${PLATFORM} clean
 
 force_look:
 

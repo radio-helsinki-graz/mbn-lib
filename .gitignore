@@ -1,4 +1,5 @@
 main
+src/mbn.h
 *.a
 *.o
 *~
