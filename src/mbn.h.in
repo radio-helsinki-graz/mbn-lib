@@ -32,29 +32,32 @@
 #define MBN_H
 
 
-/* Global way to determine platform, considering we only
- * provide this stack for windows and linux at this point,
- * this method should be enough. It might be a better idea
- * to check for the existance of each function or interface
- * in the future, to provide better cross-platform
- * compilation.
- */
-#ifdef __GNUC__
-# define MBN_LINUX
-# undef  MBN_WINDOWS
-#else
-# undef  MVN_LINUX
-# define MBN_WINDOWS
+/* This line should be modified by our Makefile. */
+#define MBNP_PLATFORM
+
+/* check to see if it has indeed been modified */
+#ifdef MBNP_PLATFORM
+# error MBNP_[platform] not set!
 #endif
 
-/* Windows DLLs want flags for exportable functions */
-#ifdef MBN_WINDOWS
+/* define which interface modules can be used, for the application */
+#ifdef MBN_mingw
+# undef MBN_IF_ETHERNET
+# undef MBN_IF_TCP
+#else
+# define MBN_IF_ETHERNET
+# define MBN_IF_TCP
+#endif
+
+/* Windows DLLs want flags for exportable functions
+ * (currently disabled because we're using static linking for debugging)
+#if MBNP_mingw
 # define MBN_IMPORT __declspec(dllimport) __stdcall
 # define MBN_EXPORT __declspec(dllexport) __stdcall
-#else
+#else*/
 # define MBN_IMPORT
 # define MBN_EXPORT
-#endif
+/*#endif*/
 
 
 
@@ -167,11 +170,22 @@ extern const char *mbn_errormessages[];
  *    F O R W A R D   D E C L A R A T I O N S  (for structs)
  */
 
+/* unions are a bit special, it seems... */
+union mbn_data {
+  long SInt;
+  float Float;
+  unsigned long UInt;
+  unsigned long State;
+  unsigned char Bits[8];
+  unsigned char *Octets;
+  unsigned char *Error;
+  struct mbn_message_object_information *Info;
+};
+
 struct mbn_node_info;
 struct mbn_object;
 struct mbn_interface;
 struct mbn_message_address;
-union  mbn_data;
 struct mbn_message_object_information;
 struct mbn_message_object;
 struct mbn_message;
@@ -218,19 +232,6 @@ typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *,
 /*
  *    S T R U C T   D E F I N I T I O N S
  */
-
-/* large data types should be allocated (and freed)
- * manually, to preserve memory for smaller data types */
-union mbn_data {
-  long SInt;
-  float Float;
-  unsigned long UInt;
-  unsigned long State;
-  unsigned char Bits[8];
-  unsigned char *Octets;
-  unsigned char *Error;
-  struct mbn_message_object_information *Info;
-};
 
 /* All information required for the default objects of a node */
 struct mbn_node_info {
@@ -400,10 +401,14 @@ void MBN_IMPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
 void MBN_IMPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 
 /* if_ethernet.c */
+#ifdef MBN_IF_ETHERNET
 struct mbn_interface * MBN_IMPORT mbnEthernetOpen(char *interface);
+#endif
 
 /* if_tcp.c */
+#ifdef MBN_IF_TCP
 struct mbn_interface * MBN_IMPORT mbnTCPOpen(char *, char *, char *, char *);
+#endif
 
 /* address.c */
 void MBN_IMPORT mbnForceAddress(struct mbn_handler *, unsigned long);

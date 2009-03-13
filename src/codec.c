@@ -247,7 +247,6 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
                       :               0x80000000;
       }
       /* this shouldn't be necessary, but does guarantee portability */
-      memmove((void *)&(result->SInt), (void *)&(result->UInt), sizeof(result->SInt));
       break;
 
     case MBN_DATATYPE_OCTETS:
@@ -509,8 +508,6 @@ int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigne
     case MBN_DATATYPE_STATE:
       if(length < 1 || length > 4)
         return 1;
-      if(type == MBN_DATATYPE_STATE)
-        memmove((void *)&(dat->UInt), (void *)&(dat->State), sizeof(dat->UInt));
       for(i=0; i<length; i++)
         buffer[i] = (dat->UInt>>(8*(length-1-i))) & 0xFF;
       break;

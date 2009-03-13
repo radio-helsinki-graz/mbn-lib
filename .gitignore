@@ -1,3 +1,7 @@
 main
 *.a
 *.o
+*~
+*.exe
+*.so
+*.swp

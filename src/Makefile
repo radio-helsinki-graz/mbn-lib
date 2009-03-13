@@ -1,7 +1,9 @@
-CFLAGS  = -Wall -Wextra -std=c89 -pedantic
-HEADERS = address.h codec.h mbn.h object.h
-OBJECTS = address.o codec.o if_ethernet.o if_tcp.o mbn.o object.o
+include ../Makefile.inc
+
 STATIC  = mbn.a
+HEADERS = address.h codec.h mbn.h object.h
+OBJECTS = address.o codec.o mbn.o object.o
+
 
 all: ${STATIC}
 
@@ -14,6 +16,9 @@ ${STATIC}: ${OBJECTS}
 %.o: %.c ${HEADERS} Makefile
 	gcc -c ${CFLAGS} $*.c
 
+mbn.h: mbn.h.in
+	sed 's/#define MBNP_PLATFORM/#define MBNP_${PLATFORM}/' mbn.h.in > mbn.h
+
 clean:
-	rm -f ${OBJECTS} ${STATIC}
+	rm -f mbn.h ${OBJECTS} ${STATIC}
 

@@ -19,13 +19,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <pthread.h>
-
 #include "mbn.h"
 #include "object.h"
+
+
+#ifdef MBNP_mingw
+# include <windows.h>
+# include <winsock2.h>
+#else
+# include <unistd.h>
+# include <sys/select.h>
+# include <sys/time.h>
+#endif
+#include <pthread.h>
 
 
 void send_object_changed(struct mbn_handler *mbn, unsigned short obj) {

@@ -28,11 +28,11 @@
 #include "object.h"
 
 /* sleep() */
-#ifdef MBN_LINUX
-# include <unistd.h>
-#elif
+#ifdef MBNP_mingw
 # include <windows.h>
 # define sleep(x) Sleep(x*1000)
+#else
+# include <unistd.h>
 #endif
 
 
@@ -92,6 +92,10 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   struct mbn_object *obj;
   int i, l;
   pthread_mutexattr_t mattr;
+
+#ifdef PTW32_STATIC_LIB
+  pthread_win32_process_attach_np();
+#endif
 
   if(itf == NULL)
     return NULL;
@@ -206,6 +210,10 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   free(mbn->timeout_thread);
   free(mbn->throttle_thread);
   free(mbn->msgqueue_thread);
+
+#ifdef PTW32_STATIC_LIB
+  pthread_win32_process_detach_np();
+#endif
 }
 
 

@@ -24,11 +24,11 @@
 #include "address.h"
 
 /* sleep() */
-#ifdef MBN_LINUX
-# include <unistd.h>
-#elif
+#ifdef MBNP_mingw
 # include <windows.h>
 # define sleep(x) Sleep(x*1000)
+#else
+# include <unistd.h>
 #endif
 
 

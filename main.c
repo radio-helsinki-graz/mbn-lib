@@ -39,15 +39,6 @@ struct mbn_node_info this_node = {
 
 struct mbn_object objects[2];
 
-/*
-struct mbn_object objects[] = {
-  * Only works on a C99 compiler *
-  * Description  Engine  Freq, Sensor: type       size  min        max          cur          Actuator: type      size  min        max          def          cur       *
-  { "Object #1",    0x00,    1, MBN_DATATYPE_UINT,    2, {.UInt=0}, {.UInt=512}, {.UInt=256}, MBN_DATATYPE_NODATA,   0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, {.UInt=  0} },
-  { "Object #2",    0x00,    0, MBN_DATATYPE_NODATA,  0, {.UInt=0}, {.UInt=  0}, {.UInt=  0}, MBN_DATATYPE_UINT,     2, {.UInt=0}, {.UInt=512}, {.UInt=256}, {.UInt=256} },
-};
-*/
-
 
 void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, struct mbn_address_node *new) {
   struct mbn_address_node *cur;
@@ -137,7 +128,8 @@ int main(void) {
   objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
-  mbn = mbnInit(this_node, objects, mbnEthernetOpen("eth0"));
+  itf = calloc(1, sizeof(struct mbn_interface));
+  mbn = mbnInit(this_node, objects, itf); /*mbnEthernetOpen("eth0"));*/
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetNameChangeCallback(mbn, NameChange);
