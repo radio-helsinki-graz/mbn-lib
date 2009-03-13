@@ -129,7 +129,7 @@ int main(void) {
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
   itf = calloc(1, sizeof(struct mbn_interface));
-  mbn = mbnInit(this_node, objects, mbnTCPOpen("localhost", NULL, NULL, NULL));
+  mbn = mbnInit(this_node, objects, mbnPcapOpen(1));
   if(mbn == NULL) {
     printf("mbn = NULL\n");
     return 1;

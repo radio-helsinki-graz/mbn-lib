@@ -8,7 +8,7 @@ DYNAMIC = libmbn.so
 ifeq (${PLATFORM}, linux)
 	OBJECTS += if_ethernet.o if_tcp.o
 else
-	OBJECTS += if_tcp.o
+	OBJECTS += if_tcp.o if_pcap.o
 	DYNAMIC = mbn.dll
 endif
 

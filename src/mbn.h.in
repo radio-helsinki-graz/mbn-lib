@@ -23,8 +23,6 @@
  *  - Test/port to windows (and probably OS X)
  *  - Test suite?
  *  - Documentation (LaTeX? word? manpages?)
- *  - Dynamic configuration and creation of mbn.h
- *     (so the application knows which interface modules can be used at compile time)
  *  - Buffering of outgoing packets (to make all mbn* calls non-blocking)
 */
 
@@ -45,9 +43,11 @@
 #ifdef MBN_mingw
 # undef MBN_IF_ETHERNET
 # define MBN_IF_TCP
+# define MBN_IF_PCAP
 #else
 # define MBN_IF_ETHERNET
 # define MBN_IF_TCP
+# undef MBN_IF_PCAP
 #endif
 
 /* Windows DLLs want flags for exportable functions */
@@ -406,12 +406,13 @@ void MBN_EXPORT mbnUpdateNodeName(struct mbn_handler *, char *);
 void MBN_EXPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
 void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 
-/* if_ethernet.c */
+/* if_*.c */
 #ifdef MBN_IF_ETHERNET
 struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *);
 #endif
-
-/* if_tcp.c */
+#ifdef MBN_IF_PCAP
+struct mbn_interface * MBN_EXPORT mbnPcapOpen(int);
+#endif
 #ifdef MBN_IF_TCP
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *);
 #endif
