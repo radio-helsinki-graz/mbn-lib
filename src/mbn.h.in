@@ -284,6 +284,16 @@ struct mbn_interface {
   struct mbn_handler *mbn;
 };
 
+/* Ethernet interfaces */
+#ifdef MBN_IF_ETHERNET
+struct mbn_if_ethernet {
+  struct mbn_if_ethernet *next;
+  char *desc;
+  char *name;
+  unsigned char addr[6];
+};
+#endif
+
 /* Address message */
 struct mbn_message_address {
   unsigned char Type;
@@ -409,6 +419,8 @@ void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 /* if_*.c */
 #ifdef MBN_IF_ETHERNET
 struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *);
+struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList();
+void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
 #endif
 #ifdef MBN_IF_PCAP
 struct mbn_interface * MBN_EXPORT mbnPcapOpen(int);

@@ -27,6 +27,7 @@
 #include <linux/if_arp.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <ifaddrs.h>
 
 #include "mbn.h"
 
@@ -46,6 +47,53 @@ void *receive_packets(void *);
 void ethernet_free(struct mbn_interface *);
 void free_addr(void *);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
+
+
+/* fetch a list of ethernet interfaces */
+struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
+  struct ifaddrs *list, *a;
+  struct mbn_if_ethernet *e, *n, *l;
+  struct sockaddr_ll *mac;
+
+  e = NULL;
+  if(getifaddrs(&list) != 0) {
+    perror("getifaddrs()");
+    return e;
+  }
+  if(list == NULL)
+    return e;
+
+  for(a=list; a != NULL; a=a->ifa_next) {
+    if(a->ifa_addr == NULL || !(a->ifa_flags & IFF_UP) || a->ifa_addr->sa_family != AF_PACKET)
+      continue;
+    mac = (struct sockaddr_ll *)a->ifa_addr;
+    if(mac->sll_hatype != ARPHRD_ETHER)
+      continue;
+    n = calloc(1, sizeof(struct mbn_if_ethernet));
+    n->name = malloc(strlen(a->ifa_name)+1);
+    memcpy((void *)n->name, (void *)a->ifa_name, strlen(a->ifa_name)+1);
+    memcpy((void *)n->addr, (void *)mac->sll_addr, 6);
+    if(e == NULL)
+      e = n;
+    else
+      l->next = n;
+    l = n;
+  }
+
+  freeifaddrs(list);
+  return e;
+}
+
+
+void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *list) {
+  struct mbn_if_ethernet *n;
+  while(list != NULL) {
+    n = list->next;
+    free(list->name);
+    free(list);
+    list = n;
+  }
+}
 
 
 struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {

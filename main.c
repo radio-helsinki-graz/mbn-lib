@@ -129,10 +129,21 @@ int main(void) {
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
   itf = calloc(1, sizeof(struct mbn_interface));
-#ifdef MBNP_mingw
+#ifdef MBN_IF_PCAP
   mbn = mbnInit(this_node, objects, mbnPcapOpen(1));
 #else
-  mbn = mbnInit(this_node, objects, mbnEthernetOpen("eth0"));
+  struct mbn_if_ethernet *ifl, *n;
+  char *ifname = NULL;
+  ifl = mbnEthernetIFList();
+  for(n=ifl; n!=NULL; n=n->next) {
+    if(!ifname)
+      ifname = n->name;
+    printf("ethernet interface \"%s\": %02X:%02X:%02X:%02X:%02X:%02X (%s)\n",
+      n->name, n->addr[0], n->addr[1], n->addr[2], n->addr[3], n->addr[4], n->addr[5],
+      n->desc ? n->desc : "no description");
+  }
+  mbn = mbnInit(this_node, objects, mbnEthernetOpen(ifname));
+  mbnEthernetIFFree(ifl);
 #endif
   if(mbn == NULL) {
     printf("mbn = NULL\n");
