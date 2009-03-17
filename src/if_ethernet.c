@@ -103,6 +103,9 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
   int error = 0;
   struct sockaddr_ll sockaddr;
 
+  if(ifname == NULL)
+    return NULL;
+
   itf = (struct mbn_interface *) calloc(1, sizeof(struct mbn_interface));
   data = (struct ethdat *) malloc(sizeof(struct ethdat));
   itf->data = (void *) data;

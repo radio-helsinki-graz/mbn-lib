@@ -39,16 +39,10 @@
 # error MBNP_[platform] not set!
 #endif
 
-/* define which interface modules can be used, for the application */
-#ifdef MBN_mingw
-# undef MBN_IF_ETHERNET
-# define MBN_IF_TCP
-# define MBN_IF_PCAP
-#else
-# define MBN_IF_ETHERNET
-# define MBN_IF_TCP
-# undef MBN_IF_PCAP
-#endif
+/* define which interface modules can be used, for the application
+ * (both TCP and ETHERNET are compiled using our makefile) */
+#define MBN_IF_ETHERNET
+#define MBN_IF_TCP
 
 /* Windows DLLs want flags for exportable functions */
 #ifdef MBNP_mingw
@@ -421,9 +415,6 @@ void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *);
 struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList();
 void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
-#endif
-#ifdef MBN_IF_PCAP
-struct mbn_interface * MBN_EXPORT mbnPcapOpen(int);
 #endif
 #ifdef MBN_IF_TCP
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *);

@@ -42,11 +42,69 @@ void *receive_packets(void *ptr);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
-/* TODO: provide API for getting an interface list */
-/* TODO: WinPcap docs don't mention multi-threading, provide manual locking? */
+struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
+  struct mbn_if_ethernet *e, *l, *n;
+  pcap_if_t *devs, *d;
+  pcap_addr_t *a;
+  char err[PCAP_ERRBUF_SIZE];
+  char mac[6];
+  int suc;
+  unsigned long alen;
+
+  e = NULL;
+  if(pcap_findalldevs(&devs, err) < 0) {
+    fprintf(stderr, "pcap_findalldevs(): %s\n", err);
+    return e;
+  }
+  if(devs == NULL)
+    return e;
+
+  for(d=devs; d!=NULL; d=d->next) {
+    suc = 0;
+    for(a=d->addresses; a!=NULL; a=a->next) {
+      if(a->addr == NULL && a->addr->sa_family != AF_INET)
+        continue;
+      alen = 6;
+      if(SendARP((IPAddr)((struct sockaddr_in *)a->addr)->sin_addr.s_addr, 0, (unsigned long *)mac, &alen) == NO_ERROR) {
+        suc = 1;
+        break;
+      }
+    }
+    if(!suc)
+      continue;
+    n = calloc(1, sizeof(struct mbn_if_ethernet));
+    n->name = malloc(strlen(d->name)+1);
+    memcpy((void *)n->name, (void *)d->name, strlen(d->name)+1);
+    memcpy((void *)n->addr, (void *)mac, 6);
+    if(d->description) {
+      n->desc = malloc(strlen(d->description)+1);
+      memcpy((void *)n->desc, (void *)d->description, strlen(d->description)+1);
+    }
+    if(e == NULL)
+      e = n;
+    else
+      l->next = n;
+    l = n;
+  }
+
+  return e;
+}
 
 
-struct mbn_interface * MBN_EXPORT mbnPcapOpen(int ifnum) {
+void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *list) {
+  struct mbn_if_ethernet *n;
+  while(list != NULL) {
+    n = list->next;
+    if(list->desc)
+      free(list->desc);
+    free(list->name);
+    free(list);
+    list = n;
+  }
+}
+
+
+struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname) {
   struct mbn_interface *itf;
   struct pcapdat *dat;
   pcap_addr_t *a;
@@ -56,6 +114,9 @@ struct mbn_interface * MBN_EXPORT mbnPcapOpen(int ifnum) {
   char err[PCAP_ERRBUF_SIZE];
   int i, suc, error = 0;
   unsigned long alen;
+
+  if(ifname == NULL)
+    return NULL;
 
   MBN_TRACE(printf("%s", pcap_lib_version()));
 
@@ -75,8 +136,8 @@ struct mbn_interface * MBN_EXPORT mbnPcapOpen(int ifnum) {
   }
 
   /* open device */
-  for(i=0, d=devs; d!=NULL; d=d->next)
-    if(i++ == ifnum)
+  for(d=devs; d!=NULL; d=d->next)
+    if(strcmp(d->name, ifname) == 0)
       break;
   if(!error && d == NULL) {
     fprintf(stderr, "Selected device doesn't exist\n");
