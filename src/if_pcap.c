@@ -19,6 +19,9 @@
 #include <string.h>
 
 #include <pthread.h>
+#include <winsock2.h>
+#include <iphlpapi.h>
+#include <ipexport.h>
 #include <pcap.h>
 
 #include "mbn.h"
@@ -29,27 +32,30 @@
 struct pcapdat {
   pcap_t *pc;
   pthread_t thread;
+  unsigned char mymac[6];
 };
 
 
 void free_pcap(struct mbn_interface *);
 void init_pcap(struct mbn_interface *);
 void *receive_packets(void *ptr);
+void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
 /* TODO: provide API for getting an interface list */
 /* TODO: WinPcap docs don't mention multi-threading, provide manual locking? */
-/* TODO: transmit function */
 
 
 struct mbn_interface * MBN_EXPORT mbnPcapOpen(int ifnum) {
   struct mbn_interface *itf;
   struct pcapdat *dat;
+  pcap_addr_t *a;
   pcap_if_t *devs, *d;
   pcap_t *pc = NULL;
   struct bpf_program fp;
   char err[PCAP_ERRBUF_SIZE];
-  int i, error = 0;
+  int i, suc, error = 0;
+  unsigned long alen;
 
   MBN_TRACE(printf("%s", pcap_lib_version()));
 
@@ -81,6 +87,23 @@ struct mbn_interface * MBN_EXPORT mbnPcapOpen(int ifnum) {
     error++;
   }
 
+  /* get MAC address */
+  suc = 0;
+  for(a=d->addresses; a!=NULL; a=a->next) {
+    if(a->addr != NULL && a->addr->sa_family == AF_INET) {
+      alen = 6;
+      if((i = SendARP((IPAddr)((struct sockaddr_in *)a->addr)->sin_addr.s_addr, 0, (unsigned long *)dat->mymac, &alen)) != NO_ERROR) {
+        fprintf(stderr, "Error: SendARP returned %d\n", i);
+        error++;
+      } else
+        suc = 1;
+    }
+  }
+  if(!suc) {
+    fprintf(stderr, "Error: couldn't get MAC address\n");
+    error++;
+  }
+
   /* set filter for MambaNet */
   if(!error && pcap_compile(pc, &fp, "ether proto 34848", 1, 0) == -1) {
     fprintf(stderr, "pcap_compile: %s\n", pcap_geterr(pc));
@@ -105,6 +128,7 @@ struct mbn_interface * MBN_EXPORT mbnPcapOpen(int ifnum) {
   itf->cb_free = free_pcap;
   itf->cb_init = init_pcap;
   itf->cb_free_addr = free;
+  itf->cb_transmit = transmit;
 
   return itf;
 }
@@ -159,4 +183,21 @@ void *receive_packets(void *ptr) {
   return NULL;
 }
 
+
+void transmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifaddr) {
+  struct pcapdat *dat = (struct pcapdat *) itf->data;
+  unsigned char send[MBN_MAX_MESSAGE_SIZE];
+
+  if(ifaddr != 0)
+    memcpy((void *)send, ifaddr, 6);
+  else
+    memset((void *)send, 0, 6);
+  memcpy((void *)send+6, (void *)dat->mymac, 6);
+  send[12] = 0x88;
+  send[13] = 0x20;
+  memcpy((void *)send+14, (void *)buf, len);
+
+  if(pcap_sendpacket(dat->pc, send, len+14) < 0)
+    MBN_ERROR(itf->mbn, MBN_ERROR_ITF_WRITE);
+}
 

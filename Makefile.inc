@@ -17,7 +17,7 @@ LFLAGS =
 
 ifeq (${PLATFORM}, mingw)
 	CFLAGS += -DPTW32_STATIC_LIB -I/WpdPack/Include
-	LFLAGS = -lpthreadGC2 -lws2_32 -L/WpdPack/Lib -lwpcap
+	LFLAGS = -lpthreadGC2 -lws2_32 -liphlpapi -L/WpdPack/Lib -lwpcap
 else
 	LFLAGS = -lpthread
 	CFLAGS += -std=c89 -pedantic
