@@ -65,15 +65,15 @@ struct tcpdat {
   struct tcpconn conn[MAX_CONNECTIONS];
 };
 
-int setup_client(struct tcpdat *, char *, char *);
-int setup_server(struct tcpdat *, char *, char *);
+int setup_client(struct tcpdat *, char *, char *, char *);
+int setup_server(struct tcpdat *, char *, char *, char *);
 void init_tcp(struct mbn_interface *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
-struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, char *myip, char *myport) {
+struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, char *myip, char *myport, char *err) {
   struct mbn_interface *itf;
   struct tcpdat *dat;
   int i, error = 0;
@@ -83,7 +83,7 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
 #ifdef MBNP_mingw
   WSADATA wsadat;
   if(WSAStartup(MAKEWORD(2, 0), &wsadat) != 0) {
-    printf("Unsupported winsock version\n");
+    sprintf(err, "Unsupported winsock version");
     return NULL;
   }
 #endif
@@ -99,14 +99,14 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
   if(remoteip != NULL) {
     if(remoteport == NULL)
       remoteport = MBN_TCP_PORT;
-    error += setup_client(dat, remoteip, remoteport);
+    error += setup_client(dat, remoteip, remoteport, err);
   } else
     dat->rconn = -1;
 
   if(!error && myip != NULL) {
     if(myport == NULL)
       myport = MBN_TCP_PORT;
-    error += setup_server(dat, myip, myport);
+    error += setup_server(dat, myip, myport, err);
   } else
     dat->listensocket = -1;
 
@@ -127,7 +127,7 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
 
 
 /* TODO: non-blocking connect()? time-out? */
-int setup_client(struct tcpdat *dat, char *server, char *port) {
+int setup_client(struct tcpdat *dat, char *server, char *port, char *err) {
   struct addrinfo hint, *res, *rp;
 
   /* lookup hostname/ip address */
@@ -136,7 +136,7 @@ int setup_client(struct tcpdat *dat, char *server, char *port) {
   hint.ai_socktype = SOCK_STREAM;
 
   if(getaddrinfo(server, port, &hint, &res) != 0) {
-    perror("getaddrinfo()");
+    sprintf(err, "Can't resolve %s port %s: %s", server, port, strerror(errno));
     return 1;
   }
 
@@ -153,7 +153,7 @@ int setup_client(struct tcpdat *dat, char *server, char *port) {
 
   freeaddrinfo(res);
   if(rp == NULL) {
-    perror("Couldn't connect\n");
+    sprintf("Couldn't connect to %s port %s: %s", server, port, strerror(errno));
     return 1;
   }
   dat->conn[0].sock = dat->rconn;
@@ -162,7 +162,7 @@ int setup_client(struct tcpdat *dat, char *server, char *port) {
 }
 
 
-int setup_server(struct tcpdat *dat, char *ip, char *port) {
+int setup_server(struct tcpdat *dat, char *ip, char *port, char *err) {
   struct addrinfo hint, *res, *rp;
   int n;
 
@@ -171,7 +171,7 @@ int setup_server(struct tcpdat *dat, char *ip, char *port) {
   hint.ai_family = AF_UNSPEC;
   hint.ai_socktype = SOCK_STREAM;
   if(getaddrinfo(ip, port, &hint, &res) != 0) {
-    perror("getaddrinfo()");
+    sprintf(err, "Can't resolve %s port %s: %s", ip, port, strerror(errno));
     return 1;
   }
 
@@ -187,7 +187,7 @@ int setup_server(struct tcpdat *dat, char *ip, char *port) {
     close(dat->listensocket);
   }
   if(rp == NULL) {
-    perror("Can't bind");
+    sprintf(err, "Can't bind to %s port %s: %s", ip, port, strerror(errno));
     return 1;
   }
 
