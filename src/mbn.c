@@ -413,7 +413,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       ifaddr = dest->ifaddr;
   }
 
-  if(1) {
+  if(0) {
     printf("> RAW: ");
     for(r=0; r<msg->rawlength; r++)
       printf(" %02X", msg->raw[r]);

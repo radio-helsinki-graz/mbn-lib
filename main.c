@@ -129,7 +129,11 @@ int main(void) {
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
   itf = calloc(1, sizeof(struct mbn_interface));
+#ifdef MBNP_mingw
   mbn = mbnInit(this_node, objects, mbnPcapOpen(1));
+#else
+  mbn = mbnInit(this_node, objects, mbnEthernetOpen("eth0"));
+#endif
   if(mbn == NULL) {
     printf("mbn = NULL\n");
     return 1;

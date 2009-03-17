@@ -23,6 +23,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include "mbn.h"
+
 #ifdef MBNP_linux
 # include <unistd.h>
 # include <sys/types.h>
