@@ -67,7 +67,7 @@ struct tcpdat {
 
 int setup_client(struct tcpdat *, char *, char *, char *);
 int setup_server(struct tcpdat *, char *, char *, char *);
-void init_tcp(struct mbn_interface *);
+int init_tcp(struct mbn_interface *, char *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
@@ -195,10 +195,15 @@ int setup_server(struct tcpdat *dat, char *ip, char *port, char *err) {
 }
 
 
-void init_tcp(struct mbn_interface *itf) {
+int init_tcp(struct mbn_interface *itf, char *err) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;
-  if(pthread_create(&(dat->thread), NULL, receiver, (void *) itf) != 0)
-    perror("Error creating thread");
+  int i;
+
+  if((i = pthread_create(&(dat->thread), NULL, receiver, (void *) itf)) != 0) {
+    sprintf(err, "Can't create thread: %s (%d)", strerror(i), i);
+    return 1;
+  }
+  return 0;
 }
 
 

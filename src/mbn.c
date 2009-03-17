@@ -87,7 +87,7 @@ void *msgqueue_thread(void *arg) {
 }
 
 
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects, struct mbn_interface *itf) {
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects, struct mbn_interface *itf, char *err) {
   struct mbn_handler *mbn;
   struct mbn_object *obj;
   int i, l;
@@ -97,8 +97,10 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   pthread_win32_process_attach_np();
 #endif
 
-  if(itf == NULL)
+  if(itf == NULL) {
+    sprintf(err, "No interface specified");
     return NULL;
+  }
 
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   mbn->node = node;
@@ -151,14 +153,14 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   init_addresses(mbn);
 
   /* init interface */
-  if(itf->cb_init != NULL)
-    itf->cb_init(itf);
+  if(itf->cb_init != NULL && itf->cb_init(itf, err) != 0)
+    return NULL;
 
   /* create threads to keep track of timeouts */
-  if(    pthread_create((pthread_t *)mbn->timeout_thread,  NULL, node_timeout_thread, (void *) mbn) != 0
-      || pthread_create((pthread_t *)mbn->throttle_thread, NULL, throttle_thread,     (void *) mbn) != 0
-      || pthread_create((pthread_t *)mbn->msgqueue_thread, NULL, msgqueue_thread,     (void *) mbn) != 0) {
-    perror("Error creating threads");
+  if(    (i = pthread_create((pthread_t *)mbn->timeout_thread,  NULL, node_timeout_thread, (void *) mbn)) != 0
+      || (i = pthread_create((pthread_t *)mbn->throttle_thread, NULL, throttle_thread,     (void *) mbn)) != 0
+      || (i = pthread_create((pthread_t *)mbn->msgqueue_thread, NULL, msgqueue_thread,     (void *) mbn)) != 0) {
+    sprintf("Can't create thread: %s (%d)", strerror(i), i);
     free(mbn);
     return NULL;
   }

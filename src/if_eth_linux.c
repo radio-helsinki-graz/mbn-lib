@@ -42,7 +42,7 @@ struct ethdat {
   pthread_t thread;
 };
 
-void ethernet_init(struct mbn_interface *);
+int ethernet_init(struct mbn_interface *, char *);
 void *receive_packets(void *);
 void ethernet_free(struct mbn_interface *);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
@@ -169,12 +169,16 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface, char *err) {
 }
 
 
-void ethernet_init(struct mbn_interface *itf) {
+int ethernet_init(struct mbn_interface *itf, char *err) {
   struct ethdat *dat = (struct ethdat *)itf->data;
+  int i;
 
   /* create thread to wait for packets */
-  if(pthread_create(&(dat->thread), NULL, receive_packets, (void *) itf) != 0)
-    perror("Error creating thread");
+  if((i = pthread_create(&(dat->thread), NULL, receive_packets, (void *) itf)) != 0) {
+    sprintf(err, "Can't create thread: %s (%d)", strerror(i), i);
+    return 1;
+  }
+  return 0;
 }
 
 

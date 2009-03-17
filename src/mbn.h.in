@@ -222,7 +222,7 @@ typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_me
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
 
 /* interfaces */
-typedef void(*mbn_cb_InitInterface)(struct mbn_interface *);
+typedef int(*mbn_cb_InitInterface)(struct mbn_interface *, char *);
 typedef void(*mbn_cb_FreeInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
 typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, int, void *);
@@ -401,7 +401,7 @@ extern "C" {
 #endif
 
 /* mbn.c */
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info, struct mbn_object *, struct mbn_interface *);
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info, struct mbn_object *, struct mbn_interface *, char *);
 void MBN_EXPORT mbnFree(struct mbn_handler *);
 void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *, unsigned char *, int, void *);
 void MBN_EXPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);

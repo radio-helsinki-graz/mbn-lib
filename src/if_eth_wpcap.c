@@ -90,7 +90,7 @@ struct pcapdat {
 
 
 void free_pcap(struct mbn_interface *);
-void init_pcap(struct mbn_interface *);
+int init_pcap(struct mbn_interface *, char *);
 void *receive_packets(void *ptr);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
@@ -262,12 +262,16 @@ void free_pcap(struct mbn_interface *itf) {
 }
 
 
-void init_pcap(struct mbn_interface *itf) {
+int init_pcap(struct mbn_interface *itf, char *err) {
   struct pcapdat *dat = (struct pcapdat *)itf->data;
+  int i;
 
   /* create thread to wait for packets */
-  if(pthread_create(&(dat->thread), NULL, receive_packets, (void *) itf) != 0)
-    perror("Error creating thread");
+  if((i = pthread_create(&(dat->thread), NULL, receive_packets, (void *) itf)) != 0) {
+    sprintf(err, "Can't create thread: %s (%d)", strerror(i), i);
+    return 1;
+  }
+  return 0;
 }
 
 
