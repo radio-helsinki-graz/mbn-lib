@@ -46,6 +46,7 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
   printf("%s: %08lX  ->  %04X:%04X:%04X (%02X)\n",
     old == NULL ? "New node" : new == NULL ? "Removed node" : "Node changed",
     cur->MambaNetAddr, cur->ManufacturerID, cur->ProductID, cur->UniqueIDPerProduct, cur->Services);
+  mbn += 1;
 }
 
 
@@ -53,87 +54,29 @@ void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
   printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
   if(valid)
     mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);
-}
-
-
-int NameChange(struct mbn_handler *mbn, unsigned char *name) {
-  printf("NameChange(\"%s\")\n", name);
-  return 0;
-}
-
-
-int DefaultEngineAddrChange(struct mbn_handler *mbn, unsigned long engine) {
-  printf("DefaultEngineAddrChange(0x%08lX)\n", engine);
-  return 0;
-}
-
-
-int SetActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
-  printf("SetActuatorData(%d, {.", object);
-  switch(objects[object].ActuatorType) {
-    case MBN_DATATYPE_UINT:  printf("UInt = %d", dat.UInt); break;
-    case MBN_DATATYPE_SINT:  printf("SInt = %d", dat.SInt); break;
-    case MBN_DATATYPE_STATE: printf("State = %04X", dat.State); break;
-    case MBN_DATATYPE_FLOAT: printf("Float = %f", dat.Float); break;
-    default: printf("Something_else");
-  }
-  printf("})\n");
-  mbnUpdateSensorData(mbn, 0, dat);
-  return 0;
-}
-
-
-int GetSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data *dat) {
-  printf("GetSensorData(%d, &dat)\n", object);
-  dat->UInt = 9999;
-  return 0;
-}
-
-
-void ObjectFrequencyChange(struct mbn_handler *mbn, unsigned short object, unsigned char freq) {
-  printf("ObjectFrequencyChange(%d, 0x%02X)\n", object, freq);
-}
-
-
-int SensorDataResponse(struct mbn_handler *mbn, struct mbn_message *msg, unsigned short object, unsigned char type, union mbn_data dat) {
-  if(type != MBN_DATATYPE_OCTETS)
-    return 0;
-  printf("(Sensor|Actuator)DataResponse({.AddressFrom = 0x%08lX }, %d, %d, \"%s\")\n", msg->AddressFrom, object, type, dat.Octets);
-  return 1;
+  mbn += 1;
 }
 
 
 void Error(struct mbn_handler *mbn, int code, const char *msg) {
   printf("Error(%d, \"%s\")\n", code, msg);
-}
-
-
-void AcknowledgeTimeout(struct mbn_handler *mbn, struct mbn_message *msg) {
-  printf("AcknowledgeTimeout({.AddressTo = %08lX, .MessageID = %06X})\n",
-    msg->AddressTo, msg->MessageID);
-}
-
-
-void AcknowledgeReply(struct mbn_handler *mbn, struct mbn_message *msg, struct mbn_message *reply, int retries) {
-  printf("AcknowledgeReply({.AddressTo = %08lX, .MessageID = %06X}, {.MessageID = %06X}, %d)\n",
-    msg->AddressTo, msg->MessageID, reply->MessageID, retries);
+  mbn += 1;
 }
 
 
 int main(void) {
   struct mbn_handler *mbn;
-  struct mbn_address_node *node;
-  struct mbn_interface *itf;
-
-  objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
-  objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
-
-  itf = NULL;
+  struct mbn_interface *itf = NULL;
+  char err[MBN_ERRSIZE];
 
 #ifdef MBN_IF_ETHERNET
   struct mbn_if_ethernet *ifl, *n;
   char *ifname = NULL;
-  ifl = mbnEthernetIFList();
+  ifl = mbnEthernetIFList(err);
+  if(ifl == NULL) {
+    printf("Error: %s\n", err);
+    return 1;
+  }
   for(n=ifl; n!=NULL; n=n->next) {
     if(!ifname)
       ifname = n->name;
@@ -141,27 +84,26 @@ int main(void) {
       n->name, n->addr[0], n->addr[1], n->addr[2], n->addr[3], n->addr[4], n->addr[5],
       n->desc ? n->desc : "no description");
   }
-  itf = mbnEthernetOpen(ifname);
+  itf = mbnEthernetOpen(ifname, err);
+  if(itf == NULL) {
+    printf("Error: %s\n", err);
+    return 1;
+  }
   mbnEthernetIFFree(ifl);
 #endif
+
+  objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
+  objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
   mbn = mbnInit(this_node, objects, itf);
   if(mbn == NULL) {
     printf("mbn = NULL\n");
     return 1;
   }
+
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
-  mbnSetNameChangeCallback(mbn, NameChange);
-  mbnSetDefaultEngineAddrChangeCallback(mbn, DefaultEngineAddrChange);
-  mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
-  mbnSetGetSensorDataCallback(mbn, GetSensorData);
-  mbnSetObjectFrequencyChangeCallback(mbn, ObjectFrequencyChange);
-  mbnSetSensorDataResponseCallback(mbn, SensorDataResponse);
-  mbnSetActuatorDataResponseCallback(mbn, SensorDataResponse);
   mbnSetErrorCallback(mbn, Error);
-  mbnSetAcknowledgeTimeoutCallback(mbn, AcknowledgeTimeout);
-  mbnSetAcknowledgeReplyCallback(mbn, AcknowledgeReply);
 
   /*sleep(60);*/
   pthread_exit(NULL);

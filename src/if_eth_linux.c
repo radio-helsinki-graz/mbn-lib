@@ -45,23 +45,20 @@ struct ethdat {
 void ethernet_init(struct mbn_interface *);
 void *receive_packets(void *);
 void ethernet_free(struct mbn_interface *);
-void free_addr(void *);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
 /* fetch a list of ethernet interfaces */
-struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
+struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *err) {
   struct ifaddrs *list, *a;
   struct mbn_if_ethernet *e, *n, *l;
   struct sockaddr_ll *mac;
 
   e = NULL;
   if(getifaddrs(&list) != 0) {
-    perror("getifaddrs()");
+    sprintf(err, "getifaddrs() failed: %s", strerror(errno));
     return e;
   }
-  if(list == NULL)
-    return e;
 
   for(a=list; a != NULL; a=a->ifa_next) {
     if(a->ifa_addr == NULL || !(a->ifa_flags & IFF_UP) || a->ifa_addr->sa_family != AF_PACKET)
@@ -79,8 +76,11 @@ struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
       l->next = n;
     l = n;
   }
+  if(e == NULL)
+    sprintf(err, "No interfaces found");
+  if(list != NULL)
+    freeifaddrs(list);
 
-  freeifaddrs(list);
   return e;
 }
 
@@ -96,15 +96,17 @@ void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *list) {
 }
 
 
-struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
+struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface, char *err) {
   struct ethdat *data;
   struct mbn_interface *itf;
   struct ifreq ethreq;
   int error = 0;
   struct sockaddr_ll sockaddr;
 
-  if(ifname == NULL)
+  if(interface == NULL) {
+    sprintf(err, "No interface specified");
     return NULL;
+  }
 
   itf = (struct mbn_interface *) calloc(1, sizeof(struct mbn_interface));
   data = (struct ethdat *) malloc(sizeof(struct ethdat));
@@ -116,27 +118,27 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
    *  from the network. */
   data->socket = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ALL));
   if(data->socket < 0) {
-    perror("Couldn't create socket");
+    sprintf(err, "socket(): %s", strerror(errno));
     error++;
   }
 
   /* look for interface */
   strncpy(ethreq.ifr_name, interface, IFNAMSIZ);
   if(!error && ioctl(data->socket, SIOCGIFFLAGS, &ethreq) < 0) {
-    perror("Couldn't find network interface");
+    sprintf(err, "Couldn't find interface: %s", strerror(errno));
     error++;
   }
 
   /* fetch interface index */
   if(!error && ioctl(data->socket, SIOCGIFINDEX, &ethreq) < 0) {
-    perror("Couldn't get index of network interface");
+    sprintf(err, "Couldn't get index: %s", strerror(errno));
     error++;
   } else
     data->ifindex = ethreq.ifr_ifindex;
 
   /* fetch MAC address */
   if(!error && ioctl(data->socket, SIOCGIFHWADDR, &ethreq) < 0) {
-    perror("Couldn't get MAC address");
+    sprintf(err, "Couldn't MAC address: %s", strerror(errno));
     error++;
   } else
     memcpy(data->address, ethreq.ifr_hwaddr.sa_data, 6);
@@ -146,7 +148,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
   sockaddr.sll_protocol = htons(ETH_P_ALL);
   sockaddr.sll_ifindex = data->ifindex;
   if(!error && bind(data->socket, (struct sockaddr *) &sockaddr, sizeof(struct sockaddr_ll)) < 0) {
-    perror("Error binding socket");
+    sprintf(err, "Couldn't bind socket: %s", strerror(errno));
     error++;
   }
 
@@ -160,7 +162,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface) {
 
   itf->cb_init = ethernet_init;
   itf->cb_free = ethernet_free;
-  itf->cb_free_addr = free_addr;
+  itf->cb_free_addr = free;
   itf->cb_transmit = transmit;
 
   return itf;
@@ -283,10 +285,4 @@ void transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void
     sent += rd;
   }
 }
-
-
-void free_addr(void *addr) {
-  free(addr);
-}
-
 

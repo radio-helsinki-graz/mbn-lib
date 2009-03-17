@@ -70,6 +70,8 @@
 
 #define MBN_ACKNOWLEDGE_RETRIES 5 /* number of times to retry a message requiring an acknowledge */
 
+#define MBN_ERRSIZE 512 /* should be large enough to hold any error message */
+
 /* protocol information */
 #define MBN_BROADCAST_ADDRESS 0x10000000
 
@@ -409,8 +411,8 @@ void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 
 /* if_*.c */
 #ifdef MBN_IF_ETHERNET
-struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *);
-struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList();
+struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *, char *);
+struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *);
 void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
 #endif
 #ifdef MBN_IF_TCP

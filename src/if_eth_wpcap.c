@@ -95,11 +95,10 @@ void *receive_packets(void *ptr);
 void transmit(struct mbn_interface *, unsigned char *, int, void *);
 
 
-struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
+struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *err) {
   struct mbn_if_ethernet *e, *l, *n;
   pcap_if_t *devs, *d;
   pcap_addr_t *a;
-  char err[PCAP_ERRBUF_SIZE];
   char mac[6];
   int suc;
   unsigned long alen;
@@ -108,12 +107,12 @@ struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
   if(!import_pcap())
     return e;
 
-  if(pcap_findalldevs(&devs, err) < 0) {
-    fprintf(stderr, "pcap_findalldevs(): %s\n", err);
+  if(pcap_findalldevs(&devs, err) < 0)
+    return e;
+  if(devs == NULL) {
+    sprintf(err, "No devices found");
     return e;
   }
-  if(devs == NULL)
-    return e;
 
   for(d=devs; d!=NULL; d=d->next) {
     suc = 0;
@@ -144,6 +143,9 @@ struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
   }
   pcap_freealldevs(devs);
 
+  if(e == NULL)
+    sprintf(err, "No devices found");
+
   return e;
 }
 
@@ -161,14 +163,13 @@ void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *list) {
 }
 
 
-struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname) {
+struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   struct mbn_interface *itf;
   struct pcapdat *dat;
   pcap_addr_t *a;
   pcap_if_t *devs, *d;
   pcap_t *pc = NULL;
   struct bpf_program fp;
-  char err[PCAP_ERRBUF_SIZE];
   int i, suc, error = 0;
   unsigned long alen;
 
@@ -186,12 +187,10 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname) {
 
 
   /* get device list */
-  if(pcap_findalldevs(&devs, err) < 0) {
-    fprintf(stderr, "pcap_findalldevs(): %s\n", err);
+  if(pcap_findalldevs(&devs, err) < 0)
     error++;
-  }
-  if(devs == NULL) {
-    fprintf(stderr, "No interfaces found.\n");
+  if(!error && devs == NULL) {
+    sprintf(err, "No devices found");
     error++;
   }
 
@@ -200,13 +199,11 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname) {
     if(strcmp(d->name, ifname) == 0)
       break;
   if(!error && d == NULL) {
-    fprintf(stderr, "Selected device doesn't exist\n");
+    sprintf(err, "Selected device not found");
     error++;
   }
-  if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1000, err)) == NULL) {
-    fprintf(stderr, "pcap_open_live: %s\n", err);
+  if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1000, err)) == NULL)
     error++;
-  }
 
   /* get MAC address */
   suc = 0;
@@ -214,24 +211,24 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname) {
     if(a->addr != NULL && a->addr->sa_family == AF_INET) {
       alen = 6;
       if((i = SendARP((IPAddr)((struct sockaddr_in *)a->addr)->sin_addr.s_addr, 0, (unsigned long *)dat->mymac, &alen)) != NO_ERROR) {
-        fprintf(stderr, "Error: SendARP returned %d\n", i);
+        sprintf(err, "SendARP failed with code %d", i);
         error++;
       } else
         suc = 1;
     }
   }
   if(!suc) {
-    fprintf(stderr, "Error: couldn't get MAC address\n");
+    sprintf(err, "Couldn't get MAC address");
     error++;
   }
 
   /* set filter for MambaNet */
   if(!error && pcap_compile(pc, &fp, "ether proto 34848", 1, 0) == -1) {
-    fprintf(stderr, "pcap_compile: %s\n", pcap_geterr(pc));
+    sprintf(err, "Can't compile filter: %s", pcap_geterr(pc));
     error++;
   }
   if(!error && pcap_setfilter(pc, &fp) == -1) {
-    fprintf(stderr, "pcap_setfilter: %s\n", pcap_geterr(pc));
+    sprintf(err, "Can't set filter: %s", pcap_geterr(pc));
     error++;
   }
   pcap_freecode(&fp);
