@@ -14,6 +14,11 @@
 **
 ****************************************************************************/
 
+
+/* TODO: current compilation method generates a runtime error if WinPcap is
+ * not installed on the system, regardless of whether this function is used
+ * or not. Do a static compile? Or import the functions dynamically?     */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

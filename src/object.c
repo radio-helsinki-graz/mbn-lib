@@ -264,7 +264,6 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   union mbn_data dat;
   int r, i = obj->Number-1024;
 
-  /* TODO: check for AddressFrom == EngineAddress? */
   /* TODO: check object min/max? */
 
   /* Name */

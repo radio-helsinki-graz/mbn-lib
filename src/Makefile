@@ -6,9 +6,9 @@ OBJECTS = address.o codec.o mbn.o object.o
 DYNAMIC = libmbn.so
 
 ifeq (${PLATFORM}, linux)
-	OBJECTS += if_ethernet.o if_tcp.o
+	OBJECTS += if_eth_linux.o if_tcp.o
 else
-	OBJECTS += if_tcp.o if_pcap.o
+	OBJECTS += if_eth_wpcap.o if_tcp.o
 	DYNAMIC = mbn.dll
 endif
 

@@ -3,7 +3,7 @@
 #   mingw
 #     Mingw environment, static link to pthreadsGC2.a
 #     Requires the WinPcap developer pack to be unpacked in /WdpPack
-#     Interface modules: Pcap & TCP
+#     Interface modules: Ethernet & TCP
 #   linux
 #     Linux, dynamic link to libpthreads.so
 #     Interface modules: Ethernet & TCP

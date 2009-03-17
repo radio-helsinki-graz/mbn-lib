@@ -16,13 +16,12 @@
 
 /* General project-wide TODO list (in addition to `grep TODO *.c`)
  *  - Add more H/W interfaces:
- *    > Ethernet (windows)
  *    > Serial line?
  *    > SocketCAN?
  *  - Better error handling for interface modules?
- *  - Test/port to windows (and probably OS X)
+ *  - Test/port to OS X?
  *  - Test suite?
- *  - Documentation (LaTeX? word? manpages?)
+ *  - Documentation (LaTeX)
  *  - Buffering of outgoing packets (to make all mbn* calls non-blocking)
 */
 
@@ -402,10 +401,8 @@ extern "C" {
 /* mbn.c */
 struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info, struct mbn_object *, struct mbn_interface *);
 void MBN_EXPORT mbnFree(struct mbn_handler *);
-
 void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *, unsigned char *, int, void *);
 void MBN_EXPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);
-
 void MBN_EXPORT mbnUpdateNodeName(struct mbn_handler *, char *);
 void MBN_EXPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
 void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
