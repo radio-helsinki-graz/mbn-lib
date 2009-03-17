@@ -14,16 +14,12 @@
 **
 ****************************************************************************/
 
-
-/* TODO: current compilation method generates a runtime error if WinPcap is
- * not installed on the system, regardless of whether this function is used
- * or not. Do a static compile? Or import the functions dynamically?     */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <pthread.h>
+#include <windows.h>
 #include <winsock2.h>
 #include <iphlpapi.h>
 #include <ipexport.h>
@@ -33,6 +29,58 @@
 
 
 #define BUFFERSIZE 512
+
+
+/* dynamic loading of wpcap.dll functions */
+static int     (*p_pcap_findalldevs) (pcap_if_t **, char *);
+static void    (*p_pcap_freealldevs) (pcap_if_t *);
+static void    (*p_pcap_close) (pcap_t *);
+static char*   (*p_pcap_lib_version) ();
+static pcap_t* (*p_pcap_open_live) (const char *, int, int, int, char *);
+static int     (*p_pcap_compile) (pcap_t *, struct bpf_program *, char *, int, bpf_u_int32);
+static int     (*p_pcap_setfilter) (pcap_t *, struct bpf_program *);
+static void    (*p_pcap_freecode) (struct bpf_program *);
+static char*   (*p_pcap_geterr) (pcap_t *);
+static int     (*p_pcap_next_ex) (pcap_t *, struct pcap_pkthdr **, const u_char **);
+static int     (*p_pcap_sendpacket) (pcap_t *, u_char *, int);
+static char imported = 0;
+
+
+int import_pcap() {
+  if(imported)
+    return 1;
+  HANDLE dll;
+  if((dll = LoadLibrary("wpcap.dll")) <= HINSTANCE_ERROR) {
+    MBN_TRACE(printf("LoadLibrary: %ld", GetLastError()));
+    return 0;
+  }
+  p_pcap_findalldevs = (int     (*)(pcap_if_t **, char *)) GetProcAddress(dll, "pcap_findalldevs");
+  p_pcap_freealldevs = (void    (*)(pcap_if_t *)) GetProcAddress(dll, "pcap_freealldevs");
+  p_pcap_close       = (void    (*)(pcap_t *)) GetProcAddress(dll, "pcap_close");
+  p_pcap_lib_version = (char   *(*)()) GetProcAddress(dll, "pcap_lib_version");
+  p_pcap_open_live   = (pcap_t *(*)(const char *, int, int, int, char *)) GetProcAddress(dll, "pcap_open_live");
+  p_pcap_compile     = (int     (*)(pcap_t *, struct bpf_program *, char *, int, bpf_u_int32)) GetProcAddress(dll, "pcap_compile");
+  p_pcap_setfilter   = (int     (*)(pcap_t *, struct bpf_program *)) GetProcAddress(dll, "pcap_setfilter");
+  p_pcap_freecode    = (void    (*)(struct bpf_program *)) GetProcAddress(dll, "pcap_freecode");
+  p_pcap_geterr      = (char   *(*)(pcap_t *)) GetProcAddress(dll, "pcap_geterr");
+  p_pcap_next_ex     = (int     (*)(pcap_t *, struct pcap_pkthdr **, const u_char **)) GetProcAddress(dll, "pcap_next_ex");
+  p_pcap_sendpacket  = (int     (*)(pcap_t *, u_char *, int)) GetProcAddress(dll, "pcap_sendpacket");
+  return ++imported;
+}
+
+#define pcap_findalldevs p_pcap_findalldevs
+#define pcap_freealldevs p_pcap_freealldevs
+#define pcap_close       p_pcap_close
+#define pcap_lib_version p_pcap_lib_version
+#define pcap_open_live   p_pcap_open_live
+#define pcap_compile     p_pcap_compile
+#define pcap_setfilter   p_pcap_setfilter
+#define pcap_freecode    p_pcap_freecode
+#define pcap_geterr      p_pcap_geterr
+#define pcap_next_ex     p_pcap_next_ex
+#define pcap_sendpacket  p_pcap_sendpacket
+
+
 
 struct pcapdat {
   pcap_t *pc;
@@ -57,6 +105,9 @@ struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
   unsigned long alen;
 
   e = NULL;
+  if(!import_pcap())
+    return e;
+
   if(pcap_findalldevs(&devs, err) < 0) {
     fprintf(stderr, "pcap_findalldevs(): %s\n", err);
     return e;
@@ -91,6 +142,7 @@ struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList() {
       l->next = n;
     l = n;
   }
+  pcap_freealldevs(devs);
 
   return e;
 }
@@ -119,6 +171,9 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname) {
   char err[PCAP_ERRBUF_SIZE];
   int i, suc, error = 0;
   unsigned long alen;
+
+  if(!import_pcap())
+    return NULL;
 
   if(ifname == NULL)
     return NULL;
