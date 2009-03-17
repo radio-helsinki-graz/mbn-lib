@@ -191,7 +191,7 @@ void transmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifad
   if(ifaddr != 0)
     memcpy((void *)send, ifaddr, 6);
   else
-    memset((void *)send, 0, 6);
+    memset((void *)send, 0xFF, 6);
   memcpy((void *)send+6, (void *)dat->mymac, 6);
   send[12] = 0x88;
   send[13] = 0x20;
