@@ -261,31 +261,12 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
 
   /* parse message */
   if((r = parse_message(&msg)) != 0) {
-    if(0 && msg.bufferlength) {
-      printf("  BUF: ");
-      for(r=0;r<msg.bufferlength;r++)
-        printf(" %02X", msg.buffer[r]);
-      printf("\n");
-    }
     if(mbn->cb_Error) {
       sprintf(err, "Couldn't parse incoming message (%d)", r);
       mbn->cb_Error(mbn, MBN_ERROR_PARSE_MESSAGE, err);
     }
     return;
   }
-
-  if(0)
-    MBN_TRACE(printf("Received MambaNet message of %dB from 0x%08lX to 0x%08lX, id 0x%06X, type 0x%04X",
-       length, msg.AddressFrom, msg.AddressTo, msg.MessageID, msg.MessageType));
-
-  if(0 && msg.MessageType == MBN_MSGTYPE_ADDRESS)
-    MBN_TRACE(printf(" -> Address Reservation from %04X:%04X:%04X, type 0x%02X, engine 0x%08lX, services 0x%02X",
-      msg.Data.Address.ManufacturerID, msg.Data.Address.ProductID, msg.Data.Address.UniqueIDPerProduct,
-      msg.Data.Address.Type, msg.Data.Address.EngineAddr, msg.Data.Address.Services));
-
-  if(0 && msg.MessageType == MBN_MSGTYPE_OBJECT)
-    MBN_TRACE(printf(" -> Object message, action %d, object #%d, datatype %d",
-      msg.Data.Object.Action, msg.Data.Object.Number, msg.Data.Object.DataType));
 
   /* we're going to be accessing the mbn struct, lock! */
   pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
@@ -373,7 +354,6 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
             msg->MessageID = q->id+1;
         } while((q = q->next) != NULL);
       }
-      MBN_TRACE(printf("Assigning MessageID %06X", msg->MessageID));
     }
   }
 
@@ -418,16 +398,6 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       ifaddr = NULL;
     else
       ifaddr = dest->ifaddr;
-  }
-
-  if(0) {
-    printf("> RAW: ");
-    for(r=0; r<msg->rawlength; r++)
-      printf(" %02X", msg->raw[r]);
-    printf("\n  BUF: ");
-    for(r=0; r<msg->bufferlength; r++)
-      printf(" %02X", msg->buffer[r]);
-    printf("\n");
   }
 
   /* send the data to the interface transmit callback */

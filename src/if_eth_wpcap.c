@@ -35,7 +35,6 @@
 static int     (*p_pcap_findalldevs) (pcap_if_t **, char *);
 static void    (*p_pcap_freealldevs) (pcap_if_t *);
 static void    (*p_pcap_close) (pcap_t *);
-static char*   (*p_pcap_lib_version) ();
 static pcap_t* (*p_pcap_open_live) (const char *, int, int, int, char *);
 static int     (*p_pcap_compile) (pcap_t *, struct bpf_program *, char *, int, bpf_u_int32);
 static int     (*p_pcap_setfilter) (pcap_t *, struct bpf_program *);
@@ -50,14 +49,11 @@ int import_pcap() {
   if(imported)
     return 1;
   HANDLE dll;
-  if((dll = LoadLibrary("wpcap.dll")) <= HINSTANCE_ERROR) {
-    MBN_TRACE(printf("LoadLibrary: %ld", GetLastError()));
+  if((dll = LoadLibrary("wpcap.dll")) <= HINSTANCE_ERROR)
     return 0;
-  }
   p_pcap_findalldevs = (int     (*)(pcap_if_t **, char *)) GetProcAddress(dll, "pcap_findalldevs");
   p_pcap_freealldevs = (void    (*)(pcap_if_t *)) GetProcAddress(dll, "pcap_freealldevs");
   p_pcap_close       = (void    (*)(pcap_t *)) GetProcAddress(dll, "pcap_close");
-  p_pcap_lib_version = (char   *(*)()) GetProcAddress(dll, "pcap_lib_version");
   p_pcap_open_live   = (pcap_t *(*)(const char *, int, int, int, char *)) GetProcAddress(dll, "pcap_open_live");
   p_pcap_compile     = (int     (*)(pcap_t *, struct bpf_program *, char *, int, bpf_u_int32)) GetProcAddress(dll, "pcap_compile");
   p_pcap_setfilter   = (int     (*)(pcap_t *, struct bpf_program *)) GetProcAddress(dll, "pcap_setfilter");
@@ -71,7 +67,6 @@ int import_pcap() {
 #define pcap_findalldevs p_pcap_findalldevs
 #define pcap_freealldevs p_pcap_freealldevs
 #define pcap_close       p_pcap_close
-#define pcap_lib_version p_pcap_lib_version
 #define pcap_open_live   p_pcap_open_live
 #define pcap_compile     p_pcap_compile
 #define pcap_setfilter   p_pcap_setfilter
@@ -186,8 +181,6 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
     sprintf(err, "No interface specified");
     return NULL;
   }
-
-  MBN_TRACE(printf("%s", pcap_lib_version()));
 
   itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
   dat = (struct pcapdat *)calloc(1, sizeof(struct pcapdat));
