@@ -104,11 +104,15 @@ struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *err) {
   unsigned long alen;
 
   e = NULL;
-  if(!import_pcap())
+  if(!import_pcap()) {
+    sprintf(err, "Couldn't load wpcap.dll, get it from http://winpcap.org/");
     return e;
+  }
 
-  if(pcap_findalldevs(&devs, err) < 0)
+  if(pcap_findalldevs(&devs, err+27) < 0) {
+    memcpy((void *)err, (void *)"Can't get list of devices: ", 27);
     return e;
+  }
   if(devs == NULL) {
     sprintf(err, "No devices found");
     return e;
@@ -173,11 +177,15 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   int i, suc, error = 0;
   unsigned long alen;
 
-  if(!import_pcap())
+  if(!import_pcap()) {
+    sprintf(err, "Couldn't load wpcap.dll, get it from http://winpcap.org/");
     return NULL;
+  }
 
-  if(ifname == NULL)
+  if(ifname == NULL) {
+    sprintf(err, "No interface specified");
     return NULL;
+  }
 
   MBN_TRACE(printf("%s", pcap_lib_version()));
 
@@ -187,8 +195,10 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
 
 
   /* get device list */
-  if(pcap_findalldevs(&devs, err) < 0)
+  if(pcap_findalldevs(&devs, err+27) < 0) {
+    memcpy((void *)err, (void *)"Can't get list of devices: ", 27);
     error++;
+  }
   if(!error && devs == NULL) {
     sprintf(err, "No devices found");
     error++;
@@ -202,8 +212,10 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
     sprintf(err, "Selected device not found");
     error++;
   }
-  if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1000, err)) == NULL)
+  if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1000, err+25)) == NULL) {
+    memcpy((void *)err, (void *)"Couldn't open interface: ", 25);
     error++;
+  }
 
   /* get MAC address */
   suc = 0;
