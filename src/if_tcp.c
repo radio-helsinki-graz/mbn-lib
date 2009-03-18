@@ -70,7 +70,7 @@ int setup_server(struct tcpdat *, char *, char *, char *);
 int init_tcp(struct mbn_interface *, char *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
-void transmit(struct mbn_interface *, unsigned char *, int, void *);
+int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, char *myip, char *myport, char *err) {
@@ -251,6 +251,7 @@ void read_connection(struct mbn_interface *itf, struct tcpconn *cn) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   unsigned char buf[BUFFERSIZE];
   int n, i;
+  char err[MBN_ERRSIZE];
 
   n = recv(cn->sock, (char *)buf, BUFFERSIZE, 0);
   if(n < 0 && errno == EINTR)
@@ -278,7 +279,7 @@ void read_connection(struct mbn_interface *itf, struct tcpconn *cn) {
         if(buf[0] == 0x81) {
           for(n=0; n<MAX_CONNECTIONS; n++)
             if(dat->conn[n].sock >= 0 && &(dat->conn[n]) != cn)
-              transmit(itf, cn->buf, cn->buflen, (void *)&(dat->conn[n]));
+              transmit(itf, cn->buf, cn->buflen, (void *)&(dat->conn[n]), err);
         }
         /* now send to mbn */
         mbnProcessRawMessage(itf, cn->buf, cn->buflen, (void *)cn);
@@ -338,7 +339,7 @@ void *receiver(void *ptr) {
 }
 
 
-void transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr) {
+int transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr, char *err) {
   struct tcpconn *cn = (struct tcpconn *)ifaddr;
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   int i, sent, n;
@@ -350,13 +351,13 @@ void transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *i
     sent = 0;
     while((n = send(dat->conn[i].sock, (char *)&(buf[sent]), length-sent, 0)) < length-sent) {
       if(n < 0 && dat->conn[i].sock == dat->rconn) {
-        MBN_ERROR(itf->mbn, MBN_ERROR_ITF_WRITE);
-        perror("send()");
-        return;
+        sprintf(err, "Can't send packet: %s", strerror(errno));
+        return 1;
       }
       sent += n;
     }
   }
+  return 0;
 }
 
 

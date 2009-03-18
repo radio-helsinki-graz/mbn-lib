@@ -92,7 +92,7 @@ struct pcapdat {
 void free_pcap(struct mbn_interface *);
 int init_pcap(struct mbn_interface *, char *);
 void *receive_packets(void *ptr);
-void transmit(struct mbn_interface *, unsigned char *, int, void *);
+int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *err) {
@@ -306,7 +306,7 @@ void *receive_packets(void *ptr) {
 }
 
 
-void transmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifaddr) {
+int transmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifaddr, char *err) {
   struct pcapdat *dat = (struct pcapdat *) itf->data;
   unsigned char send[MBN_MAX_MESSAGE_SIZE];
 
@@ -319,7 +319,10 @@ void transmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifad
   send[13] = 0x20;
   memcpy((void *)send+14, (void *)buf, len);
 
-  if(pcap_sendpacket(dat->pc, send, len+14) < 0)
-    MBN_ERROR(itf->mbn, MBN_ERROR_ITF_WRITE);
+  if(pcap_sendpacket(dat->pc, send, len+14) < 0) {
+    sprintf(err, "Can't send packet: %s", pcap_geterr(dat->pc));
+    return 1;
+  }
+  return 0;
 }
 

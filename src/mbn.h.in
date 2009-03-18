@@ -225,7 +225,7 @@ typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message
 typedef int(*mbn_cb_InitInterface)(struct mbn_interface *, char *);
 typedef void(*mbn_cb_FreeInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(void *);
-typedef void(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, int, void *);
+typedef int(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 

@@ -331,6 +331,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
 
 void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg, int flags) {
   unsigned char raw[MBN_MAX_MESSAGE_SIZE];
+  char err[MBN_ERRSIZE];
   struct mbn_address_node *dest;
   struct mbn_msgqueue *q, *n;
   void *ifaddr;
@@ -348,7 +349,10 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
 
   /* just forward the raw data to the interface, if we don't need to do any processing */
   if(flags & MBN_SEND_RAWDATA) {
-    mbn->itf->cb_transmit(mbn->itf, raw, msg->rawlength, NULL);
+    if(mbn->itf->cb_transmit(mbn->itf, raw, msg->rawlength, NULL, err) != 0) {
+      if(mbn->cb_Error)
+        mbn->cb_Error(mbn, MBN_ERROR_ITF_WRITE, err);
+    }
     return;
   }
 
@@ -426,7 +430,10 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   }
 
   /* send the data to the interface transmit callback */
-  mbn->itf->cb_transmit(mbn->itf, raw, msg->rawlength, ifaddr);
+  if(mbn->itf->cb_transmit(mbn->itf, raw, msg->rawlength, ifaddr, err) != 0) {
+    if(mbn->cb_Error)
+      mbn->cb_Error(mbn, MBN_ERROR_ITF_WRITE, err);
+  }
 }
 
 

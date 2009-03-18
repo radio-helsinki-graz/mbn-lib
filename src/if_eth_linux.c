@@ -45,7 +45,7 @@ struct ethdat {
 int ethernet_init(struct mbn_interface *, char *);
 void *receive_packets(void *);
 void ethernet_free(struct mbn_interface *);
-void transmit(struct mbn_interface *, unsigned char *, int, void *);
+int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 /* fetch a list of ethernet interfaces */
@@ -259,7 +259,7 @@ void *receive_packets(void *ptr) {
 }
 
 
-void transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void *ifaddr) {
+int transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void *ifaddr, char *err) {
   struct ethdat *dat = (struct ethdat *) itf->data;
   unsigned char *addr = (unsigned char *) ifaddr;
   struct sockaddr_ll saddr;
@@ -282,11 +282,11 @@ void transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void
   sent = 0;
   while((rd = sendto(dat->socket, &(buffer[sent]), length-sent, 0, (struct sockaddr *)&saddr, sizeof(struct sockaddr_ll))) < length-sent) {
     if(rd < 0) {
-      MBN_ERROR(itf->mbn, MBN_ERROR_ITF_READ);
-      perror("sendto()");
-      return;
+      sprintf(err, "Can't send packet: %s", strerror(errno));
+      return 1;
     }
     sent += rd;
   }
+  return 0;
 }
 
