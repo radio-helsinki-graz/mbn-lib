@@ -73,6 +73,9 @@ void *throttle_thread(void *arg) {
   struct timeval tv;
   int i, f;
 
+  if(!mbn->objects)
+    return NULL;
+
   while(1) {
     pthread_testcancel();
     /* wait 50ms */

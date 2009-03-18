@@ -106,26 +106,29 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
     memset((void *)&(mbn->node.Name[l]), 0, 32-l);
 
   /* create a copy of the objects, and make some small changes for later use */
-  mbn->objects = (struct mbn_object *) malloc(mbn->node.NumberOfObjects*sizeof(struct mbn_object));
-  memcpy((void *)mbn->objects, (void *)objects, mbn->node.NumberOfObjects*sizeof(struct mbn_object));
-  for(i=0;i<mbn->node.NumberOfObjects;i++) {
-    obj = &(mbn->objects[i]);
-    if(objects[i].SensorSize > 0) {
-      copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
-      copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
-      copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorData), &(mbn->objects[i].SensorData));
+  if(objects) {
+    mbn->objects = (struct mbn_object *) malloc(mbn->node.NumberOfObjects*sizeof(struct mbn_object));
+    memcpy((void *)mbn->objects, (void *)objects, mbn->node.NumberOfObjects*sizeof(struct mbn_object));
+    for(i=0;i<mbn->node.NumberOfObjects;i++) {
+      obj = &(mbn->objects[i]);
+      if(objects[i].SensorSize > 0) {
+        copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
+        copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
+        copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorData), &(mbn->objects[i].SensorData));
+      }
+      if(objects[i].ActuatorSize > 0) {
+        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
+        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
+        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
+        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorData), &(mbn->objects[i].ActuatorData));
+      }
+      mbn->objects[i].changed = mbn->objects[i].timeout = 0;
+      l = strlen((char *)mbn->objects[i].Description);
+      if(l < 32)
+        memset((void *)&(mbn->objects[i].Description[l]), 0, 32-l);
     }
-    if(objects[i].ActuatorSize > 0) {
-      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
-      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
-      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
-      copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorData), &(mbn->objects[i].ActuatorData));
-    }
-    mbn->objects[i].changed = mbn->objects[i].timeout = 0;
-    l = strlen((char *)mbn->objects[i].Description);
-    if(l < 32)
-      memset((void *)&(mbn->objects[i].Description[l]), 0, 32-l);
-  }
+  } else
+    mbn->node.NumberOfObjects = 0;
 
   /* init the mutex for locking the mbn_handler data.
    * Recursive type, because we call other functions
