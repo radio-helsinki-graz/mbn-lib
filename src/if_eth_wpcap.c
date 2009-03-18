@@ -282,6 +282,7 @@ void *receive_packets(void *ptr) {
   struct pcap_pkthdr *hdr;
   void *ifaddr;
   unsigned char *buffer;
+  char err[MBN_ERRSIZE];
   int i;
 
   while(1) {
@@ -289,8 +290,11 @@ void *receive_packets(void *ptr) {
 
     /* wait for/read packet */
     i = pcap_next_ex(dat->pc, &hdr, (u_char *)&buffer);
-    if(i < 0)
+    if(i < 0) {
+      sprintf(err, "Couldn't read packet: %s", pcap_geterr(dat->pc));
+      mbnInterfaceReadError(itf, err);
       break;
+    }
     if(i == 0)
       continue;
 
@@ -299,8 +303,6 @@ void *receive_packets(void *ptr) {
     memcpy(ifaddr, (void *)buffer+6, 6);
     mbnProcessRawMessage(itf, buffer+14, (int)hdr->caplen-14, ifaddr);
   }
-
-  MBN_ERROR(itf->mbn, MBN_ERROR_ITF_READ);
 
   return NULL;
 }

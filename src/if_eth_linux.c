@@ -196,6 +196,7 @@ void *receive_packets(void *ptr) {
   struct mbn_interface *itf = (struct mbn_interface *)ptr;
   struct ethdat *dat = (struct ethdat *) itf->data;
   unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
+  char err[MBN_ERRSIZE];
   int i, msgbuflen = 0;
   fd_set rdfd;
   struct timeval tv;
@@ -217,7 +218,8 @@ void *receive_packets(void *ptr) {
     if(rd == 0 || (rd < 0 && errno == EINTR))
       continue;
     if(rd < 0) {
-      perror("select()");
+      sprintf(err, "Couldn't check for new packets: %s", strerror(errno));
+      mbnInterfaceReadError(itf, err);
       break;
     }
 
@@ -226,7 +228,8 @@ void *receive_packets(void *ptr) {
     if(rd == 0 || (rd < 0 && errno == EINTR))
       continue;
     if(rd < 0) {
-      perror("recvfrom()");
+      sprintf(err, "Couldn't receive packet: %s", strerror(errno));
+      mbnInterfaceReadError(itf, err);
       break;
     }
     if(htons(from.sll_protocol) != ETH_P_DNR)
@@ -252,8 +255,6 @@ void *receive_packets(void *ptr) {
         msgbuflen = 0;
     }
   }
-
-  MBN_ERROR(itf->mbn, MBN_ERROR_ITF_READ);
 
   return NULL;
 }

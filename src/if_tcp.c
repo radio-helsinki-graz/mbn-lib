@@ -247,24 +247,25 @@ void new_connection(struct tcpdat *dat) {
 }
 
 
-void read_connection(struct mbn_interface *itf, struct tcpconn *cn) {
+int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   unsigned char buf[BUFFERSIZE];
   int n, i;
-  char err[MBN_ERRSIZE];
 
   n = recv(cn->sock, (char *)buf, BUFFERSIZE, 0);
   if(n < 0 && errno == EINTR)
-    return;
+    return 0;
 
   /* error, close connection */
   if(n <= 0) {
     close(cn->sock);
     /* oops, this was our remote connection, we shouldn't lose this one! */
-    if(dat->rconn == cn->sock)
-      MBN_ERROR(itf->mbn, MBN_ERROR_ITF_READ);
+    if(dat->rconn == cn->sock) {
+      sprintf(err, "Lost connection to server");
+      return 1;
+    }
     cn->sock = -1;
-    return;
+    return 0;
   }
 
   /* handle the data */
@@ -289,12 +290,14 @@ void read_connection(struct mbn_interface *itf, struct tcpconn *cn) {
     if(cn->buflen >= MBN_MAX_MESSAGE_SIZE)
       cn->buflen = 0;
   }
+  return 0;
 }
 
 
 void *receiver(void *ptr) {
   struct mbn_interface *itf = (struct mbn_interface *)ptr;
   struct tcpdat *dat = (struct tcpdat *)itf->data;
+  char err[MBN_ERRSIZE];
   struct timeval tv;
   fd_set rdfd;
   int n, i;
@@ -322,7 +325,8 @@ void *receiver(void *ptr) {
     if(n == 0 || (n < 0 && errno == EINTR))
       continue;
     if(n < 0) {
-      perror("select()");
+      sprintf(err, "Couldn't check for read state: %s", strerror(errno));
+      mbnInterfaceReadError(itf, err);
       break;
     }
 
@@ -333,7 +337,8 @@ void *receiver(void *ptr) {
     /* check for data on all connections */
     for(i=0; i<MAX_CONNECTIONS; i++)
       if(dat->conn[i].sock >=0 && FD_ISSET(dat->conn[i].sock, &rdfd))
-        read_connection(itf, &(dat->conn[i]));
+        if(read_connection(itf, &(dat->conn[i]), err))
+          mbnInterfaceReadError(itf, err);
   }
   return NULL;
 }

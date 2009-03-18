@@ -36,17 +36,6 @@
 #endif
 
 
-/* IMPORTANT: keep this in the same order as enum mbn_errors */
-const char *mbn_errormessages[] = {
-  "No interface registered",
-  "Cannot send message without valid address",
-  "Cannot create message: invalid mbn_message struct",
-  "Received invalid message",
-  "Could not read for interface",
-  "Could not write to interface"
-};
-
-
 /* thread that keeps track of messages requiring an acknowledge reply,
  * and retries the message after a timeout (of one second, currently) */
 void *msgqueue_thread(void *arg) {
@@ -257,6 +246,7 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   struct mbn_handler *mbn = itf->mbn;
   int r, processed = 0;
   struct mbn_message msg;
+  char err[MBN_ERRSIZE];
 
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.raw = buffer;
@@ -277,7 +267,10 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
         printf(" %02X", msg.buffer[r]);
       printf("\n");
     }
-    MBN_ERROR(mbn, MBN_ERROR_PARSE_MESSAGE);
+    if(mbn->cb_Error) {
+      sprintf(err, "Couldn't parse incoming message (%d)", r);
+      mbn->cb_Error(mbn, MBN_ERROR_PARSE_MESSAGE, err);
+    }
     return;
   }
 
@@ -338,12 +331,18 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   int r;
 
   if(mbn->itf->cb_transmit == NULL) {
-    MBN_ERROR(mbn, MBN_ERROR_NO_INTERFACE);
+    if(mbn->cb_Error) {
+      sprintf(err, "Registered interface can't send messages");
+      mbn->cb_Error(mbn, MBN_ERROR_NO_INTERFACE, err);
+    }
     return;
   }
 
   if(!(flags & MBN_SEND_IGNOREVALID) && !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
-    MBN_ERROR(mbn, MBN_ERROR_INVALID_ADDR);
+    if(mbn->cb_Error) {
+      sprintf(err, "Can't send message: we don't have a validated MambaNet address");
+      mbn->cb_Error(mbn, MBN_ERROR_INVALID_ADDR, err);
+    }
     return;
   }
 
@@ -383,8 +382,10 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
 
   /* create the message */
   if((r = create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0)) != 0) {
-    MBN_ERROR(mbn, MBN_ERROR_CREATE_MESSAGE);
-    MBN_TRACE(printf("Error creating message: %02X", r));
+    if(mbn->cb_Error) {
+      sprintf(err, "Couldn't create message (%d)", r);
+      mbn->cb_Error(mbn, MBN_ERROR_CREATE_MESSAGE, err);
+    }
     pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
     return;
   }

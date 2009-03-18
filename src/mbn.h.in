@@ -18,7 +18,6 @@
  *  - Add more H/W interfaces:
  *    > Serial line?
  *    > SocketCAN?
- *  - Better error handling for interface modules?
  *  - Test/port to OS X?
  *  - Test suite?
  *  - Documentation (LaTeX)
@@ -145,7 +144,6 @@
     ((a)->ProductID          == 0 || (b)->ProductID          == 0 || (a)->ProductID          == (b)->ProductID)       && \
     ((a)->UniqueIDPerProduct == 0 || (b)->UniqueIDPerProduct == 0 || (a)->UniqueIDPerProduct == (b)->UniqueIDPerProduct) \
   )
-#define MBN_ERROR(mbn, e) if((mbn)->cb_Error != NULL) { (mbn)->cb_Error(mbn, e, mbn_errormessages[e]); }
 
 
 
@@ -162,7 +160,6 @@ enum mbn_error {
   MBN_ERROR_ITF_READ,
   MBN_ERROR_ITF_WRITE
 };
-extern const char *mbn_errormessages[];
 
 
 
@@ -451,6 +448,7 @@ void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
  *  the library smaller because no extra functions have to be exported)
  * These macros may still be replaced with proper functions when needed in the future.
  */
+#define mbnInterfaceReadError(itf, err) if((itf)->mbn->cb_Error) { (itf)->mbn->cb_Error((itf)->mbn, MBN_ERROR_ITF_READ, (err)); }
 #define mbnSetInterface(mbn, itf)                          ((mbn)->interface = interface)
 #define mbnSetReceiveMessageCallback(mbn, func)            ((mbn)->cb_ReceiveMessage = func)
 #define mbnUnsetReceiveMessageCallback(mbn)                ((mbn)->cb_ReceiveMessage = NULL)
