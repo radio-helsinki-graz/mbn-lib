@@ -351,6 +351,8 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   i = obj->Number-1024;
 
+  /* TODO: handle object messages with MBN_DATATYPE_ERROR in the data field */
+
   switch(obj->Action) {
     /* Get object info */
     case MBN_OBJ_ACTION_GET_INFO:

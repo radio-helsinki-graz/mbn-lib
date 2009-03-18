@@ -61,6 +61,10 @@ void remove_node(struct mbn_handler *mbn, struct mbn_address_node *node) {
 }
 
 
+/* TODO: The struct returned by the following two functions could be marked
+ *  unused by an other thread while the application still uses the data, giving
+ *  unexpected results. Make a copy of the node? */
+
 /* Get information about a node address reservation information given
  * a MambaNet address. Returns NULL if not found. */
 struct mbn_address_node * MBN_EXPORT mbnNodeStatus(struct mbn_handler *mbn, unsigned long addr) {
