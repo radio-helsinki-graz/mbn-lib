@@ -1,5 +1,4 @@
-# Run this Makefile using: make PLATFORM=x
-# Where x can be:
+# Current recognised options for PLATFORM:
 #   mingw
 #     Mingw environment, static link to pthreadsGC2.a
 #     Requires the WinPcap developer pack to be unpacked in /WdpPack
@@ -7,11 +6,12 @@
 #   linux
 #     Linux, dynamic link to libpthreads.so
 #     Interface modules: Ethernet & TCP
+PLATFORM=linux
 
-ifndef PLATFORM
-	PLATFORM=linux
-endif
+# uncomment to build a static library
+#BUILD_STATIC=1
 
+CC = gcc
 CFLAGS = -Wall -Wextra
 LFLAGS =
 

@@ -70,7 +70,7 @@ int setup_server(struct tcpdat *, char *, char *, char *);
 int init_tcp(struct mbn_interface *, char *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
-int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
+static int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, char *myip, char *myport, char *err) {
@@ -344,7 +344,7 @@ void *receiver(void *ptr) {
 }
 
 
-int transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr, char *err) {
+static int transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr, char *err) {
   struct tcpconn *cn = (struct tcpconn *)ifaddr;
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   int i, sent, n;
