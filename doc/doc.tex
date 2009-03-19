@@ -32,6 +32,98 @@
 
 
 \chapter{API Reference}
+\section{Data types}
+\textbf{Note:} Not all structures defined in mbn.h are documented here, only those that are useful for writing applications are included. Also keep in mind that the actual structure definitions may include more fields than those given in this document. These fields are intended for internal use. Refer to the source of mbn.h for the full definitions.
+
+
+\subsection{mbn\_address\_node}
+\begin{verbatim}
+ struct mbn_address_node {
+   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
+   unsigned long MambaNetAddr, EngineAddr;
+   unsigned char Services;
+ };
+\end{verbatim}
+This structure describes a MambaNet node as seen on the network. \textit{EngineAddr} is the default engine address for the node, and can be 0 if none is set. \textit{Services} is a set of \verb|MBN_ADDR_SERVICES_*| flags.
+
+
+\subsection{mbn\_handler}
+This structure identifies a MambaNet node and holds all data related to this node. All content in this struct is handled by the library functions, there should be no need to manually access information in it.
+
+
+\subsection{mbn\_if\_ethernet}
+\begin{verbatim}
+#ifdef MBN_IF_ETHERNET
+ struct mbn_if_ethernet {
+   struct mbn_if_ethernet *next;
+   char *desc;
+   char *name;
+   unsigned char addr[6];
+ };
+#endif
+\end{verbatim}
+Defines a singly linked list of ethernet interfaces. \textit{addr} contains the MAC address of the interface in raw bytes. See the EthernetIFList() function for more information on the other fields and on how to use the data.
+
+
+\subsection{mbn\_interface}
+\begin{verbatim}
+ struct mbn_interface {
+   void *data;
+   mbn_cb_InitInterface cb_init;
+   mbn_cb_FreeInterface cb_free;
+   mbn_cb_FreeInterfaceAddress cb_free_addr;
+   mbn_cb_InterfaceTransmit cb_transmit;
+ };
+\end{verbatim}
+Defines an interface module. The \textit{data} pointer can be freely used by the interface code for internal storage. The \verb|mbn_cb_<callback>| names are typedefs for the function callbacks as described in section\ \ref{sec:cb}.
+The interface module is responsible for creating and initializing this structure.
+
+
+\subsection{mbn\_node\_info}
+\begin{verbatim}
+ struct mbn_node_info {
+   unsigned int MambaNetAddr;
+   char Services;
+   unsigned char Description[64];
+   unsigned char Name[32];
+   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
+   unsigned char HardwareMajorRevision, HardwareMinorRevision;
+   unsigned char FirmwareMajorRevision, FirmwareMinorRevision;
+   unsigned char FPGAFirmwareMajorRevision, FPGAFirmwareMinorRevision;
+   unsigned short NumberOfObjects;
+   unsigned int DefaultEngineAddr;
+   unsigned char HardwareParent[6];
+   unsigned char ServiceRequest;
+ };
+\end{verbatim}
+Holds all information required about the MambaNet node. \textit{MambaNetAddr} indicates the current MambaNet address of the node, and can be 0 if it doesn't have one (yet). \textit{Services} is a set of \verb|MBN_ADDR_SERVICES_*| flags. Any of the \textit{-Revision} fields can be 0 to indicate that the item is not present or does not have a version number assigned. \textit{DefaultEngineAddr} can be 0 to indicate that no default engine address is set. The \textit{ServiceRequest} field should be either 1 to indicate that the node requires service, or 0 otherwise.
+
+\textit{HardwareParent} specifies the UniqueMediaAccessID of the MambaNet node that is the ``hardware parent'' of this node in the format 0xMMMMPPPPUUUU, where M is the ManufacturerID, P the ProductID and U the UniqueIDPerProduct. Can be 0x000000000000 or the UniqueMediaAccessID of the current node if no hardware parent is present.
+
+The protocol major and minor revisions are defined within the library as such not configurable and not defined in this structure.
+
+
+\subsection{mbn\_object}
+\begin{verbatim}
+ struct mbn_object {
+   unsigned char Description[32];
+   unsigned char UpdateFrequency;
+   unsigned char SensorType;
+   unsigned char SensorSize;
+   union mbn_data SensorMin, SensorMax;
+   union mbn_data SensorData;
+   unsigned char ActuatorType;
+   unsigned char ActuatorSize;
+   union mbn_data ActuatorMin, ActuatorMax;
+   union mbn_data ActuatorDefault;
+   union mbn_data ActuatorData;
+ };
+\end{verbatim}
+Defines a custom object. \textit{SensorData} and \textit{ActuatorData} refer to the ``current'' data in use. Note that there is no field indicating the object services, as this is automatically handled by the library and is not configurable.
+
+
+
+\cleardoublepage
 \section{Functions}
 \subsection{mbnEthernetIFFree}
 \begin{verbatim}
@@ -328,6 +420,7 @@ After defining the sensor part, the actuator part should be specified in the sam
 
 
 
+\cleardoublepage
 \section{Callbacks}
 \label{sec:cb}
 
@@ -401,7 +494,7 @@ Called whenever an error occurs in MambaNet node \textit{mbn}. \textit{str} poin
   Couldn't send a packet to the network. This could either be a temporary problem and further packets can be sent, or a fatal error and no futher packets can be sent.
 \end{description}
 
-\textbf{Important:} Like with all callbacks functions, calling mbnFree() within Error() results in undefined behaviour!
+\textbf{Important:} As with all callbacks functions, calling mbnFree() within Error() results in undefined behaviour!
 
 
 \subsection{FreeInterface \footnotesize{[interface]}}

@@ -4,7 +4,7 @@ include Makefile.inc
 .PHONY: clean distclean lib error conf doc
 
 main: main.c lib
-	${CC} ${CFLAGS} main.c -Isrc -Lsrc ${LFLAGS} -lmbn -o main
+	${CC} ${CFLAGS} main.c -Isrc -Lsrc -lmbn ${LFLAGS} -o main
 
 lib: force_look
 	${MAKE} -C src/
