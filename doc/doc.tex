@@ -1,5 +1,7 @@
 \documentclass[a4paper]{report}
 
+\usepackage[left=3.5cm,top=4cm,right=3cm]{geometry}
+
 \usepackage[pdftex]{graphicx}
 \usepackage[pdftex, colorlinks=true, pagebackref, pdfpagemode=UseOutlines,
             linkcolor=rltblack]{hyperref}
@@ -13,9 +15,9 @@
 % TODO:
 %  - general introduction (+ note about multithreading)
 %  - introduction to initialisation
+%  - introduction to the address table
 %  - introduction to custom objects
 %  - introduction to interface writing
-%  - callback function reference
 %  - structure descriptions
 
 \begin{document}
@@ -24,11 +26,14 @@
 \author{D\&R Elektronica}
 \maketitle
 
+\setcounter{tocdepth}{1}
 \tableofcontents
+\setcounter{tocdepth}{2}
 
 
-\chapter{Function Reference}
-\section{mbnEthernetIFFree}
+\chapter{API Reference}
+\section{Functions}
+\subsection{mbnEthernetIFFree}
 \begin{verbatim}
 #ifdef MBN_IF_ETHERNET
  void mbnEthernetIFFree(struct mbn_if_ethernet *iflist);
@@ -37,7 +42,7 @@
 Deallocates the ethernet interface list returned by mbnEthernetIFList().
 
 
-\section{mbnEthernetIFList}
+\subsection{mbnEthernetIFList}
 \begin{verbatim}
 #ifdef MBN_IF_ETHERNET
  struct mbn_if_ethernet *mbnEthernetIFList(char *error);
@@ -50,7 +55,7 @@ The \textit{desc} member can be \verb|NULL| if no description could be obtained.
 Note that on windows, ethernet interfaces without an associated IPv4 address can not be used due to a limitation in the MAC address detection code, and will thus not be returned.
 
 
-\section{mbnEthernetOpen}
+\subsection{mbnEthernetOpen}
 \begin{verbatim}
 #ifdef MBN_IF_ETHERNET
  struct mbn_interface *mbnEthernetOpen(char *ifname,
@@ -60,7 +65,7 @@ Note that on windows, ethernet interfaces without an associated IPv4 address can
 Opens the ethernet interface described by \textit{ifname} and allocates an \verb|mbn_interface| structure for use for mbnInit(). Returns \verb|NULL| on error and an error string is written to \textit{error}, which should have enough space for at least \verb|MBN_ERRSIZE| bytes. \textit{ifname} can be obtained from mbnEthernetIFList().
 
 
-\section{mbnForceAddress}
+\subsection{mbnForceAddress}
 \begin{verbatim}
  void mbnForceAddress(struct mbn_handler *mbn,
                       unsigned long addr);
@@ -68,7 +73,7 @@ Opens the ethernet interface described by \textit{ifname} and allocates an \verb
 Forces the MambaNet node \textit{mbn} to use address \textit{addr} and consider this address as validated. Should only be used by address servers or applications with multiple MambaNet nodes on different network interfaces.
 
 
-\section{mbnFree}
+\subsection{mbnFree}
 \begin{verbatim}
  void mbnFree(struct mbn_handler *mbn);
 \end{verbatim}
@@ -77,7 +82,7 @@ Deallocates all resources and closes all connections associated to the MambaNet 
 \emph{Note:} Due to a limitation in the implementation, this command can block up to a few seconds on windows.
 
 
-\section{mbnGetActuatorData}
+\subsection{mbnGetActuatorData}
 \begin{verbatim}
  void mbnGetActuatorData(struct mbn_handler *mbn,
                          unsigned long addr,
@@ -87,7 +92,7 @@ Deallocates all resources and closes all connections associated to the MambaNet 
 Requests the actuator data of a node on the network and dispatch an ActuatorDataResponse() callback on receiving the response. See mbnGetSensorData() for details.
 
 
-\section{mbnGetObjectFrequency}
+\subsection{mbnGetObjectFrequency}
 \begin{verbatim}
  void mbnGetObjectFrequency(struct mbn_handler *mbn,
                             unsigned long addr,
@@ -97,7 +102,7 @@ Requests the actuator data of a node on the network and dispatch an ActuatorData
 Requests the object frequency state of a node on the network and dispatch an ObjectFrequencyResponse() callback on receiving the response. See mbnGetSensorData() for details.
 
 
-\section{mbnGetObjectInformation}
+\subsection{mbnGetObjectInformation}
 \begin{verbatim}
  void mbnGetObjectInformation(struct mbn_handler *mbn,
                               unsigned long addr,
@@ -107,7 +112,7 @@ Requests the object frequency state of a node on the network and dispatch an Obj
 Requests the object information of a node on the network and dispatch an ObjectInformationResponse() callback on receiving the response. See mbnGetSensorData() for details.
 
 
-\section{mbnGetSensorData}
+\subsection{mbnGetSensorData}
 \begin{verbatim}
  void mbnGetSensorData(struct mbn_handler *mbn,
                        unsigned long addr,
@@ -119,7 +124,7 @@ Requests the sensor data of object number \textit{object} of the node at MambaNe
 When the \textit{acknowledge} argument is set to $1$, the message will be sent using the \verb|MBN_SEND_ACKOWLEDGE| flag to mbnSendMessage(). Using this option, the MambaNet library will automatically retry the get operation, and an AcknowledgeTimeout callback will be dispatched if the sensor data could not be received after 5 retries.
 
 
-\section{mbnInit}
+\subsection{mbnInit}
 \begin{verbatim}
  struct mbn_handler *mbnInit(struct mbn_node_info info,
                              struct mbn_object *objects,
@@ -135,7 +140,17 @@ This function creates a new MambaNet node, the \textit{info} argument should be 
 On success, mbnInit() returns a pointer to an \verb|mbn_handler| structure which can be used to perform operations on the newly created MambaNet node. On error, \verb|NULL| is returned and an error string is written to \textit{error}, which should have enough space for at least \verb|MBN_ERRSIZE| bytes.
 
 
-\section{mbnNodeStatus}
+\subsection{mbnInterfaceReadError \footnotesize{[macro]}}
+\begin{verbatim}
+ void mbnInterfaceReadError(struct mbn_interface *itf,
+                            char *error);
+\end{verbatim}
+This is a macro for use by interface modules. Should be called whenever there was a fatal error upon reading from the interface, such as losing the remote connection for TCP or when the device is not accessible for Ethernet. \textit{error} should be a human readable string describing what went wrong.
+
+This macro expands to an if-statement calling the Error() callback to the application. \textit{itf} should have been linked to a MambaNet node using mbnInit() before being used in this macro.
+
+
+\subsection{mbnNodeStatus}
 \begin{verbatim}
  struct mbn_address_node *mbnNodeStatus(struct mbn_handler *mbn,
                                         unsigned long addr);
@@ -143,7 +158,7 @@ On success, mbnInit() returns a pointer to an \verb|mbn_handler| structure which
 This function returns the status information of the MambaNet node at address \textit{addr}, or \verb|NULL| if the node is not found in the internal node list.
 
 
-\section{mbnNextNode}
+\subsection{mbnNextNode}
 \begin{verbatim}
  struct mbn_address_node *mbnNextNode(struct mbn_handler *mbn,
                                       struct mbn_address_node *node);
@@ -153,7 +168,7 @@ mbnNextNode() can be used to browse through the list of online nodes seen by Mam
 Note that after calling mbnInit(), it can take up to 30 seconds for all nodes on the network to be in the local node list. Use mbnSendPingRequest() if you need this information at an earlier point.
 
 
-\section{mbnProcessRawMessage}
+\subsection{mbnProcessRawMessage}
 \begin{verbatim}
  void mbnProcessRawMessage(struct mbn_interface *itf,
                            unsigned char *buffer,
@@ -163,7 +178,7 @@ Note that after calling mbnInit(), it can take up to 30 seconds for all nodes on
 This command should only be called by an interface module. Processes a raw packet from the network and sends the appropriate callbacks to the application. \textit{itf} should point to the \verb|mbn_interface| structure of the interface this message was received on. This interface must have previously been linked to a MambaNet node using mbnInit().
 
 
-\section{mbnSendMessage}
+\subsection{mbnSendMessage}
 \begin{verbatim}
  void mbnSendMessage(struct mbn_handler *mbn,
                      struct mbn_message *msg,
@@ -186,7 +201,7 @@ Sends a custom message pointed to by \textit{msg} over the network from the pers
 \end{description}
 
 
-\section{mbnSendPingRequest}
+\subsection{mbnSendPingRequest}
 \begin{verbatim}
  void mbnSendPingRequest(struct mbn_handler *mbn,
                          unsigned long addr);
@@ -194,7 +209,7 @@ Sends a custom message pointed to by \textit{msg} over the network from the pers
 Sends a ping request to MambaNet address \textit{addr}, or to all nodes on the network by specifying \verb|MBN_BROADCAST_ADDRESS|.
 
 
-\section{mbnSetActuatorData}
+\subsection{mbnSetActuatorData}
 \begin{verbatim}
  void mbnSetActuatorData(struct mbn_handler *mbn,
                          unsigned long addr,
@@ -207,7 +222,17 @@ Sends a ping request to MambaNet address \textit{addr}, or to all nodes on the n
 Sets the actuator data of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{data}. The values of the \textit{type} and \textit{length} arguments should match the actuator data type and length configured in the target node. This information can be requested by using mbnGetObjectInformation(). The \textit{acknowledge} argument behaves the same as for mbnGetSensorData().
 
 
-\section{mbnSetObjectFrequency}
+\subsection{mbnSet$<$cb$>$Callback \footnotesize{[macro]}}
+\begin{verbatim}
+ void mbnSet<cb>Callback(struct mbn_handler *mbn,
+                                mbn_cb_<cb>Callback *func);
+\end{verbatim}
+A set of macros to set callback function \verb|<cb>| for the MambaNet node \textit{mbn} to function \textit{func}. See section\ \ref{sec:cb} for the list of callback functions. See also mbnUnset$<$cb$>$Callback() for removing callback functions.
+
+Please note that callback functions intended to be used by interface modules can \textbf{not} be set using these macros, these have to be set on the creation of the \verb|mbn_interface| structure.
+
+
+\subsection{mbnSetObjectFrequency}
 \begin{verbatim}
  void mbnSetObjectFrequency(struct mbn_handler *mbn,
                             unsigned long addr,
@@ -218,7 +243,7 @@ Sets the actuator data of object number \textit{object} of the MambaNet node wit
 Sets the object frequency state of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{freq}. The \textit{acknowledge} argument behaves the same as for mbnGetSensorData().
 
 
-\section{mbnTCPOpen}
+\subsection{mbnTCPOpen}
 \begin{verbatim}
 #ifdef MBN_IF_TCP
  struct mbn_interface *mbnTCPOpen(char *remotehost,
@@ -235,7 +260,14 @@ If \textit{remotehost} is not \verb|NULL|, a connection will be made to the serv
 \emph{Note:} This function performs hostname lookups and opens connections in a non-blocking fasion. It can block up to a few minutes in the worst case.
 
 
-\section{mbnUpdateActuatorData}
+\subsection{mbnUnset$<$cb$>$Callback \footnotesize{[macro]}}
+\begin{verbatim}
+ void mbnUnset<cb>Callback(struct mbn_handler *mbn);
+\end{verbatim}
+Set of macros to remove callback function \verb|<cb>| from MambaNet node \textit{mbn}. 
+
+
+\subsection{mbnUpdateActuatorData}
 \begin{verbatim}
  void mbnUpdateActuatorData(struct mbn_handler *mbn,
                             unsigned short object,
@@ -244,7 +276,7 @@ If \textit{remotehost} is not \verb|NULL|, a connection will be made to the serv
 Changes the actuator data of custom object \textit{object} (counting from 0) of MambaNet node \textit{mbn} to \textit{data}.
 
 
-\section{mbnUpdateEngineAddr}
+\subsection{mbnUpdateEngineAddr}
 \begin{verbatim}
  void mbnUpdateEngineAddr(struct mbn_handler *mbn,
                           unsigned long addr);
@@ -252,7 +284,7 @@ Changes the actuator data of custom object \textit{object} (counting from 0) of 
 Changes the default engine address of MambaNet node \textit{mbn} to \textit{addr}. Specifying $0$ as address will remove the current default engine address.
 
 
-\section{mbnUpdateNodeName}
+\subsection{mbnUpdateNodeName}
 \begin{verbatim}
  void mbnUpdateNodeName(struct mbn_handler *mbn,
                         char *name);
@@ -260,7 +292,7 @@ Changes the default engine address of MambaNet node \textit{mbn} to \textit{addr
 Allows the name of MambaNet node \textit{mbn} to be set after the node has been created by mbnInit().
 
 
-\section{mbnUpdateSensorData}
+\subsection{mbnUpdateSensorData}
 \begin{verbatim}
  void mbnUpdateSensorData(struct mbn_handler *mbn,
                           unsigned short object,
@@ -269,12 +301,240 @@ Allows the name of MambaNet node \textit{mbn} to be set after the node has been 
 Does the same as mbnUpdateActuatorData, but updates the sensor data instead of the actuator. Depending on the frequency setting of the object, sensor data change messages may be sent to other nodes on the network to indicate that the sensor data has been changed.
 
 
-\section{mbnUpdateServiceRequest}
+\subsection{mbnUpdateServiceRequest}
 \begin{verbatim}
  void mbnUpdateServiceRequest(struct mbn_handler *mbn,
                               char sreq);
 \end{verbatim}
 Updates the service request state of the MambaNet node \textit{mbn} to \textit{sreq}. Valid values are $1$ to indicate that this node requires service, or $0$ otherwise.
+
+
+\subsection{MBN\_OBJ}
+\begin{verbatim}
+#define MBN_VARARG
+#include "mbn.h"
+ struct mbn_object MBN_OBJ(char *description,
+                           unsigned char frequency,
+                           ...);
+\end{verbatim}
+MBN\_OBJ() is a helper function to create the custom object list for use as argument to mbnInit(). To avoid linking problems on some platforms, this function has been implemented directly in the main header file of the library, \textit{mbn.h}. The function will be available after defining the \verb|MBN_VARARG| macro before including \textit{mbn.h}. Your compiler must have support for variable argument functions as defined in stdarg.h in ANSI C.
+
+This function returns an initialized \verb|mbn_object| structure, of which the fields are defined by the arguments passed to the funcion. The \textit{description} and \textit{frequency} arguments directly map to the Description and UpdateFrequency fields.
+
+The argument after \textit{frequency} should indicate the SensorType. For data types other than \verb|MBN_DATATYPE_NODATA|, the four arguments after the SensorType map to the SensorSize, SensorMin, SensorMax and SensorData, in that order. The SensorMin, SensorMax and SensorData arguments should be passed in the type for that data type. For example, if SensorType is \verb|MBN_DATATYPE_FLOAT|, the arguments are expected to be passed as a floating point. For \verb|MBN_DATATYPE_NODATA|, no subsequent arguments are required for defining the sensor part of the structure.
+
+After defining the sensor part, the actuator part should be specified in the same manner: The first argument maps to the ActuatorType, and if this type is other than \verb|MBN_DATATYPE_NODATA|, the type argument should be followed by five arguments mapping to ActuatorSize, ActuatorMin, ActuatorMax, ActuatorDefault and ActuatorData, in that order.
+
+
+
+
+\section{Callbacks}
+\label{sec:cb}
+
+\subsection{AcknowledgeReply}
+\begin{verbatim}
+ void AcknowledgeReply(struct mbn_handler *mbn,
+                       struct mbn_message *request,
+                       struct mbn_message *reply,
+                       int retries);
+\end{verbatim}
+This callback will be dispatched upon receiving an acknowledge reply from the network. The \textit{request} argument is the message that was previously sent by the MambaNet node \textit{mbn}, the \textit{reply} argument is the message the node sent back as reply. \textit{retries} indicates the number of times the message has been re-sent before receiving this reply.
+
+
+\subsection{AcknowledgeTimeout}
+\begin{verbatim}
+ void AcknowledgeTimeout(struct mbn_handler *mbn,
+                         struct mbn_message *message);
+\end{verbatim}
+Called when a message was sent with the \verb|MBN_SEND_ACKNOWLEDGE|, but when no reply has been received after 5 seconds. \textit{mbn} is the MambaNet node from which the message was sent, and \textit{message} the message that did not receive a reply from the targeted node.
+
+
+\subsection{ActuatorDataResponse}
+\begin{verbatim}
+ int ActuatorDataResponse(struct mbn_handler *mbn,
+                          struct mbn_message *message,
+                          unsigned short object,
+                          unsigned char type,
+                          union mbn_data data);
+\end{verbatim}
+Called on receiving an actuator data response message from another node, usually after calling mbnGetActuatorData(). \textit{object} is the object number, \textit{type} the data type and \textit{data} the actuator data for that object. The actual message that triggered this callback can be accessed from \textit{message}.
+
+The callback should return 0 if this action should be considered as ``handled'', or any other value otherwise. When an action is considered as handled, the MambaNet library will automatically reply to the message if an acknowledge reply was requested by the sending node.
+
+
+\subsection{AddressTableChange}
+\begin{verbatim}
+ void AddressTableChange(struct mbn_handler *mbn,
+                         struct mbn_address_node *old,
+                         struct mbn_address_node *new);
+\end{verbatim}
+This callback signals any changes in the internal node list to the application. When a new node has been detected on the network, \textit{old} will be \verb|NULL| and \textit{new} points to a \verb|mbn_address_node| structure with information about the new node. When the address information of a node changes, \textit{old} indicates the previous known and \textit{new} the updated information. On removal of a node from the network, \textit{old} will contain the previously known information of the node and \textit{new} will be \verb|NULL|.
+
+
+\subsection{DefaultEngineAddrChange}
+\begin{verbatim}
+ int DefaultEngineAddrChange(struct mbn_handler *mbn,
+                             unsigned long addr);
+\end{verbatim}
+Called when a node on the network attempts to change the default engine address of MambaNet node \textit{mbn} to \textit{addr}. The function should return 0 to indicate that the new engine address has been accepted or any other value otherwise. If the new engine has been accepted, the internal configuration will be updated (so calling mbnUpdateEngineAddr() won't be necessary) and the message will be replied to if an acknowledge reply was requested by the sending node.
+
+
+\subsection{Error}
+\begin{verbatim}
+ void Error(struct mbn_handler *mbn,
+            int code,
+            char *str);
+\end{verbatim}
+Called whenever an error occurs in MambaNet node \textit{mbn}. \textit{str} points to a human readable error string describing what went wrong, \textit{code} will be one of the following:
+\begin{description}
+ \item[MBN\_ERROR\_NO\_INTERFACE]
+  Attempted to send a message to the network, but the interface specified by mbnInit() does not have a transmit function.
+ \item[MBN\_ERROR\_INVALID\_ADDR]
+  Attempted to send a message to the network without the  \verb|MBN_SEND_IGNOREVALID| flag to mbnSendMessage() from a node which does not have a validated MambaNet address.
+ \item[MBN\_ERROR\_CREATE\_MESSAGE]
+  An error occured while formatting a message for sending over the network, this is caused by calling mbnSendMessage() with an incorrect \verb|mbn_message| structure.
+ \item[MBN\_ERROR\_PARSE\_MESSAGE]
+  An incorrectly formatted message has been received from the network.
+ \item[MBN\_ERROR\_ITF\_READ]
+  An error occured while reading from the network. An application should assume that after receiving this error, no further packets will be received.
+ \item[MBN\_ERROR\_ITF\_WRITE]
+  Couldn't send a packet to the network. This could either be a temporary problem and further packets can be sent, or a fatal error and no futher packets can be sent.
+\end{description}
+
+\textbf{Important:} Like with all callbacks functions, calling mbnFree() within Error() results in undefined behaviour!
+
+
+\subsection{FreeInterface \footnotesize{[interface]}}
+\begin{verbatim}
+ void FreeInterface(mbn_interface *itf);
+\end{verbatim}
+Only to be used by interface modules. This callback will be called from mbnFree(), and should free all memory of the \verb|mbn_interface| structure and close all connections and other resources.
+
+
+\subsection{FreeInterfaceAddress \footnotesize{[interface]}}
+\begin{verbatim}
+ void FreeInterfaceAddress(void *ifaddr);
+\end{verbatim}
+Only to be used by interface modules. This callback should free the memory pointed to by \textit{ifaddr}, which points to an memory location previously given to mbnProcessRawMessage().
+
+
+\subsection{GetSensorData}
+\begin{verbatim}
+ int GetSensorData(struct mbn_handler *mbn,
+                   unsigned short object,
+                   union mbn_data *data);
+\end{verbatim}
+Called when a node on the network requests the sensor data of custom object number \textit{object} (counting from 0) on MambaNet node \textit{mbn}. To reply to this request, the sensor data of the object should be written to \textit{data}, and the callback should return 0. The request can be ignored by returning anything other than 0.
+
+If this callback has not been set, the request will be replied to automatically with the sensor data known internally to the library, as set by the last call to mbnInit() or mbnUpdateSensorData().
+
+
+\subsection{InitInterface \footnotesize{[interface]}}
+\begin{verbatim}
+ int InitInterface(struct interface *itf,
+                   char *error);
+\end{verbatim}
+Only to be used by interface modules. Called from mbnInit(), this gives the interface module \textit{itf} the chance to do some initialization and tells the module to start waiting for packets and to call mbnProcessRawMessage() upon receiving anything.
+
+The function should return 0 on success and 1 if something went wrong, in which case an error string should be written to \textit{error}, which is large enough to hold at least \verb|MBN_ERRSIZE| bytes.
+
+
+\subsection{InterfaceTransmit \footnotesize{[interface]}}
+\begin{verbatim}
+ int InterfaceTransmit(struct mbn_interface *itf,
+                       unsigned char *buffer,
+                       int buflen,
+                       void *ifaddr,
+                       char *error);
+\end{verbatim}
+Tells interface module \textit{itf} to write \textit{buffer} (of \textit{buflen} bytes) to the network. \textit{ifaddr} points to the interface address of the destination MambaNet node, or \verb|NULL| if no interface address is known or the message should be broadcasted to all nodes.
+
+
+\subsection{NameChange}
+\begin{verbatim}
+ int NameChange(struct mbn_handler *mbn,
+                unsigned char *name);
+\end{verbatim}
+Called when a node on the network attempts to change the name of MambaNet node \textit{mbn} to \textit{name}. Works the same as the DefaultEngineAddrChange() callback.
+
+
+\subsection{ObjectFrequencyChange}
+\begin{verbatim}
+ void ObjectFrequencyChange(struct mbn_handler *mbn,
+                            unsigned short object,
+                            unsigned char freq);
+\end{verbatim}
+Signals to the application that the send frequency of object number \textit{object} has been changed to \textit{freq} by another node on the network. No further action by the application is required, as object frequencies are handled internally by the library.
+
+
+\subsection{ObjectFrequencyResponse}
+\begin{verbatim}
+ int ObjectFrequencyResponse(struct mbn_handler *mbn,
+                             struct mbn_message *message,
+                             unsigned short object,
+                             unsigned char freq);
+\end{verbatim}
+Called on receiving an object frequency response from another node, usually after calling mbnGetObjectFrequency(). Works the same as the ActuatorDataResponse() callback.
+
+
+\subsection{ObjectInformationResponse}
+\begin{verbatim}
+ int ObjectInformationResponse(struct mbn_handler *mbn,
+                               struct mbn_message *message,
+                               unsigned short object,
+                               struct mbn_message_object_information *info);
+\end{verbatim}
+Called on receiving an object information response from another node, usually after calling mbnGetObjectInformation(). Works the same as the ActuatorDataResponse() callback.
+
+
+\subsection{OnlineStatus}
+\begin{verbatim}
+ void OnlineStatus(struct mbn_handler *mbn,
+                   unsigned long addr,
+                   char valid);
+\end{verbatim}
+Will be called to signal changes in the address status of the MambaNet node \textit{mbn}. If the \textit{valid} argument is 0, the node does not have a validated address and can thus not communicate over the network, with the exception of sending ping requests to keep the list of online nodes up-to-date.
+
+
+\subsection{ReceiveMessage}
+\begin{verbatim}
+ int ReceiveMessage(struct mbn_handler *mbn,
+                    struct mbn_message *message);
+\end{verbatim}
+Low-level callback, will be called for each incoming message before it has been processed by the library and before any other callback related to this message has been called.
+
+The function can return a non-zero value to stop any further processing of this message, or 0 to let the library handle the message as it would normally do.
+
+
+\subsection{SensorDataChanged}
+\begin{verbatim}
+ int SensorDataChanged(struct mbn_handler *mbn,
+                       struct mbn_message *message,
+                       unsigned short object,
+                       unsigned char type,
+                       union mbn_data data);
+\end{verbatim}
+Called on receiving a sensor data changed event from another node. Works the same as the ActuatorDataResponse() callback.
+
+
+\subsection{SensorDataResponse}
+\begin{verbatim}
+ int SensorDataResponse(struct mbn_handler *mbn,
+                        struct mbn_message *message,
+                        unsigned short object,
+                        unsigned char type,
+                        union mbn_data data);
+\end{verbatim}
+Called on receiving a sensor data response from another node, usually after calling mbnGetSensorData(). Works the same as the ActuatorDataResponse() callback.
+
+
+\subsection{SetActuatorData}
+\begin{verbatim}
+ int SetActuatorData(struct mbn_handler *mbn,
+                     unsigned short object,
+                     union mbn_data data);
+\end{verbatim}
+Called when a node on the network attempts to change the sensor data of object number \textit{object} (counting from 0) of MambaNet node \textit{mbn} to \textit{data}. The function should return 0 to indicate that the new data has been accepted or any other value otherwise. Works the same as the SetActuatorData() callback.
 
 
 \end{document}
