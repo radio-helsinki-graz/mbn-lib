@@ -1,5 +1,6 @@
 main
 src/mbn.h
+Makefile.inc
 *.a
 *.o
 *~
