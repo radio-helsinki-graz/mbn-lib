@@ -47,11 +47,11 @@ void send_object_changed(struct mbn_handler *mbn, unsigned short obj) {
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo = dest;
   msg.MessageType = MBN_MSGTYPE_OBJECT;
-  msg.Data.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
-  msg.Data.Object.Number = obj+1024;
-  msg.Data.Object.DataType = mbn->objects[obj].SensorType;
-  msg.Data.Object.DataSize = mbn->objects[obj].SensorSize;
-  msg.Data.Object.Data = mbn->objects[obj].SensorData;
+  msg.Message.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
+  msg.Message.Object.Number = obj+1024;
+  msg.Message.Object.DataType = mbn->objects[obj].SensorType;
+  msg.Message.Object.DataSize = mbn->objects[obj].SensorSize;
+  msg.Message.Object.Data = mbn->objects[obj].SensorData;
   mbnSendMessage(mbn, &msg, 0);
 }
 
@@ -123,17 +123,17 @@ void send_object_reply(struct mbn_handler *mbn, struct mbn_message *msg, unsigne
   if(reply.MessageID)
     reply.AcknowledgeReply = 1;
   reply.MessageType = MBN_MSGTYPE_OBJECT;
-  reply.Data.Object.Action = action;
-  reply.Data.Object.Number = msg->Data.Object.Number;
-  reply.Data.Object.DataType = type;
-  reply.Data.Object.DataSize = length;
-  memcpy((void *)&(reply.Data.Object.Data), (void *)dat, sizeof(union mbn_data));
+  reply.Message.Object.Action = action;
+  reply.Message.Object.Number = msg->Message.Object.Number;
+  reply.Message.Object.DataType = type;
+  reply.Message.Object.DataSize = length;
+  memcpy((void *)&(reply.Message.Object.Data), (void *)dat, sizeof(union mbn_data));
   mbnSendMessage(mbn, &reply, 0);
 }
 
 
 int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
-  struct mbn_message_object *obj = &(msg->Data.Object);
+  struct mbn_message_object *obj = &(msg->Message.Object);
   union mbn_data dat;
   unsigned char a = MBN_OBJ_ACTION_SENSOR_RESPONSE;
   int i, r;
@@ -230,7 +230,7 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
-  struct mbn_message_object *obj = &(msg->Data.Object);
+  struct mbn_message_object *obj = &(msg->Message.Object);
   union mbn_data dat;
   unsigned char a = MBN_OBJ_ACTION_ACTUATOR_RESPONSE;
 
@@ -263,7 +263,7 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
-  struct mbn_message_object *obj = &(msg->Data.Object);
+  struct mbn_message_object *obj = &(msg->Message.Object);
   union mbn_data dat;
   int r, i = obj->Number-1024;
 
@@ -310,7 +310,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
-  int i = msg->Data.Object.Number-1024;
+  int i = msg->Message.Object.Number-1024;
   union mbn_data dat;
 
   /* Wrong object number! */
@@ -328,7 +328,7 @@ int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
-  struct mbn_message_object *obj = &(msg->Data.Object);
+  struct mbn_message_object *obj = &(msg->Message.Object);
   union mbn_data dat;
   int i;
 
@@ -450,9 +450,9 @@ void request_info(struct mbn_handler *mbn, unsigned long addr, unsigned short ob
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo = addr;
   msg.MessageType = MBN_MSGTYPE_OBJECT;
-  msg.Data.Object.Action = act;
-  msg.Data.Object.Number = object;
-  msg.Data.Object.DataType = MBN_DATATYPE_NODATA;
+  msg.Message.Object.Action = act;
+  msg.Message.Object.Number = object;
+  msg.Message.Object.DataType = MBN_DATATYPE_NODATA;
   mbnSendMessage(mbn, &msg, ack ? MBN_SEND_ACKNOWLEDGE : 0);
 }
 
@@ -479,11 +479,11 @@ void MBN_EXPORT mbnSetActuatorData(struct mbn_handler *mbn, unsigned long addr, 
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo = addr;
   msg.MessageType = MBN_MSGTYPE_OBJECT;
-  msg.Data.Object.Action = MBN_OBJ_ACTION_SET_ACTUATOR;
-  msg.Data.Object.Number = object;
-  msg.Data.Object.DataType = type;
-  msg.Data.Object.DataSize = length;
-  msg.Data.Object.Data = dat;
+  msg.Message.Object.Action = MBN_OBJ_ACTION_SET_ACTUATOR;
+  msg.Message.Object.Number = object;
+  msg.Message.Object.DataType = type;
+  msg.Message.Object.DataSize = length;
+  msg.Message.Object.Data = dat;
   mbnSendMessage(mbn, &msg, ack ? MBN_SEND_ACKNOWLEDGE : 0);
 }
 
@@ -494,11 +494,11 @@ void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *mbn, unsigned long add
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo = addr;
   msg.MessageType = MBN_MSGTYPE_OBJECT;
-  msg.Data.Object.Action = MBN_OBJ_ACTION_SET_FREQUENCY;
-  msg.Data.Object.Number = object;
-  msg.Data.Object.DataType = MBN_DATATYPE_STATE;
-  msg.Data.Object.DataSize = 1;
-  msg.Data.Object.Data.State = freq;
+  msg.Message.Object.Action = MBN_OBJ_ACTION_SET_FREQUENCY;
+  msg.Message.Object.Number = object;
+  msg.Message.Object.DataType = MBN_DATATYPE_STATE;
+  msg.Message.Object.DataSize = 1;
+  msg.Message.Object.Data.State = freq;
   mbnSendMessage(mbn, &msg, ack ? MBN_SEND_ACKNOWLEDGE : 0);
 }
 

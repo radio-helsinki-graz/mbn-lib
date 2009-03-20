@@ -311,7 +311,7 @@ struct mbn_message {
   union {
     struct mbn_message_address Address;
     struct mbn_message_object Object;
-  } Data;
+  } Message;
   /* used internally */
   unsigned char *raw;
   int rawlength;

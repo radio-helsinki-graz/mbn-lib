@@ -186,7 +186,7 @@ int convert_float_to_varfloat(unsigned char *buffer, unsigned char length, float
 /* Parses the data part of Address Reservation Messages,
  * returns non-zero on failure */
 int parsemsg_address(struct mbn_message *msg) {
-  struct mbn_message_address *addr = &(msg->Data.Address);
+  struct mbn_message_address *addr = &(msg->Message.Address);
 
   if(msg->bufferlength != 16)
     return 1;
@@ -329,7 +329,7 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
  * returns non-zero on failure */
 int parsemsg_object(struct mbn_message *msg) {
   int r;
-  struct mbn_message_object *obj = &(msg->Data.Object);
+  struct mbn_message_object *obj = &(msg->Message.Object);
 
   if(msg->bufferlength < 4)
     return 1;
@@ -464,15 +464,15 @@ void free_message(struct mbn_message *msg) {
   if(msg->MessageType == MBN_MSGTYPE_ADDRESS)
     return;
   else if(msg->MessageType == MBN_MSGTYPE_OBJECT) {
-    if(msg->Data.Object.DataSize > 0)
-      free_datatype(msg->Data.Object.DataType, &(msg->Data.Object.Data));
+    if(msg->Message.Object.DataSize > 0)
+      free_datatype(msg->Message.Object.DataType, &(msg->Message.Object.Data));
   }
 }
 
 
 /* address struct -> 8bit data */
 int createmsg_address(struct mbn_message *msg) {
-  struct mbn_message_address *addr = &(msg->Data.Address);
+  struct mbn_message_address *addr = &(msg->Message.Address);
 
   msg->bufferlength = 16;
   msg->buffer[ 0] =  addr->Action;
@@ -581,7 +581,7 @@ int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigne
 
 /* object message struct -> 8bit data 8 */
 int createmsg_object(struct mbn_message *msg) {
-  struct mbn_message_object *obj = &(msg->Data.Object);
+  struct mbn_message_object *obj = &(msg->Message.Object);
   int l = 0, r;
 
   /* set the data size for some fixed types */
@@ -693,8 +693,8 @@ void copy_message(const struct mbn_message *src, struct mbn_message *dest) {
   if(src->MessageType == MBN_MSGTYPE_ADDRESS)
     return;
   else if(src->MessageType == MBN_MSGTYPE_OBJECT) {
-    if(src->Data.Object.DataSize > 0)
-      copy_datatype(src->Data.Object.DataType, src->Data.Object.DataSize, &(src->Data.Object.Data), &(dest->Data.Object.Data));
+    if(src->Message.Object.DataSize > 0)
+      copy_datatype(src->Message.Object.DataType, src->Message.Object.DataSize, &(src->Message.Object.Data), &(dest->Message.Object.Data));
   }
 }
 

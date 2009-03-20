@@ -125,13 +125,13 @@ void send_info(struct mbn_handler *mbn) {
   msg.AddressFrom = mbn->node.MambaNetAddr;
   msg.MessageID   = 0;
   msg.MessageType = MBN_MSGTYPE_ADDRESS;
-  msg.Data.Address.Action             = MBN_ADDR_ACTION_INFO;
-  msg.Data.Address.ManufacturerID     = mbn->node.ManufacturerID;
-  msg.Data.Address.ProductID          = mbn->node.ProductID;
-  msg.Data.Address.UniqueIDPerProduct = mbn->node.UniqueIDPerProduct;
-  msg.Data.Address.MambaNetAddr       = mbn->node.MambaNetAddr;
-  msg.Data.Address.EngineAddr         = mbn->node.DefaultEngineAddr;
-  msg.Data.Address.Services           = mbn->node.Services;
+  msg.Message.Address.Action             = MBN_ADDR_ACTION_INFO;
+  msg.Message.Address.ManufacturerID     = mbn->node.ManufacturerID;
+  msg.Message.Address.ProductID          = mbn->node.ProductID;
+  msg.Message.Address.UniqueIDPerProduct = mbn->node.UniqueIDPerProduct;
+  msg.Message.Address.MambaNetAddr       = mbn->node.MambaNetAddr;
+  msg.Message.Address.EngineAddr         = mbn->node.DefaultEngineAddr;
+  msg.Message.Address.Services           = mbn->node.Services;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
 
   pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
@@ -258,24 +258,24 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
   if(msg->MessageType != MBN_MSGTYPE_ADDRESS)
     return 0;
 
-  switch(msg->Data.Address.Action) {
+  switch(msg->Message.Address.Action) {
     case MBN_ADDR_ACTION_INFO:
-      process_reservation_information(mbn, &(msg->Data.Address), ifaddr);
+      process_reservation_information(mbn, &(msg->Message.Address), ifaddr);
       break;
 
     case MBN_ADDR_ACTION_RESPONSE:
-      if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node))) {
+      if(MBN_ADDR_EQ(&(msg->Message.Address), &(mbn->node))) {
         pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
         /* check for mambanet address/valid bit change */
-        if(mbn->node.MambaNetAddr != msg->Data.Address.MambaNetAddr || !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
-          mbn->node.MambaNetAddr = msg->Data.Address.MambaNetAddr;
+        if(mbn->node.MambaNetAddr != msg->Message.Address.MambaNetAddr || !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
+          mbn->node.MambaNetAddr = msg->Message.Address.MambaNetAddr;
           mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
           if(mbn->cb_OnlineStatus != NULL)
             mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, 1);
         }
         /* check for engine address change */
-        if(mbn->node.DefaultEngineAddr != msg->Data.Address.EngineAddr) {
-          mbn->node.DefaultEngineAddr = msg->Data.Address.EngineAddr;
+        if(mbn->node.DefaultEngineAddr != msg->Message.Address.EngineAddr) {
+          mbn->node.DefaultEngineAddr = msg->Message.Address.EngineAddr;
           if(mbn->cb_DefaultEngineAddrChange != NULL)
             mbn->cb_DefaultEngineAddrChange(mbn, mbn->node.DefaultEngineAddr);
         }
@@ -286,9 +286,9 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
       break;
 
     case MBN_ADDR_ACTION_PING:
-      if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node)) &&
-          (msg->Data.Address.MambaNetAddr == 0 || msg->Data.Address.MambaNetAddr == mbn->node.MambaNetAddr) &&
-          (msg->Data.Address.EngineAddr   == 0 || msg->Data.Address.EngineAddr   == mbn->node.DefaultEngineAddr)) {
+      if(MBN_ADDR_EQ(&(msg->Message.Address), &(mbn->node)) &&
+          (msg->Message.Address.MambaNetAddr == 0 || msg->Message.Address.MambaNetAddr == mbn->node.MambaNetAddr) &&
+          (msg->Message.Address.EngineAddr   == 0 || msg->Message.Address.EngineAddr   == mbn->node.DefaultEngineAddr)) {
         send_info(mbn);
       }
       break;
@@ -307,7 +307,7 @@ void MBN_EXPORT mbnSendPingRequest(struct mbn_handler *mbn, unsigned long addr) 
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo = addr;
   msg.MessageType = MBN_MSGTYPE_ADDRESS;
-  msg.Data.Address.Action = MBN_ADDR_ACTION_PING;
+  msg.Message.Address.Action = MBN_ADDR_ACTION_PING;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
 }
 
