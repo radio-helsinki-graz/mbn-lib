@@ -125,7 +125,7 @@ void send_info(struct mbn_handler *mbn) {
   msg.AddressFrom = mbn->node.MambaNetAddr;
   msg.MessageID   = 0;
   msg.MessageType = MBN_MSGTYPE_ADDRESS;
-  msg.Data.Address.Type               = MBN_ADDR_TYPE_INFO;
+  msg.Data.Address.Action             = MBN_ADDR_ACTION_INFO;
   msg.Data.Address.ManufacturerID     = mbn->node.ManufacturerID;
   msg.Data.Address.ProductID          = mbn->node.ProductID;
   msg.Data.Address.UniqueIDPerProduct = mbn->node.UniqueIDPerProduct;
@@ -258,12 +258,12 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
   if(msg->MessageType != MBN_MSGTYPE_ADDRESS)
     return 0;
 
-  switch(msg->Data.Address.Type) {
-    case MBN_ADDR_TYPE_INFO:
+  switch(msg->Data.Address.Action) {
+    case MBN_ADDR_ACTION_INFO:
       process_reservation_information(mbn, &(msg->Data.Address), ifaddr);
       break;
 
-    case MBN_ADDR_TYPE_RESPONSE:
+    case MBN_ADDR_ACTION_RESPONSE:
       if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node))) {
         pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
         /* check for mambanet address/valid bit change */
@@ -285,7 +285,7 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
       }
       break;
 
-    case MBN_ADDR_TYPE_PING:
+    case MBN_ADDR_ACTION_PING:
       if(MBN_ADDR_EQ(&(msg->Data.Address), &(mbn->node)) &&
           (msg->Data.Address.MambaNetAddr == 0 || msg->Data.Address.MambaNetAddr == mbn->node.MambaNetAddr) &&
           (msg->Data.Address.EngineAddr   == 0 || msg->Data.Address.EngineAddr   == mbn->node.DefaultEngineAddr)) {
@@ -307,7 +307,7 @@ void MBN_EXPORT mbnSendPingRequest(struct mbn_handler *mbn, unsigned long addr) 
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.AddressTo = addr;
   msg.MessageType = MBN_MSGTYPE_ADDRESS;
-  msg.Data.Address.Type = MBN_ADDR_TYPE_PING;
+  msg.Data.Address.Action = MBN_ADDR_ACTION_PING;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
 }
 

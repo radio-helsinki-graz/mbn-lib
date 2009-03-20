@@ -190,7 +190,7 @@ int parsemsg_address(struct mbn_message *msg) {
 
   if(msg->bufferlength != 16)
     return 1;
-  addr->Type = msg->buffer[0];
+  addr->Action = msg->buffer[0];
   addr->ManufacturerID     = ((unsigned short) msg->buffer[ 1]<< 8) | (unsigned short) msg->buffer[ 2];
   addr->ProductID          = ((unsigned short) msg->buffer[ 3]<< 8) | (unsigned short) msg->buffer[ 4];
   addr->UniqueIDPerProduct = ((unsigned short) msg->buffer[ 5]<< 8) | (unsigned short) msg->buffer[ 6];
@@ -475,7 +475,7 @@ int createmsg_address(struct mbn_message *msg) {
   struct mbn_message_address *addr = &(msg->Data.Address);
 
   msg->bufferlength = 16;
-  msg->buffer[ 0] =  addr->Type;
+  msg->buffer[ 0] =  addr->Action;
   msg->buffer[ 1] = (addr->ManufacturerID    >> 8) & 0xFF;
   msg->buffer[ 2] =  addr->ManufacturerID          & 0xFF;
   msg->buffer[ 3] = (addr->ProductID         >> 8) & 0xFF;

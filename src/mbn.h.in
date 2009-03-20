@@ -85,9 +85,9 @@
 #define MBN_MSGTYPE_OBJECT  0x01
 
 /* address message types */
-#define MBN_ADDR_TYPE_INFO     0x00
-#define MBN_ADDR_TYPE_PING     0x01
-#define MBN_ADDR_TYPE_RESPONSE 0x02
+#define MBN_ADDR_ACTION_INFO     0x00
+#define MBN_ADDR_ACTION_PING     0x01
+#define MBN_ADDR_ACTION_RESPONSE 0x02
 
 /* flags for node services */
 #define MBN_ADDR_SERVICES_SERVER 0x01
@@ -287,13 +287,14 @@ struct mbn_if_ethernet {
 
 /* Address message */
 struct mbn_message_address {
-  unsigned char Type;
+  unsigned char Action;
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned long MambaNetAddr, EngineAddr;
   unsigned char Services;
 };
 
-/* Object information message */
+/* Object information message
+ * TODO: merge with mbn_object */
 struct mbn_message_object_information {
   unsigned char Description[33];
   unsigned char Services;
