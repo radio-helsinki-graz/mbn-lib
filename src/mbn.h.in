@@ -44,7 +44,7 @@
 /* Windows DLLs want flags for exportable functions */
 #ifdef MBNP_mingw
 # ifndef MBNP_STATIC
-#  ifndef MBNP_BUILD
+#  ifdef MBNP_BUILD
 #   define MBN_EXPORT __declspec(dllexport) __stdcall
 #  else
 #   define MBN_EXPORT __declspec(dllimport) __stdcall

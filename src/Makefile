@@ -37,12 +37,12 @@ p:
 
 
 %.o: %.c ${HEADERS} Makefile
-	${CC} -c ${CFLAGS} -DMBN_BUILD $*.c
+	${CC} -c ${CFLAGS} -DMBNP_BUILD $*.c
 
 
 mbn.h: mbn.h.in ../Makefile.inc
 	sed 's/#define MBNP_PLATFORM/#define MBNP_${PLATFORM}/' mbn.h.in > mbn.h
-ifdef BUILD_STATIC
+ifndef BUILD_STATIC
 	sed 's/#define MBNP_STATIC/#undef MBNP_STATIC/' < mbn.h > mbn.h-
 	mv mbn.h- mbn.h
 endif
