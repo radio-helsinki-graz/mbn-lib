@@ -275,6 +275,10 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   /* we're going to be accessing the mbn struct, lock! */
   pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
+  /* Oh my, the interface is echoing back packets, let's ignore them */
+  if((mbn->node.Services & MBN_ADDR_SERVICES_VALID) && msg.AddressFrom == mbn->node.MambaNetAddr)
+    processed++;
+
   /* send ReceiveMessage() callback, and stop processing if it returned non-zero */
   if(!processed && mbn->cb_ReceiveMessage != NULL && mbn->cb_ReceiveMessage(mbn, &msg) != 0)
     processed++;

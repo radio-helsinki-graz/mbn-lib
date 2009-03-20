@@ -20,7 +20,6 @@
  *    > SocketCAN?
  *  - Test/port to OS X?
  *  - Test suite?
- *  - Documentation (LaTeX)
  *  - Buffering of outgoing packets (to make all mbn* calls non-blocking)
 */
 
