@@ -176,14 +176,13 @@ union mbn_data {
   unsigned char Bits[8];
   unsigned char *Octets;
   unsigned char *Error;
-  struct mbn_message_object_information *Info;
+  struct mbn_object *Info;
 };
 
 struct mbn_node_info;
 struct mbn_object;
 struct mbn_interface;
 struct mbn_message_address;
-struct mbn_message_object_information;
 struct mbn_message_object;
 struct mbn_message;
 struct mbn_msgqueue;
@@ -213,7 +212,7 @@ typedef int(*mbn_cb_ReceiveMessage)(struct mbn_handler *, struct mbn_message *);
 typedef int(*mbn_cb_SetActuatorData)(struct mbn_handler *, unsigned short, union mbn_data);
 typedef int(*mbn_cb_GetSensorData)(struct mbn_handler *, unsigned short, union mbn_data *);
 typedef void(*mbn_cb_ObjectFrequencyChange)(struct mbn_handler *, unsigned short, unsigned char);
-typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, struct mbn_message_object_information *);
+typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, struct mbn_object *);
 typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char);
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
 
@@ -249,6 +248,7 @@ struct mbn_node_info {
 /* Information about a custom object */
 struct mbn_object {
   unsigned char Description[32];
+  unsigned char Services;
   unsigned char UpdateFrequency;
   unsigned char SensorType;
   unsigned char SensorSize;
@@ -291,22 +291,6 @@ struct mbn_message_address {
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned long MambaNetAddr, EngineAddr;
   unsigned char Services;
-};
-
-/* Object information message
- * TODO: merge with mbn_object */
-struct mbn_message_object_information {
-  unsigned char Description[33];
-  unsigned char Services;
-  unsigned char SensorType;
-  unsigned char SensorSize;
-  union mbn_data SensorMin;
-  union mbn_data SensorMax;
-  unsigned char ActuatorType;
-  unsigned char ActuatorSize;
-  union mbn_data ActuatorMin;
-  union mbn_data ActuatorMax;
-  union mbn_data ActuatorDefault;
 };
 
 /* Object message */
@@ -503,7 +487,7 @@ struct mbn_object MBN_OBJ(char *desc, unsigned char freq, ...) {
   va_start(va, freq);
 
   /* basic info */
-  memcpy((void *)obj.Description, (void *)desc, strlen((char *)desc));
+  memcpy((void *)obj.Description, (void *)desc, strlen((char *)desc)+1);
   obj.EngineAddr = 0;
   obj.UpdateFrequency = freq;
 

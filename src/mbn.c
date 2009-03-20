@@ -126,6 +126,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
       l = strlen((char *)mbn->objects[i].Description);
       if(l < 32)
         memset((void *)&(mbn->objects[i].Description[l]), 0, 32-l);
+      mbn->objects[i].Services = mbn->objects[i].SensorType != MBN_DATATYPE_NODATA ? 0x03 : 0x00;
     }
   } else
     mbn->node.NumberOfObjects = 0;

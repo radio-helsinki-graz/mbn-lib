@@ -95,7 +95,7 @@ int main(void) {
   objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
-  mbn = mbnInit(this_node, NULL, itf, err);
+  mbn = mbnInit(this_node, objects, itf, err);
   if(mbn == NULL) {
     printf("Error initializing mbn: %s\n", err);
     return 1;

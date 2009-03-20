@@ -206,7 +206,7 @@ int parsemsg_address(struct mbn_message *msg) {
 /* Converts a data type into a union, allocating memory for the
  * types that need it. Returns non-zero on failure. */
 int parse_datatype(unsigned char type, unsigned char *buffer, int length, union mbn_data *result) {
-  struct mbn_message_object_information *nfo;
+  struct mbn_object *nfo;
   int i;
 
   switch(type) {
@@ -276,7 +276,7 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
     case MBN_DATATYPE_OBJINFO:
       if(length < 37 || length > 77)
         return 1;
-      nfo = (struct mbn_message_object_information *) calloc(1, sizeof(struct mbn_message_object_information));
+      nfo = (struct mbn_object *) calloc(1, sizeof(struct mbn_object));
       i = 32;
       memcpy(nfo->Description, buffer, i);
       nfo->Services = buffer[i++];
@@ -669,8 +669,8 @@ void copy_datatype(unsigned char type, int size, const union mbn_data *src, unio
     dest->Error = malloc(size);
     memcpy((void *)dest->Error, (void *)src->Error, size);
   } else if(type == MBN_DATATYPE_OBJINFO) {
-    dest->Info = malloc(sizeof(struct mbn_message_object_information));
-    memcpy((void *)dest->Info, (void *)src->Info, sizeof(struct mbn_message_object_information));
+    dest->Info = malloc(sizeof(struct mbn_object));
+    memcpy((void *)dest->Info, (void *)src->Info, sizeof(struct mbn_object));
     if(src->Info->SensorSize > 0) {
       copy_datatype(src->Info->SensorType, src->Info->SensorSize, &(src->Info->SensorMin), &(dest->Info->SensorMin));
       copy_datatype(src->Info->SensorType, src->Info->SensorSize, &(src->Info->SensorMax), &(dest->Info->SensorMax));

@@ -311,8 +311,6 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
   int i = msg->Data.Object.Number-1024;
-  struct mbn_message_object_information nfo;
-  struct mbn_object *obj;
   union mbn_data dat;
 
   /* Wrong object number! */
@@ -322,19 +320,7 @@ int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
     return 1;
   }
 
-  obj = &(mbn->objects[i]);
-  dat.Info = &nfo;
-  memcpy((void *)nfo.Description, (void *)obj->Description, 32);
-  nfo.Services        = obj->SensorType != MBN_DATATYPE_NODATA ? 0x03 : 0x00;
-  nfo.SensorType      = obj->SensorType;
-  nfo.SensorSize      = obj->SensorSize;
-  nfo.SensorMin       = obj->SensorMin;
-  nfo.SensorMax       = obj->SensorMax;
-  nfo.ActuatorType    = obj->ActuatorType;
-  nfo.ActuatorSize    = obj->ActuatorSize;
-  nfo.ActuatorMin     = obj->ActuatorMin;
-  nfo.ActuatorMax     = obj->ActuatorMax;
-  nfo.ActuatorDefault = obj->ActuatorDefault;
+  dat.Info = &(mbn->objects[i]);
   send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_OBJINFO, 0, &dat);
 
   return 1;
