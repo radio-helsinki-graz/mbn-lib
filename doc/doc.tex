@@ -31,6 +31,74 @@
 
 
 \chapter{API Reference}
+\section{Defines}
+This section documents a few global defines found in mbn.h. Not all defines are listed here, and some function-specific defines can be found in the documentation of that function.
+
+
+\subsection{Node services}
+Bit flags indicating the services of a node. The following flags are defined:
+\begin{description}
+ \item[MBN\_ADDR\_SERVICES\_SERVER]
+  The node works as an address server.
+ \item[MBN\_ADDR\_SERVICES\_ENGINE]
+  The node has engine functionality.
+ \item[MBN\_ADDR\_SERVICES\_ERROR]
+  An error has occured in this node. (This flag is currently not used anywhere)
+ \item[MBN\_ADDR\_SERVICES\_VALID]
+  The node has a validated address and can communicate over the MambaNet network.
+\end{description}
+
+
+\subsection{Data types}
+Objects can have sensors or actuators of various data types, the following types are defined:
+\begin{description}
+ \item[MBN\_DATATYPE\_NODATA]
+  There's no data at all.
+ \item[MBN\_DATATYPE\_UINT]
+  Unsigned integer, can be from 1 to 4 bytes long.
+ \item[MBN\_DATATYPE\_SINT]
+  Signed integer, also 1 to 4 bytes.
+ \item[MBN\_DATATYPE\_STATE]
+  State data type, an unsigned integer with a defined set of possible values and interpretations. The actual meaning of the possible states can vary per node and object.
+ \item[MBN\_DATATYPE\_OCTETS]
+  Array of bytes, can hold at most 64 bytes.
+ \item[MBN\_DATATYPE\_FLOAT]
+  A floating point, can be of 1, 2 or 4 bytes.
+ \item[MBN\_DATATYPE\_BITS]
+  Up to 8 bytes, used for storing bit flags.
+ \item[MBN\_DATATYPE\_OBJINFO]
+  Special datatype for representing an \verb|mbn_object| structure.
+ \item[MBN\_DATATYPE\_ERROR]
+  Special datatype indicating an error. The data is a human readable ASCII string explaining the error. At most 64 bytes.
+\end{description}
+
+
+\subsection{Default node objects}
+These defines represent the object numbers of the default node objects that every node should have. Refer to the MambaNet documentation for more information. All objects are sensors, except noted otherwise.
+\begin{description}
+ \item[MBN\_NODEOBJ\_DESCRIPTION] Description of the node.
+ \item[MBN\_NODEOBJ\_NAME] Actuator, name of the node.
+ \item[MBN\_NODEOBJ\_MANUFACTURERID] Manufacturer ID.
+ \item[MBN\_NODEOBJ\_PRODUCTID] Product ID.
+ \item[MBN\_NODEOBJ\_UNIQUEID] Unique ID per product.
+ \item[MBN\_NODEOBJ\_HWMAJOR] Hardware major revision.
+ \item[MBN\_NODEOBJ\_HWMINOR] Hardware minor revision.
+ \item[MBN\_NODEOBJ\_FWMAJOR] Firmware major revision.
+ \item[MBN\_NODEOBJ\_FWMINOR] Firmware minor revision.
+ \item[MBN\_NODEOBJ\_FPGAMAJOR] FPGA major revision.
+ \item[MBN\_NODEOBJ\_FPGAMINOR] FPGA minor revision.
+ \item[MBN\_NODEOBJ\_PROTOMAJOR] Protocol major revision.
+ \item[MBN\_NODEOBJ\_PROTOMINOR] Protocol minor revision.
+ \item[MBN\_NODEOBJ\_NUMBEROFOBJECTS] Number of custom objects.
+ \item[MBN\_NODEOBJ\_ENGINEADDRESS] Actuator, default engine address.
+ \item[MBN\_NODEOBJ\_HWPARENT] Hardware parent.
+ \item[MBN\_NODEOBJ\_SERVICEREQUEST] Service request.
+\end{description}
+
+
+
+
+\cleardoublepage
 \section{Data types}
 \textbf{Note:} Not all structures defined in mbn.h are documented here, only those that are useful for writing applications are included. Also keep in mind that the actual structure definitions may include more fields than those given in this document. These fields are intended for internal use. Refer to the source of mbn.h for the full definitions.
 
@@ -245,6 +313,8 @@ Forces the MambaNet node \textit{mbn} to use address \textit{addr} and consider 
  void mbnFree(struct mbn_handler *mbn);
 \end{verbatim}
 Deallocates all resources and closes all connections associated to the MambaNet node handler pointed to by \textit{mbn}. After mbnFree(), \textit{mbn} should not be used as argument to any other function.
+
+\emph{IMPORTANT:} Do not call this function from within a callback routine. Doing so may lead to unexpected results.
 
 \emph{Note:} Due to a limitation in the implementation, this command can block up to a few seconds on windows.
 
@@ -569,7 +639,7 @@ Called whenever an error occurs in MambaNet node \textit{mbn}. \textit{str} poin
   Couldn't send a packet to the network. This could either be a temporary problem and further packets can be sent, or a fatal error and no futher packets can be sent.
 \end{description}
 
-\textbf{Important:} As with all callbacks functions, calling mbnFree() within Error() results in undefined behaviour!
+Also refer to the ObjectError() callback for handling errors received from other nodes on the network.
 
 
 \subsection{FreeInterface \footnotesize{[interface]}}
@@ -624,6 +694,16 @@ Tells interface module \textit{itf} to write \textit{buffer} (of \textit{buflen}
                 unsigned char *name);
 \end{verbatim}
 Called when a node on the network attempts to change the name of MambaNet node \textit{mbn} to \textit{name}. Works the same as the DefaultEngineAddrChange() callback.
+
+
+\subsection{ObjectError}
+\begin{verbatim}
+ void ObjectError(struct mbn_handler *mbn,
+                  struct mbn_message *message,
+                  unsigned short object,
+                  unsigned char *error);
+\end{verbatim}
+Called on receiving any object message with the \verb|MBN_DATATYPE_ERROR| datatype. \textit{object} is the object number of the object that the error originated from, and \textit{error} points to a human readable error string. The received message can be accessed using \textit{message}.
 
 
 \subsection{ObjectFrequencyChange}
