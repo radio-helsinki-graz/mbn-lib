@@ -214,6 +214,7 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
 
 int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_msgqueue *q, *last;
+  int ret = 1;
 
   if(!msg->AcknowledgeReply || msg->MessageID == 0)
     return 0;
@@ -231,6 +232,21 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
     /* send callback (if any) */
     if(mbn->cb_AcknowledgeReply != NULL)
       mbn->cb_AcknowledgeReply(mbn, &(q->msg), msg, q->retries);
+    /* determine whether we need to process this message further,
+     * If the original message is a GET action, then we should continue processing */
+    if(q->msg.MessageType == MBN_MSGTYPE_OBJECT) {
+      switch(q->msg.Message.Object.Action) {
+        case MBN_OBJ_ACTION_GET_INFO:
+        case MBN_OBJ_ACTION_GET_ENGINE:
+        case MBN_OBJ_ACTION_GET_FREQUENCY:
+        case MBN_OBJ_ACTION_GET_SENSOR:
+        case MBN_OBJ_ACTION_GET_ACTUATOR:
+          ret = 0;
+          break;
+        default:
+          ret = 1;
+      }
+    }
     /* ...and remove the message from the queue */
     if(last == NULL)
       mbn->queue = q->next;
@@ -241,7 +257,7 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
   }
 
   pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
-  return 1;
+  return ret;
 }
 
 
@@ -281,10 +297,6 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
 
   /* send ReceiveMessage() callback, and stop processing if it returned non-zero */
   if(!processed && mbn->cb_ReceiveMessage != NULL && mbn->cb_ReceiveMessage(mbn, &msg) != 0)
-    processed++;
-
-  /* we don't handle acknowledge replies yet, ignore them for now */
-  if(!processed && msg.AcknowledgeReply)
     processed++;
 
   /* handle address reservation messages */
