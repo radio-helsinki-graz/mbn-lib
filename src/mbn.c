@@ -58,9 +58,9 @@ void *msgqueue_thread(void *arg) {
         if(mbn->cb_AcknowledgeTimeout != NULL)
           mbn->cb_AcknowledgeTimeout(mbn, &(q->msg));
         /* remove item from the queue */
-        if(last == mbn->queue)
-          mbn->queue = q->next;
-        else
+        if(last == mbn->queue) {
+          mbn->queue = last = q->next;
+        } else
           last->next = q->next;
         tmp = q->next;
         free_message(&(q->msg));
@@ -290,13 +290,6 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   memset((void *)&msg, 0, sizeof(struct mbn_message));
   msg.raw = buffer;
   msg.rawlength = length;
-
-  if(0) {
-    printf("< RAW: ");
-    for(r=0;r<msg.rawlength;r++)
-      printf(" %02X", msg.raw[r]);
-    printf("\n");
-  }
 
   /* parse message */
   if((r = parse_message(&msg)) != 0) {
