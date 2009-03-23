@@ -36,6 +36,9 @@
 #endif
 
 
+int mbnhandlers = 0;
+
+
 /* thread that keeps track of messages requiring an acknowledge reply,
  * and retries the message after a timeout (of one second, currently) */
 void *msgqueue_thread(void *arg) {
@@ -76,14 +79,15 @@ void *msgqueue_thread(void *arg) {
 }
 
 
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_object *objects, struct mbn_interface *itf, char *err) {
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_object *objects, struct mbn_interface *itf, char *err) {
   struct mbn_handler *mbn;
   struct mbn_object *obj;
   int i, l;
   pthread_mutexattr_t mattr;
 
 #ifdef PTW32_STATIC_LIB
-  pthread_win32_process_attach_np();
+  if(!mbnhandlers++)
+    pthread_win32_process_attach_np();
 #endif
 
   if(itf == NULL) {
@@ -92,7 +96,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info node, struct mbn_ob
   }
 
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
-  mbn->node = node;
+  memcpy((void *)&(mbn->node), (void *)node, sizeof(struct mbn_node_info));
   mbn->node.Services &= 0x7F; /* turn off validated bit */
   mbn->itf = itf;
   itf->mbn = mbn;
@@ -171,6 +175,15 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   pthread_cancel(*((pthread_t *)mbn->throttle_thread));
   pthread_cancel(*((pthread_t *)mbn->msgqueue_thread));
 
+  /* wait for the threads
+   * (make sure no locks on mbn->mbn_mutex are present here) */
+  pthread_join(*((pthread_t *)mbn->timeout_thread), NULL);
+  pthread_join(*((pthread_t *)mbn->throttle_thread), NULL);
+  pthread_join(*((pthread_t *)mbn->msgqueue_thread), NULL);
+  free(mbn->timeout_thread);
+  free(mbn->throttle_thread);
+  free(mbn->msgqueue_thread);
+
   /* free interface */
   if(mbn->itf->cb_free != NULL)
     mbn->itf->cb_free(mbn->itf);
@@ -194,20 +207,15 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   }
   free(mbn->objects);
 
-
-  /* wait for the threads
-   * (make sure no locks on mbn->mbn_mutex are present here) */
-  pthread_join(*((pthread_t *)mbn->timeout_thread), NULL);
-  pthread_join(*((pthread_t *)mbn->throttle_thread), NULL);
-  pthread_join(*((pthread_t *)mbn->msgqueue_thread), NULL);
+  /* and get rid of our mutex */
   pthread_mutex_destroy((pthread_mutex_t *)mbn->mbn_mutex);
   free(mbn->mbn_mutex);
-  free(mbn->timeout_thread);
-  free(mbn->throttle_thread);
-  free(mbn->msgqueue_thread);
 
 #ifdef PTW32_STATIC_LIB
-  pthread_win32_process_detach_np();
+  /* attach_np() doesn't seem to work again after we've
+   * detached, so let's not call this function...
+  if(--mbnhandlers == 0)
+    pthread_win32_process_detach_np();*/
 #endif
 }
 

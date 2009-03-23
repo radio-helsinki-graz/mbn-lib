@@ -23,6 +23,14 @@
 #include <stdlib.h>
 
 
+/* sleep() */
+#ifdef MBNP_mingw
+# include <windows.h>
+# define sleep(x) Sleep(x*1000)
+#else
+# include <unistd.h>
+#endif
+
 struct mbn_node_info this_node = {
   0x00031337, 0x00, /* MambaNet Addr + Services */
   "MambaNet Stack Test Application",
@@ -71,7 +79,9 @@ int main(void) {
 
 #ifdef MBN_IF_ETHERNET
   struct mbn_if_ethernet *ifl, *n;
-  char *ifname = NULL;
+  char *ifname;
+loop:
+  ifname = NULL;
   ifl = mbnEthernetIFList(err);
   if(ifl == NULL) {
     printf("Error: %s\n", err);
@@ -90,12 +100,19 @@ int main(void) {
     return 1;
   }
   mbnEthernetIFFree(ifl);
+#else
+loop:
+  itf = mbnTCPOpen(NULL, NULL, "0.0.0.0", NULL, err);
+  if(itf == NULL) {
+    printf("Error: %s\n", err);
+    return 1;
+  }
 #endif
 
   objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
-  mbn = mbnInit(this_node, objects, itf, err);
+  mbn = mbnInit(&this_node, objects, itf, err);
   if(mbn == NULL) {
     printf("Error initializing mbn: %s\n", err);
     return 1;
@@ -104,6 +121,12 @@ int main(void) {
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetErrorCallback(mbn, Error);
+
+  sleep(3);
+  printf("Free()'ing...\n");
+  mbnFree(mbn);
+  printf("Retrying...\n");
+  goto loop;
 
   /*sleep(60);*/
   pthread_exit(NULL);

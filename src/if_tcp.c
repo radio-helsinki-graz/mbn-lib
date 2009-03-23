@@ -70,7 +70,7 @@ int setup_server(struct tcpdat *, char *, char *, char *);
 int init_tcp(struct mbn_interface *, char *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
-static int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
+int tcptransmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, char *myip, char *myport, char *err) {
@@ -121,7 +121,7 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
 
   itf->cb_init = init_tcp;
   itf->cb_free = free_tcp;
-  itf->cb_transmit = transmit;
+  itf->cb_transmit = tcptransmit;
   return itf;
 }
 
@@ -280,7 +280,7 @@ int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
         if(buf[0] == 0x81) {
           for(n=0; n<MAX_CONNECTIONS; n++)
             if(dat->conn[n].sock >= 0 && &(dat->conn[n]) != cn)
-              transmit(itf, cn->buf, cn->buflen, (void *)&(dat->conn[n]), err);
+              tcptransmit(itf, cn->buf, cn->buflen, (void *)&(dat->conn[n]), err);
         }
         /* now send to mbn */
         mbnProcessRawMessage(itf, cn->buf, cn->buflen, (void *)cn);
@@ -344,7 +344,7 @@ void *receiver(void *ptr) {
 }
 
 
-static int transmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr, char *err) {
+int tcptransmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr, char *err) {
   struct tcpconn *cn = (struct tcpconn *)ifaddr;
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   int i, sent, n;

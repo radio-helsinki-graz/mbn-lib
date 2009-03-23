@@ -87,7 +87,7 @@ struct pcapdat {
 void free_pcap(struct mbn_interface *);
 int init_pcap(struct mbn_interface *, char *);
 void *receive_packets(void *ptr);
-int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
+int wpcaptransmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
 struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *err) {
@@ -212,19 +212,21 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
 
   /* get MAC address */
   suc = 0;
-  for(a=d->addresses; a!=NULL; a=a->next) {
-    if(a->addr != NULL && a->addr->sa_family == AF_INET) {
-      alen = 6;
-      if((i = SendARP((IPAddr)((struct sockaddr_in *)a->addr)->sin_addr.s_addr, 0, (unsigned long *)dat->mymac, &alen)) != NO_ERROR) {
-        sprintf(err, "SendARP failed with code %d", i);
-        error++;
-      } else
-        suc = 1;
+  if(!error) {
+    for(a=d->addresses; a!=NULL; a=a->next) {
+      if(a->addr != NULL && a->addr->sa_family == AF_INET) {
+        alen = 6;
+        if((i = SendARP((IPAddr)((struct sockaddr_in *)a->addr)->sin_addr.s_addr, 0, (unsigned long *)dat->mymac, &alen)) != NO_ERROR) {
+          sprintf(err, "SendARP failed with code %d", i);
+          error++;
+        } else
+          suc = 1;
+      }
     }
-  }
-  if(!suc) {
-    sprintf(err, "Couldn't get MAC address");
-    error++;
+    if(!suc) {
+      sprintf(err, "Couldn't get MAC address");
+      error++;
+    }
   }
 
   /* set filter for MambaNet */
@@ -236,7 +238,8 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
     sprintf(err, "Can't set filter: %s", pcap_geterr(pc));
     error++;
   }
-  pcap_freecode(&fp);
+  if(!error)
+    pcap_freecode(&fp);
 
   if(devs != NULL)
     pcap_freealldevs(devs);
@@ -251,7 +254,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   itf->cb_free = free_pcap;
   itf->cb_init = init_pcap;
   itf->cb_free_addr = free;
-  itf->cb_transmit = transmit;
+  itf->cb_transmit = wpcaptransmit;
 
   return itf;
 }
@@ -313,7 +316,7 @@ void *receive_packets(void *ptr) {
 }
 
 
-int transmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifaddr, char *err) {
+int wpcaptransmit(struct mbn_interface *itf, unsigned char *buf, int len, void *ifaddr, char *err) {
   struct pcapdat *dat = (struct pcapdat *) itf->data;
   unsigned char send[MBN_MAX_MESSAGE_SIZE];
 

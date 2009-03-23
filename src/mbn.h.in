@@ -402,7 +402,7 @@ extern "C" {
 #endif
 
 /* mbn.c */
-struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info, struct mbn_object *, struct mbn_interface *, char *);
+struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *, struct mbn_object *, struct mbn_interface *, char *);
 void MBN_EXPORT mbnFree(struct mbn_handler *);
 void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *, unsigned char *, int, void *);
 void MBN_EXPORT mbnSendMessage(struct mbn_handler *, struct mbn_message *, int);
