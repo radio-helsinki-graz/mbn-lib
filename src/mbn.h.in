@@ -121,6 +121,25 @@
 #define MBN_DATATYPE_OBJINFO 128
 #define MBN_DATATYPE_ERROR   255
 
+/* default node objects */
+#define MBN_NODEOBJ_DESCRIPTION      0
+#define MBN_NODEOBJ_NAME             1
+#define MBN_NODEOBJ_MANUFACTURERID   2
+#define MBN_NODEOBJ_PRODUCTID        3
+#define MBN_NODEOBJ_UNIQUEID         4
+#define MBN_NODEOBJ_HWMAJOR          5
+#define MBN_NODEOBJ_HWMINOR          6
+#define MBN_NODEOBJ_FWMAJOR          7
+#define MBN_NODEOBJ_FWMINOR          8
+#define MBN_NODEOBJ_FPGAMAJOR        9
+#define MBN_NODEOBJ_FPGAMINOR       10
+#define MBN_NODEOBJ_PROTOMAJOR      11
+#define MBN_NODEOBJ_PROTOMINOR      12
+#define MBN_NODEOBJ_NUMBEROFOBJECTS 13
+#define MBN_NODEOBJ_ENGINEADDRESS   14
+#define MBN_NODEOBJ_HWPARENT        15
+#define MBN_NODEOBJ_SERVICEREQUEST  16
+
 /* flags for mbnSendMessage() */
 #define MBN_SEND_IGNOREVALID  0x01 /* send the message regardless of our valid bit */
 #define MBN_SEND_FORCEADDR    0x02 /* don't overwrite the AddressTo field with our address */

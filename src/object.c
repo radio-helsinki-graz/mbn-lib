@@ -139,69 +139,69 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
   int i, r;
 
   switch(obj->Number) {
-    case 0: /* Description */
+    case MBN_NODEOBJ_DESCRIPTION:
       dat.Octets = mbn->node.Description;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 64, &dat);
       break;
-    case 1: /* Name (not a sensor) */
+    case MBN_NODEOBJ_NAME: /* not a sensor */
       send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
-    case 2: /* Manufacturer ID */
+    case MBN_NODEOBJ_MANUFACTURERID:
       dat.UInt = mbn->node.ManufacturerID;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 2, &dat);
       break;
-    case 3: /* Product ID */
+    case MBN_NODEOBJ_PRODUCTID:
       dat.UInt = mbn->node.ProductID;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 2, &dat);
       break;
-    case 4: /* UniqueIDPerProduct */
+    case MBN_NODEOBJ_UNIQUEID:
       dat.UInt = mbn->node.UniqueIDPerProduct;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 2, &dat);
       break;
-    case 5: /* Hardware Major Revision */
+    case MBN_NODEOBJ_HWMAJOR:
       dat.UInt = mbn->node.HardwareMajorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 6: /* Hardware Minor Revision */
+    case MBN_NODEOBJ_HWMINOR:
       dat.UInt = mbn->node.HardwareMinorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 7: /* Firmware Major Revision */
+    case MBN_NODEOBJ_FWMAJOR:
       dat.UInt = mbn->node.FirmwareMajorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 8: /* Firmware Minor Revision */
+    case MBN_NODEOBJ_FWMINOR:
       dat.UInt = mbn->node.FirmwareMinorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 9: /* FPGAFirmware Major Revision */
+    case MBN_NODEOBJ_FPGAMAJOR:
       dat.UInt = mbn->node.FPGAFirmwareMajorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 10: /* FPGAFirmware Minor Revision */
+    case MBN_NODEOBJ_FPGAMINOR:
       dat.UInt = mbn->node.FPGAFirmwareMinorRevision;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 11: /* Protocol Major Revision */
+    case MBN_NODEOBJ_PROTOMAJOR:
       dat.UInt = MBN_PROTOCOL_VERSION_MAJOR;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 12: /* Protocol Minor Revision */
+    case MBN_NODEOBJ_PROTOMINOR:
       dat.UInt = MBN_PROTOCOL_VERSION_MINOR;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 1, &dat);
       break;
-    case 13: /* Number of objects */
+    case MBN_NODEOBJ_NUMBEROFOBJECTS:
       dat.UInt = mbn->node.NumberOfObjects;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 2, &dat);
       break;
-    case 14: /* Default engine address (not a sensor) */
+    case MBN_NODEOBJ_ENGINEADDRESS:
       send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
-    case 15: /* Hardware Parent */
+    case MBN_NODEOBJ_HWPARENT:
       dat.Octets = mbn->node.HardwareParent;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 6, &dat);
       break;
-    case 16: /* Service request */
+    case MBN_NODEOBJ_SERVICEREQUEST:
       dat.State = mbn->node.ServiceRequest;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_STATE, 1, &dat);
       break;
@@ -235,16 +235,11 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   unsigned char a = MBN_OBJ_ACTION_ACTUATOR_RESPONSE;
 
   switch(obj->Number) {
-    case 0: /* These are not actuators */
-    case 2: case  3: case  4: case  5: case  6:  case 7: case  8:
-    case 9: case 10: case 11: case 12: case 13: case 15: case 16:
-      send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
-      break;
-    case 1: /* Name */
+    case MBN_NODEOBJ_NAME:
       dat.Octets = mbn->node.Name;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 32, &dat);
       break;
-    case 14: /* Default Engine Address */
+    case MBN_NODEOBJ_ENGINEADDRESS:
       dat.UInt = mbn->node.DefaultEngineAddr;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
       break;
