@@ -73,6 +73,8 @@ void *throttle_thread(void *arg) {
   struct timeval tv;
   int i, f;
 
+  mbn->throttle_run = 1;
+
   if(!mbn->objects)
     return NULL;
 

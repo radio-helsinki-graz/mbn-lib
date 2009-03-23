@@ -145,6 +145,8 @@ void *node_timeout_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   int i;
 
+  mbn->timeout_run = 1;
+
   while(1) {
     /* working on mbn_handler, so lock */
     pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);

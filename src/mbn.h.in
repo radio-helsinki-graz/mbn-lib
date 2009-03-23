@@ -366,9 +366,8 @@ struct mbn_handler {
   struct mbn_msgqueue *queue;
   int pongtimeout;
   /* pthread objects */
-  void *timeout_thread;
-  void *throttle_thread;
-  void *msgqueue_thread;
+  void *timeout_thread, *throttle_thread, *msgqueue_thread;
+  char timeout_run, throttle_run, msgqueue_run;
   void *mbn_mutex;
   /* callbacks */
   mbn_cb_ReceiveMessage cb_ReceiveMessage;

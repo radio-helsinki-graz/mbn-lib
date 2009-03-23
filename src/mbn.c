@@ -45,6 +45,8 @@ void *msgqueue_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_msgqueue *q, *last, *tmp;
 
+  mbn->msgqueue_run = 1;
+
   while(1) {
     /* working on mbn_handler, so lock */
     pthread_mutex_lock((pthread_mutex_t *) mbn->mbn_mutex);
@@ -169,6 +171,15 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
 /* IMPORTANT: must not be called in a thread which has a lock on mbn_mutex */
 void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   int i;
+
+  /* wait for the threads to be running
+   * (normally they should be running right after mbnInit(),
+   *  but there can be some slight lag on pthread-win32) */
+  for(i=0; !mbn->msgqueue_run || !mbn->timeout_run || !mbn->throttle_run; i++) {
+    if(i > 10)
+      break; /* shouldn't happen, but silently ignore if it somehow does. */
+    sleep(1);
+  }
 
   /* request cancellation for the threads */
   pthread_cancel(*((pthread_t *)mbn->timeout_thread));

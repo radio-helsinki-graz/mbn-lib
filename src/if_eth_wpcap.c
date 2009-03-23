@@ -80,6 +80,7 @@ int import_pcap() {
 struct pcapdat {
   pcap_t *pc;
   pthread_t thread;
+  char thread_run;
   unsigned char mymac[6];
 };
 
@@ -262,7 +263,15 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
 
 void free_pcap(struct mbn_interface *itf) {
   struct pcapdat *dat = (struct pcapdat *)itf->data;
+  int i;
+
   pcap_close(dat->pc);
+
+  for(i=0; !dat->thread_run; i++) {
+    if(i > 5)
+      break;
+    Sleep(1000);
+  }
   pthread_cancel(dat->thread);
   pthread_join(dat->thread, NULL);
   free(dat);
@@ -292,6 +301,8 @@ void *receive_packets(void *ptr) {
   unsigned char *buffer;
   char err[MBN_ERRSIZE];
   int i;
+
+  dat->thread_run = 1;
 
   while(1) {
     pthread_testcancel();

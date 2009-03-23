@@ -60,6 +60,7 @@ struct tcpconn {
 
 struct tcpdat {
   pthread_t thread;
+  char thread_run;
   int listensocket;
   int rconn;
   struct tcpconn conn[MAX_CONNECTIONS];
@@ -89,7 +90,7 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
 #endif
 
   itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
-  dat = (struct tcpdat *)malloc(sizeof(struct tcpdat));
+  dat = (struct tcpdat *)calloc(1, sizeof(struct tcpdat));
   itf->data = (void *)dat;
 
   /* initialize connection table */
@@ -211,6 +212,11 @@ void free_tcp(struct mbn_interface *itf) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   int i;
 
+  for(i=0; !dat->thread_run; i++) {
+    if(i > 5)
+      break;
+    Sleep(1000);
+  }
   pthread_cancel(dat->thread);
   pthread_join(dat->thread, NULL);
 
@@ -301,6 +307,8 @@ void *receiver(void *ptr) {
   struct timeval tv;
   fd_set rdfd;
   int n, i;
+
+  dat->thread_run = 1;
 
   while(1) {
     pthread_testcancel();

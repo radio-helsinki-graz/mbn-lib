@@ -122,7 +122,6 @@ loop:
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetErrorCallback(mbn, Error);
 
-  sleep(3);
   printf("Free()'ing...\n");
   mbnFree(mbn);
   printf("Retrying...\n");
