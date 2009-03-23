@@ -233,6 +233,7 @@ typedef void(*mbn_cb_ObjectFrequencyChange)(struct mbn_handler *, unsigned short
 typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, struct mbn_object *);
 typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char);
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
+typedef void(*mbn_cb_ObjectError)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char *);
 
 /* interfaces */
 typedef int(*mbn_cb_InitInterface)(struct mbn_interface *, char *);
@@ -383,6 +384,7 @@ struct mbn_handler {
   mbn_cb_ObjectDataResponse cb_SensorDataResponse;
   mbn_cb_ObjectDataResponse cb_SensorDataChanged;
   mbn_cb_ObjectDataResponse cb_ActuatorDataResponse;
+  mbn_cb_ObjectError cb_ObjectError;
   mbn_cb_Error cb_Error;
   mbn_cb_AcknowledgeTimeout cb_AcknowledgeTimeout;
   mbn_cb_AcknowledgeReply cb_AcknowledgeReply;
@@ -478,6 +480,8 @@ void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 #define mbnUnsetSensorDataChangedCallback(mbn)             ((mbn)->cb_SensorDataChanged = NULL)
 #define mbnSetActuatorDataResponseCallback(mbn, func)      ((mbn)->cb_ActuatorDataResponse = func)
 #define mbnUnsetActuatorDataResponseCallback(mbn)          ((mbn)->cb_ActuatorDataResponse = NULL)
+#define mbnSetObjectErrorCallback(mbn, func)               ((mbn)->cb_ObjectError = func)
+#define mbnUnsetObjectErrorCallback(mbn)                   ((mbn)->cb_ObjectError = NULL)
 #define mbnSetErrorCallback(mbn, func)                     ((mbn)->cb_Error = func)
 #define mbnUnsetErrorCallback(mbn)                         ((mbn)->cb_Error = NULL)
 #define mbnSetAcknowledgeTimeoutCallback(mbn, func)        ((mbn)->cb_AcknowledgeTimeout = func)

@@ -352,19 +352,23 @@ int parsemsg_object(struct mbn_message *msg) {
     return 0;
   }
 
-  /* we don't need data for these actions... */
-  if( obj->Action == MBN_OBJ_ACTION_GET_INFO      || obj->Action == MBN_OBJ_ACTION_GET_ENGINE ||
-      obj->Action == MBN_OBJ_ACTION_GET_FREQUENCY || obj->Action == MBN_OBJ_ACTION_GET_SENSOR ||
-      obj->Action == MBN_OBJ_ACTION_GET_ACTUATOR)
-    return 4;
+  /* we can always receive an error */
+  if(obj->DataType != MBN_DATATYPE_ERROR) {
 
-  /* and for some actions we must get data of only one type */
-  if( (obj->Action == MBN_OBJ_ACTION_INFO_RESPONSE      && obj->DataType != MBN_DATATYPE_OBJINFO) ||
-      (obj->Action == MBN_OBJ_ACTION_ENGINE_RESPONSE    && obj->DataType != MBN_DATATYPE_UINT)    ||
-      (obj->Action == MBN_OBJ_ACTION_SET_ENGINE         && obj->DataType != MBN_DATATYPE_UINT)    ||
-      (obj->Action == MBN_OBJ_ACTION_FREQUENCY_RESPONSE && obj->DataType != MBN_DATATYPE_STATE)   ||
-      (obj->Action == MBN_OBJ_ACTION_SET_FREQUENCY      && obj->DataType != MBN_DATATYPE_STATE))
-    return 4;
+    /* we don't need data for these actions... */
+    if( obj->Action == MBN_OBJ_ACTION_GET_INFO      || obj->Action == MBN_OBJ_ACTION_GET_ENGINE ||
+        obj->Action == MBN_OBJ_ACTION_GET_FREQUENCY || obj->Action == MBN_OBJ_ACTION_GET_SENSOR ||
+        obj->Action == MBN_OBJ_ACTION_GET_ACTUATOR)
+      return 4;
+
+    /* and for some actions we must get data of only one type */
+    if( (obj->Action == MBN_OBJ_ACTION_INFO_RESPONSE      && obj->DataType != MBN_DATATYPE_OBJINFO) ||
+        (obj->Action == MBN_OBJ_ACTION_ENGINE_RESPONSE    && obj->DataType != MBN_DATATYPE_UINT)    ||
+        (obj->Action == MBN_OBJ_ACTION_SET_ENGINE         && obj->DataType != MBN_DATATYPE_UINT)    ||
+        (obj->Action == MBN_OBJ_ACTION_FREQUENCY_RESPONSE && obj->DataType != MBN_DATATYPE_STATE)   ||
+        (obj->Action == MBN_OBJ_ACTION_SET_FREQUENCY      && obj->DataType != MBN_DATATYPE_STATE))
+      return 4;
+  }
 
   /* Data, so parse it */
   obj->DataSize = msg->buffer[4];

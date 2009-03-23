@@ -332,7 +332,12 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   i = obj->Number-1024;
 
-  /* TODO: handle object messages with MBN_DATATYPE_ERROR in the data field */
+  /* we received an error, notify application */
+  if(obj->DataType == MBN_DATATYPE_ERROR) {
+    if(mbn->cb_ObjectError)
+      mbn->cb_ObjectError(mbn, msg, obj->Number, obj->Data.Error);
+    return 1;
+  }
 
   switch(obj->Action) {
     /* Get object info */
