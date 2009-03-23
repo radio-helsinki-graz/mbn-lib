@@ -363,12 +363,12 @@ When the \textit{acknowledge} argument is set to $1$, the message will be sent u
 
 \subsection{mbnInit}
 \begin{verbatim}
- struct mbn_handler *mbnInit(struct mbn_node_info info,
+ struct mbn_handler *mbnInit(struct mbn_node_info *info,
                              struct mbn_object *objects,
                              struct mbn_interface *itf,
                              char *error);
 \end{verbatim}
-This function creates a new MambaNet node, the \textit{info} argument should be a fully initialized \verb|mbn_node_info| structure with information about this node.
+This function creates a new MambaNet node, the \textit{info} argument should point to a fully initialized \verb|mbn_node_info| structure with information about this node.
 
 \textit{objects} should point to an array of initialized \verb|mbn_object| structures, or \verb|NULL| if the node has no custom objects. The length of the array is determined from \textit{info.NumberOfObjects}. The library creates an internal copy of the entire objects array, so any application-allocated memory for the object list can be freed after the call to mbnInit(). The value of the \textit{Services} field of the \verb|mbn_object| structures is ignored, this is handled internally.
 
