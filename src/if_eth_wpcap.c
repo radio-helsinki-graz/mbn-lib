@@ -206,7 +206,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
     sprintf(err, "Selected device not found");
     error++;
   }
-  if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1000, err+25)) == NULL) {
+  if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1, err+25)) == NULL) {
     memcpy((void *)err, (void *)"Couldn't open interface: ", 25);
     error++;
   }
