@@ -604,7 +604,8 @@ int createmsg_object(struct mbn_message *msg) {
   msg->buffer[l++] = obj->Number & 0xFF;
   msg->buffer[l++] = obj->Action;
   msg->buffer[l++] = obj->DataType;
-  msg->buffer[l++] = obj->DataSize;
+  if(obj->DataType != MBN_DATATYPE_NODATA)
+    msg->buffer[l++] = obj->DataSize;
 
   if(obj->DataSize + l > MBN_MAX_MESSAGE_SIZE)
     return 1;
