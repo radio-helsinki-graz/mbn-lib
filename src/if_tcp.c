@@ -41,6 +41,14 @@
 #endif
 #include <pthread.h>
 
+/* sleep() */
+#ifdef MBNP_mingw
+# include <windows.h>
+# define sleep(x) Sleep(x*1000)
+#else
+# include <unistd.h>
+#endif
+
 #include "mbn.h"
 
 #define MAX(a, b) ((a)>(b)?(a):(b))
@@ -215,7 +223,7 @@ void free_tcp(struct mbn_interface *itf) {
   for(i=0; !dat->thread_run; i++) {
     if(i > 5)
       break;
-    Sleep(1000);
+    sleep(1);
   }
   pthread_cancel(dat->thread);
   pthread_join(dat->thread, NULL);
