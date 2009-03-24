@@ -172,6 +172,26 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
 void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   int i;
 
+  /* disable all callbacks so the application won't see all kinds of activities
+   * while we're freeing everything */
+  mbn->cb_ReceiveMessage = NULL;
+  mbn->cb_AddressTableChange = NULL;
+  mbn->cb_OnlineStatus = NULL;
+  mbn->cb_NameChange = NULL;
+  mbn->cb_DefaultEngineAddrChange = NULL;
+  mbn->cb_SetActuatorData = NULL;
+  mbn->cb_GetSensorData = NULL;
+  mbn->cb_ObjectFrequencyChange = NULL;
+  mbn->cb_ObjectInformationResponse = NULL;
+  mbn->cb_ObjectFrequencyResponse = NULL;
+  mbn->cb_SensorDataResponse = NULL;
+  mbn->cb_SensorDataChanged = NULL;
+  mbn->cb_ActuatorDataResponse = NULL;
+  mbn->cb_ObjectError = NULL;
+  mbn->cb_Error = NULL;
+  mbn->cb_AcknowledgeTimeout = NULL;
+  mbn->cb_AcknowledgeReply = NULL;
+
   /* wait for the threads to be running
    * (normally they should be running right after mbnInit(),
    *  but there can be some slight lag on pthread-win32) */
