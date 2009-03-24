@@ -25,7 +25,6 @@
 
 #ifdef MBNP_mingw
 # include <windows.h>
-# include <winsock2.h>
 #else
 # include <unistd.h>
 # include <sys/select.h>
@@ -70,7 +69,9 @@ void send_object_changed(struct mbn_handler *mbn, unsigned short obj) {
  */
 void *throttle_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
+#ifndef MBNP_mingw
   struct timeval tv;
+#endif
   int i, f;
 
   mbn->throttle_run = 1;
@@ -81,9 +82,13 @@ void *throttle_thread(void *arg) {
   while(1) {
     pthread_testcancel();
     /* wait 50ms */
+#ifdef MBNP_mingw
+    Sleep(50);
+#else
     tv.tv_sec = 0;
     tv.tv_usec = 50000;
     select(0, NULL, NULL, NULL, &tv);
+#endif
 
     /* lock */
     pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
