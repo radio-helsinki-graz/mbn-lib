@@ -60,8 +60,8 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 
 void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
   printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
-  if(valid)
-    mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);
+  /*if(valid)
+    mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);*/
   mbn += 1;
 }
 
@@ -121,11 +121,6 @@ loop:
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetErrorCallback(mbn, Error);
-
-  printf("Free()'ing...\n");
-  mbnFree(mbn);
-  printf("Retrying...\n");
-  goto loop;
 
   /*sleep(60);*/
   pthread_exit(NULL);

@@ -316,6 +316,7 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
         free(nfo);
         return 3;
       }
+      result->Info = nfo;
       break;
 
     default:
