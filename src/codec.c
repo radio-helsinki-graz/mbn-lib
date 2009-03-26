@@ -282,39 +282,58 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
       nfo->Services = buffer[i++];
       nfo->SensorType = buffer[i++];
       nfo->SensorSize = buffer[i++];
-      if((nfo->SensorSize*2)+i > length) {
-        free(nfo);
-        return 4;
+      if(nfo->SensorType == MBN_DATATYPE_OCTETS || nfo->SensorType == MBN_DATATYPE_BITS) {
+        if(i+2 > length) {
+          free(nfo);
+          return 4;
+        }
+        nfo->SensorMin.UInt = buffer[i++];
+        nfo->SensorMax.UInt = buffer[i++];
+      } else {
+        if((nfo->SensorSize*2)+i > length) {
+          free(nfo);
+          return 4;
+        }
+        if(parse_datatype(nfo->SensorType, &(buffer[i]), nfo->SensorSize, &(nfo->SensorMin)) != 0) {
+          free(nfo);
+          return 3;
+        }
+        i += nfo->SensorSize;
+        if(parse_datatype(nfo->SensorType, &(buffer[i]), nfo->SensorSize, &(nfo->SensorMax)) != 0) {
+          free(nfo);
+          return 3;
+        }
+        i += nfo->SensorSize;
       }
-      if(parse_datatype(nfo->SensorType, &(buffer[i]), nfo->SensorSize, &(nfo->SensorMin)) != 0) {
-        free(nfo);
-        return 3;
-      }
-      i += nfo->SensorSize;
-      if(parse_datatype(nfo->SensorType, &(buffer[i]), nfo->SensorSize, &(nfo->SensorMax)) != 0) {
-        free(nfo);
-        return 3;
-      }
-      i += nfo->SensorSize;
       nfo->ActuatorType = buffer[i++];
       nfo->ActuatorSize = buffer[i++];
-      if((nfo->ActuatorSize*3)+i > length) {
-        free(nfo);
-        return 4;
-      }
-      if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorMin)) != 0) {
-        free(nfo);
-        return 3;
-      }
-      i += nfo->ActuatorSize;
-      if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorMax)) != 0) {
-        free(nfo);
-        return 3;
-      }
-      i += nfo->SensorSize;
-      if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorDefault)) != 0) {
-        free(nfo);
-        return 3;
+      if(nfo->ActuatorType == MBN_DATATYPE_OCTETS || nfo->ActuatorType == MBN_DATATYPE_BITS) {
+        if(i+3 > length) {
+          free(nfo);
+          return 4;
+        }
+        nfo->ActuatorMin.UInt = buffer[i++];
+        nfo->ActuatorMax.UInt = buffer[i++];
+        nfo->ActuatorDefault.UInt = buffer[i++];
+      } else {
+        if((nfo->ActuatorSize*3)+i > length) {
+          free(nfo);
+          return 4;
+        }
+        if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorMin)) != 0) {
+          free(nfo);
+          return 3;
+        }
+        i += nfo->ActuatorSize;
+        if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorMax)) != 0) {
+          free(nfo);
+          return 3;
+        }
+        i += nfo->SensorSize;
+        if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorDefault)) != 0) {
+          free(nfo);
+          return 3;
+        }
       }
       result->Info = nfo;
       break;
