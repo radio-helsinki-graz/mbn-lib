@@ -395,31 +395,31 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
       if(mbn->cb_ObjectInformationResponse != NULL
           && mbn->cb_ObjectInformationResponse(mbn, msg, obj->Number, obj->Data.Info) == 0
           && msg->MessageID)
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_OBJINFO, obj->DataSize, &(obj->Data));
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_FREQUENCY_RESPONSE:
       if(mbn->cb_ObjectFrequencyResponse != NULL
           && mbn->cb_ObjectFrequencyResponse(mbn, msg, obj->Number, obj->Data.State) == 0
           && msg->MessageID)
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_SENSOR_RESPONSE:
       if(mbn->cb_SensorDataResponse != NULL
           && mbn->cb_SensorDataResponse(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
           && msg->MessageID)
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_SENSOR_CHANGED:
       if(mbn->cb_SensorDataChanged != NULL
           && mbn->cb_SensorDataChanged(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
           && msg->MessageID)
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_ACTUATOR_RESPONSE:
       if(mbn->cb_ActuatorDataResponse != NULL
           && mbn->cb_ActuatorDataResponse(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
           && msg->MessageID)
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_STATE, obj->DataSize, &(obj->Data));
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
   }
   return 0;
