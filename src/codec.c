@@ -463,11 +463,11 @@ void free_datatype(unsigned char type, union mbn_data *data) {
   if(type == MBN_DATATYPE_OCTETS)
     free(data->Octets);
   if(type == MBN_DATATYPE_OBJINFO) {
-    if(data->Info->SensorSize > 0) {
+    if(data->Info->SensorSize > 0 && data->Info->SensorType != MBN_DATATYPE_OCTETS) {
       free_datatype(data->Info->SensorType, &(data->Info->SensorMin));
       free_datatype(data->Info->SensorType, &(data->Info->SensorMax));
     }
-    if(data->Info->ActuatorSize > 0) {
+    if(data->Info->ActuatorSize > 0 && data->Info->ActuatorType != MBN_DATATYPE_OCTETS) {
       free_datatype(data->Info->ActuatorType, &(data->Info->ActuatorMin));
       free_datatype(data->Info->ActuatorType, &(data->Info->ActuatorMax));
       free_datatype(data->Info->ActuatorType, &(data->Info->ActuatorDefault));
@@ -574,26 +574,41 @@ int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigne
       buffer[i++] = dat->Info->Services;
       buffer[i++] = dat->Info->SensorType;
       buffer[i++] = dat->Info->SensorSize;
-      if((dat->Info->SensorSize*2)+i > length)
-        return 4;
-      if(create_datatype(dat->Info->SensorType, &(dat->Info->SensorMin), dat->Info->SensorSize, &(buffer[i])) != 0)
-        return 3;
-      i += dat->Info->SensorSize;
-      if(create_datatype(dat->Info->SensorType, &(dat->Info->SensorMax), dat->Info->SensorSize, &(buffer[i])) != 0)
-        return 3;
-      i += dat->Info->SensorSize;
+      if(dat->Info->SensorType == MBN_DATATYPE_BITS || dat->Info->SensorType == MBN_DATATYPE_OCTETS) {
+        if(i+2 > length)
+          return 4;
+        buffer[i++] = dat->Info->SensorMin.UInt;
+        buffer[i++] = dat->Info->SensorMax.UInt;
+      } else {
+        if((dat->Info->SensorSize*2)+i > length)
+          return 4;
+        if(create_datatype(dat->Info->SensorType, &(dat->Info->SensorMin), dat->Info->SensorSize, &(buffer[i])) != 0)
+          return 3;
+        i += dat->Info->SensorSize;
+        if(create_datatype(dat->Info->SensorType, &(dat->Info->SensorMax), dat->Info->SensorSize, &(buffer[i])) != 0)
+          return 3;
+        i += dat->Info->SensorSize;
+      }
       buffer[i++] = dat->Info->ActuatorType;
       buffer[i++] = dat->Info->ActuatorSize;
-      if((dat->Info->ActuatorSize*3)+i > length)
-        return 4;
-      if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMin), dat->Info->ActuatorSize, &(buffer[i])) != 0)
-        return 3;
-      i += dat->Info->ActuatorSize;
-      if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMax), dat->Info->ActuatorSize, &(buffer[i])) != 0)
-        return 3;
-      i += dat->Info->ActuatorSize;
-      if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorDefault), dat->Info->ActuatorSize, &(buffer[i])) != 0)
-        return 3;
+      if(dat->Info->ActuatorType == MBN_DATATYPE_BITS || dat->Info->ActuatorType == MBN_DATATYPE_OCTETS) {
+        if(i+2 > length)
+          return 4;
+        buffer[i++] = dat->Info->ActuatorMin.UInt;
+        buffer[i++] = dat->Info->ActuatorMax.UInt;
+        buffer[i++] = dat->Info->ActuatorDefault.UInt;
+      } else {
+        if((dat->Info->ActuatorSize*3)+i > length)
+          return 4;
+        if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMin), dat->Info->ActuatorSize, &(buffer[i])) != 0)
+          return 3;
+        i += dat->Info->ActuatorSize;
+        if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorMax), dat->Info->ActuatorSize, &(buffer[i])) != 0)
+          return 3;
+        i += dat->Info->ActuatorSize;
+        if(create_datatype(dat->Info->ActuatorType, &(dat->Info->ActuatorDefault), dat->Info->ActuatorSize, &(buffer[i])) != 0)
+          return 3;
+      }
       break;
 
     default:
