@@ -60,8 +60,8 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 
 void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
   printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
-  /*if(valid)
-    mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);*/
+  if(valid) {}
+    /*mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);*/
   mbn += 1;
 }
 
@@ -80,7 +80,6 @@ int main(void) {
 #ifdef MBN_IF_ETHERNET
   struct mbn_if_ethernet *ifl, *n;
   char *ifname;
-loop:
   ifname = NULL;
   ifl = mbnEthernetIFList(err);
   if(ifl == NULL) {
@@ -101,7 +100,6 @@ loop:
   }
   mbnEthernetIFFree(ifl);
 #else
-loop:
   itf = mbnTCPOpen(NULL, NULL, "0.0.0.0", NULL, err);
   if(itf == NULL) {
     printf("Error: %s\n", err);

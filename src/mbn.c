@@ -47,17 +47,17 @@ void *msgqueue_thread(void *arg) {
 
   mbn->msgqueue_run = 1;
 
+  /* this is the only thread that can free() items from the msgqueue list,
+   * so we don't have to lock while reading from it */
   while(1) {
-    /* working on mbn_handler, so lock */
-    pthread_mutex_lock((pthread_mutex_t *) mbn->mbn_mutex);
-
     for(q=last=mbn->queue; q!=NULL; ) {
-      /* Oh my, no reply after all those retries :( */
-      if(++q->retries >= MBN_ACKNOWLEDGE_RETRIES) {
-        /* send callback */
-        if(mbn->cb_AcknowledgeTimeout != NULL)
+      /* Remove item from the list */
+      if(q->retries == -1 || ++q->retries >= MBN_ACKNOWLEDGE_RETRIES) {
+        /* send callback if the message timed out */
+        if(q->retries >= 0 && mbn->cb_AcknowledgeTimeout != NULL)
           mbn->cb_AcknowledgeTimeout(mbn, &(q->msg));
         /* remove item from the queue */
+        LCK();
         if(last == mbn->queue) {
           mbn->queue = last = q->next;
         } else
@@ -66,6 +66,7 @@ void *msgqueue_thread(void *arg) {
         free_message(&(q->msg));
         free(q);
         q = tmp;
+        ULCK();
         continue;
       }
       /* No reply yet, let's try again */
@@ -74,7 +75,6 @@ void *msgqueue_thread(void *arg) {
       q = q->next;
     }
 
-    pthread_mutex_unlock((pthread_mutex_t *) mbn->mbn_mutex);
     pthread_testcancel();
     sleep(1);
   }
@@ -85,7 +85,6 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
   struct mbn_handler *mbn;
   struct mbn_object *obj;
   int i, l;
-  pthread_mutexattr_t mattr;
 
 #ifdef PTW32_STATIC_LIB
   if(!mbnhandlers++)
@@ -137,16 +136,12 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
   } else
     mbn->node.NumberOfObjects = 0;
 
-  /* init the mutex for locking the mbn_handler data.
-   * Recursive type, because we call other functions
-   *  that may lock the mutex themselves as well */
+  /* init and allocate some pthread objects */
   mbn->mbn_mutex = malloc(sizeof(pthread_mutex_t));
   mbn->timeout_thread = malloc(sizeof(pthread_t));
   mbn->throttle_thread = malloc(sizeof(pthread_t));
   mbn->msgqueue_thread = malloc(sizeof(pthread_t));
-  pthread_mutexattr_init(&mattr);
-  pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init((pthread_mutex_t *) mbn->mbn_mutex, &mattr);
+  pthread_mutex_init((pthread_mutex_t *) mbn->mbn_mutex, NULL);
 
   /* initialize address list */
   init_addresses(mbn);
@@ -252,25 +247,25 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
 
 
 int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) {
-  struct mbn_msgqueue *q, *last;
-  int ret = 1;
+  struct mbn_msgqueue *q;
+  struct mbn_message orig;
+  int ret = 1, tries = -1;
 
   if(!msg->AcknowledgeReply || msg->MessageID == 0)
     return 0;
 
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
+  LCK();
   /* search for the message ID in our queue */
-  for(q=last=mbn->queue; q!=NULL; q=q->next) {
+  for(q=mbn->queue; q!=NULL; q=q->next) {
     if(q->id == msg->MessageID)
       break;
-    last = q;
   }
 
   /* found! */
   if(q != NULL && q->id == msg->MessageID) {
-    /* send callback (if any) */
-    if(mbn->cb_AcknowledgeReply != NULL)
-      mbn->cb_AcknowledgeReply(mbn, &(q->msg), msg, q->retries);
+    /* make a copy for the callback */
+    copy_message(&(q->msg), &orig);
+    tries = q->retries;
     /* determine whether we need to process this message further,
      * If the original message is a GET action, then we should continue processing */
     if(q->msg.MessageType == MBN_MSGTYPE_OBJECT) {
@@ -286,16 +281,16 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
           ret = 1;
       }
     }
-    /* ...and remove the message from the queue */
-    if(last == NULL)
-      mbn->queue = q->next;
-    else
-      last->next = q->next;
-    free_message(&(q->msg));
-    free(q);
+    /* ...and signal the msgqueue thread to free() the message */
+    q->retries = -1;
   }
+  ULCK();
 
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
+  /* send callback (if any) */
+  if(tries >= 0 && mbn->cb_AcknowledgeReply != NULL) {
+    mbn->cb_AcknowledgeReply(mbn, &orig, msg, q->retries);
+    free_message(&orig);
+  }
   return ret;
 }
 
@@ -319,9 +314,6 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
     }
     return;
   }
-
-  /* we're going to be accessing the mbn struct, lock! */
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* Oh my, the interface is echoing back packets, let's ignore them */
   if((mbn->node.Services & MBN_ADDR_SERVICES_VALID) && msg.AddressFrom == mbn->node.MambaNetAddr)
@@ -350,7 +342,6 @@ void MBN_EXPORT mbnProcessRawMessage(struct mbn_interface *itf, unsigned char *b
   if(!processed && process_object_message(mbn, &msg) != 0)
     processed++;
 
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
   free_message(&msg);
 }
 
@@ -392,7 +383,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
     msg->AddressFrom = mbn->node.MambaNetAddr;
 
   /* lock, to make sure we have a unique message ID */
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
+  LCK();
 
   if(!(flags & MBN_SEND_FORCEID)) {
     msg->MessageID = 0;
@@ -414,11 +405,11 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
 
   /* create the message */
   if((r = create_message(msg, (flags & MBN_SEND_NOCREATE)?1:0)) != 0) {
+    ULCK();
     if(mbn->cb_Error) {
       sprintf(err, "Couldn't create message (%d)", r);
       mbn->cb_Error(mbn, MBN_ERROR_CREATE_MESSAGE, err);
     }
-    pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
     return;
   }
 
@@ -440,7 +431,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       q->next = n;
     }
   }
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
+  ULCK();
 
   /* determine interface address */
   if(msg->AddressTo == MBN_BROADCAST_ADDRESS)

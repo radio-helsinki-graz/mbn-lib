@@ -33,16 +33,13 @@
 
 
 void init_addresses(struct mbn_handler *mbn) {
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
   mbn->addrsize = 32;
   mbn->addresses = calloc(mbn->addrsize, sizeof(struct mbn_address_node));
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 
 void remove_node(struct mbn_handler *mbn, struct mbn_address_node *node) {
   int i;
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* send callback */
   if(mbn->cb_AddressTableChange != NULL)
@@ -57,7 +54,6 @@ void remove_node(struct mbn_handler *mbn, struct mbn_address_node *node) {
     if(i >= mbn->addrsize)
       mbn->itf->cb_free_addr(node->ifaddr);
   }
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 
@@ -97,7 +93,6 @@ struct mbn_address_node * MBN_EXPORT mbnNextNode(struct mbn_handler *mbn, struct
 /* free()'s the entire address list */
 void free_addresses(struct mbn_handler *mbn) {
   int i, j;
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* free all ifaddr pointers */
   for(i=0; i<mbn->addrsize; i++) {
@@ -113,7 +108,6 @@ void free_addresses(struct mbn_handler *mbn) {
   free(mbn->addresses);
   mbn->addrsize = 0;
   mbn->addresses = NULL;
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 
@@ -134,9 +128,7 @@ void send_info(struct mbn_handler *mbn) {
   msg.Message.Address.Services           = mbn->node.Services;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
 
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
   mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 
@@ -148,8 +140,8 @@ void *node_timeout_thread(void *arg) {
   mbn->timeout_run = 1;
 
   while(1) {
-    /* working on mbn_handler, so lock */
-    pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
+    sleep(1);
+    pthread_testcancel();
 
     /* check the address list */
     for(i=0; i<mbn->addrsize; i++) {
@@ -166,15 +158,6 @@ void *node_timeout_thread(void *arg) {
     /* send address reservation information messages, if needed */
     if(!(mbn->node.Services & MBN_ADDR_SERVICES_VALID) || --mbn->pongtimeout <= 0)
       send_info(mbn);
-
-    pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
-
-    /* we can safely cancel here */
-    pthread_testcancel();
-
-    /* sleep() is our method of timing
-     * (not really precise, but good enough) */
-    sleep(1);
   }
 }
 
@@ -184,8 +167,6 @@ void *node_timeout_thread(void *arg) {
 void process_reservation_information(struct mbn_handler *mbn, struct mbn_message_address *nfo, void *ifaddr) {
   struct mbn_address_node *node, new;
   int i;
-
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
 
   /* look for existing node with this address */
   node = mbnNodeStatus(mbn, nfo->MambaNetAddr);
@@ -250,8 +231,6 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
     }
     node->ifaddr = ifaddr;
   }
-
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 
@@ -267,7 +246,6 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
 
     case MBN_ADDR_ACTION_RESPONSE:
       if(MBN_ADDR_EQ(&(msg->Message.Address), &(mbn->node))) {
-        pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
         /* check for mambanet address/valid bit change */
         if(mbn->node.MambaNetAddr != msg->Message.Address.MambaNetAddr || !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
           mbn->node.MambaNetAddr = msg->Message.Address.MambaNetAddr;
@@ -283,7 +261,6 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
         }
         /* always reply with a broadcast */
         send_info(mbn);
-        pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
       }
       break;
 
@@ -316,11 +293,9 @@ void MBN_EXPORT mbnSendPingRequest(struct mbn_handler *mbn, unsigned long addr) 
 
 /* Force the use of a MambaNet Address */
 void MBN_EXPORT mbnForceAddress(struct mbn_handler *mbn, unsigned long addr) {
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
   mbn->node.MambaNetAddr = addr;
   mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
   send_info(mbn);
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 

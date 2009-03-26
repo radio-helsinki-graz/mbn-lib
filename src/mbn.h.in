@@ -153,14 +153,19 @@
 
 /*
  *    M A C R O S
- *   (for internal use - shouldn't be here...)
+ *   (only used internally, because we're lazy)
  */
 
-#define MBN_ADDR_EQ(a, b) ( \
+#ifdef MBNP_BUILD
+# define MBN_ADDR_EQ(a, b) ( \
     ((a)->ManufacturerID     == 0 || (b)->ManufacturerID     == 0 || (a)->ManufacturerID     == (b)->ManufacturerID)  && \
     ((a)->ProductID          == 0 || (b)->ProductID          == 0 || (a)->ProductID          == (b)->ProductID)       && \
     ((a)->UniqueIDPerProduct == 0 || (b)->UniqueIDPerProduct == 0 || (a)->UniqueIDPerProduct == (b)->UniqueIDPerProduct) \
   )
+/* these assume mbn is a pointer to a struct mbn_handler */
+# define LCK()  pthread_mutex_lock(  (pthread_mutex_t *)mbn->mbn_mutex)
+# define ULCK() pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex)
+#endif
 
 
 
@@ -342,7 +347,7 @@ struct mbn_message {
 struct mbn_msgqueue {
   unsigned int id;
   struct mbn_message msg;
-  unsigned int retries;
+  int retries; /* -1 = acknowledged */
   struct mbn_msgqueue *next;
 };
 

@@ -80,7 +80,6 @@ void *throttle_thread(void *arg) {
     return NULL;
 
   while(1) {
-    pthread_testcancel();
     /* wait 50ms */
 #ifdef MBNP_mingw
     Sleep(50);
@@ -89,9 +88,10 @@ void *throttle_thread(void *arg) {
     tv.tv_usec = 50000;
     select(0, NULL, NULL, NULL, &tv);
 #endif
+    pthread_testcancel();
 
-    /* lock */
-    pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
+    /* no need to lock in this thread, the only shared memory is
+     * mbn->objects[n].changed, which is just a synchronisation byte */
 
     /* check for changed sensors */
     for(i=0; i<mbn->node.NumberOfObjects; i++) {
@@ -111,9 +111,6 @@ void *throttle_thread(void *arg) {
         f == 6 ? 100 : f == 7 ? 200 : 0;
       mbn->objects[i].changed = 0;
     }
-
-    /* unlock */
-    pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
   }
 
   return NULL;
@@ -430,20 +427,16 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
-  pthread_mutex_lock((pthread_mutex_t *)mbn->mbn_mutex);
-
   /* update internal sensor data */
   mbn->objects[object].SensorData = dat;
+
+  /* object frequency > 1, messages are throttled, let the sending be handled by a separate thread */
+  if(mbn->objects[object].UpdateFrequency > 1)
+    mbn->objects[object].changed = 1;
 
   /* object frequency = 1, create & send message now */
   if(mbn->objects[object].UpdateFrequency == 1)
     send_object_changed(mbn, object);
-
-  /* object frequency > 1, messages are throttled, let the sending be handled by a separate thread */
-  else if(mbn->objects[object].UpdateFrequency > 1)
-    mbn->objects[object].changed = 1;
-
-  pthread_mutex_unlock((pthread_mutex_t *)mbn->mbn_mutex);
 }
 
 void MBN_EXPORT mbnUpdateActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
