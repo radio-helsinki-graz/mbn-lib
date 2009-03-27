@@ -216,8 +216,23 @@ This structure holds a MambaNet address message. \textit{Services} is a set of \
    union mbn_data Data;
  };
 \end{verbatim}
-Defines an object message. \textit{Number} starts at 1024 for custom objects, default node objects start from 0.
-% TODO: document object actions?
+Defines an object message. \textit{Number} starts at 1024 for custom objects, default node objects start from 0. \textit{Action} can be one of the following:
+\begin{description}
+ \item[MBN\_OBJ\_ACTION\_GET\_INFO]
+ \item[MBN\_OBJ\_ACTION\_INFO\_RESPONSE]
+ \item[MBN\_OBJ\_ACTION\_GET\_ENGINE]
+ \item[MBN\_OBJ\_ACTION\_ENGINE\_RESPONSE]
+ \item[MBN\_OBJ\_ACTION\_SET\_ENGINE]
+ \item[MBN\_OBJ\_ACTION\_GET\_FREQUENCY]
+ \item[MBN\_OBJ\_ACTION\_FREQUENCY\_RESPONSE]
+ \item[MBN\_OBJ\_ACTION\_SET\_FREQUENCY]
+ \item[MBN\_OBJ\_ACTION\_GET\_SENSOR]
+ \item[MBN\_OBJ\_ACTION\_SENSOR\_RESPONSE]
+ \item[MBN\_OBJ\_ACTION\_SENSOR\_CHANGED]
+ \item[MBN\_OBJ\_ACTION\_GET\_ACTUATOR]
+ \item[MBN\_OBJ\_ACTION\_ACTUATOR\_RESPONSE]
+ \item[MBN\_OBJ\_ACTION\_SET\_ACTUATOR]
+\end{description}
 
 
 \subsection{mbn\_node\_info}
@@ -261,7 +276,7 @@ The protocol major and minor revisions are defined within the library as such no
    union mbn_data ActuatorData;
  };
 \end{verbatim}
-Defines a custom object. \textit{SensorData} and \textit{ActuatorData} refer to the ``current'' data in use.
+Defines a custom object. \textit{SensorData} and \textit{ActuatorData} refer to the ``current'' data in use. The data type of the \textit{SensorMin}, \textit{SensorMax} and \textit{SensorData} fields is as indicated by \textit{SensorType}, with the exception that \textit{SensorMin} and \textit{SensorMax} are of type UInt if the type is \verb|MBN_DATATYPE_OCTETS| or \verb|MBN_DATATYPE_BITS|. The same holds true for the \textit{Actuator*} fields, where \textit{ActuatorDefault} is of the same type as \textit{ActuatorMin} and \textit{ActuatorMax}.
 
 
 
@@ -428,7 +443,7 @@ Sends a custom message pointed to by \textit{msg} over the network from the pers
   \item[MBN\_SEND\_FORCEADDR]
    Don't overwrite the source address of the message. Without this flag, the value of the \textit{AddressFrom} member of the message will be ignored and the message will be sent with the address of the current MambaNet node.
   \item[MBN\_SEND\_NOCREATE]
-   Ignore the \textit{Data} member of the structure, and use the raw bytes in the \textit{buffer} member as data for the message.
+   Ignore the \textit{Message} field of the structure, and use the raw bytes in the \textit{buffer} member as data for the message.
   \item[MBN\_SEND\_RAWDATA]
    Send the raw packet in the \textit{raw} member. This flag is equivalent to simply broadcasting raw bytes to the network.
   \item[MBN\_SEND\_ACKOWLEDGE]
