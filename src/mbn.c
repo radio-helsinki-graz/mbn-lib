@@ -103,10 +103,10 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
   itf->mbn = mbn;
 
   /* pad descriptions and name with zero and clear some other things */
-  l = strlen((char *)mbn->node.Description);
+  l = strlen(mbn->node.Description);
   if(l < 64)
     memset((void *)&(mbn->node.Description[l]), 0, 64-l);
-  l = strlen((char *)mbn->node.Name);
+  l = strlen(mbn->node.Name);
   if(l < 32)
     memset((void *)&(mbn->node.Name[l]), 0, 32-l);
 
@@ -128,7 +128,7 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
         copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorData), &(mbn->objects[i].ActuatorData));
       }
       mbn->objects[i].changed = mbn->objects[i].timeout = 0;
-      l = strlen((char *)mbn->objects[i].Description);
+      l = strlen(mbn->objects[i].Description);
       if(l < 32)
         memset((void *)&(mbn->objects[i].Description[l]), 0, 32-l);
       mbn->objects[i].Services = mbn->objects[i].SensorType != MBN_DATATYPE_NODATA ? 0x03 : 0x00;

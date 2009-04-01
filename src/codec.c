@@ -259,7 +259,7 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
       memcpy(result->Octets, buffer, length);
       result->Octets[length] = 0;
       if(type == MBN_DATATYPE_ERROR)
-        result->Error = result->Octets;
+        result->Error = (char *)result->Octets;
       break;
 
     case MBN_DATATYPE_FLOAT:

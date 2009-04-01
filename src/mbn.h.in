@@ -198,7 +198,7 @@ union mbn_data {
   unsigned long State;
   unsigned char Bits[8];
   unsigned char *Octets;
-  unsigned char *Error;
+  char *Error;
   struct mbn_object *Info;
 };
 
@@ -220,9 +220,9 @@ struct mbn_handler;
  */
 
 /* general */
-typedef void(*mbn_cb_Error)(struct mbn_handler *, int, const char *);
+typedef void(*mbn_cb_Error)(struct mbn_handler *, int, char *);
 typedef void(*mbn_cb_OnlineStatus)(struct mbn_handler *, unsigned long, char);
-typedef int(*mbn_cb_NameChange)(struct mbn_handler *, unsigned char *);
+typedef int(*mbn_cb_NameChange)(struct mbn_handler *, char *);
 typedef int(*mbn_cb_DefaultEngineAddrChange)(struct mbn_handler *, unsigned long);
 typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
 
@@ -238,7 +238,7 @@ typedef void(*mbn_cb_ObjectFrequencyChange)(struct mbn_handler *, unsigned short
 typedef int(*mbn_cb_ObjectInformationResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, struct mbn_object *);
 typedef int(*mbn_cb_ObjectFrequencyResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char);
 typedef int(*mbn_cb_ObjectDataResponse)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char, union mbn_data);
-typedef void(*mbn_cb_ObjectError)(struct mbn_handler *, struct mbn_message *, unsigned short, unsigned char *);
+typedef void(*mbn_cb_ObjectError)(struct mbn_handler *, struct mbn_message *, unsigned short, char *);
 
 /* interfaces */
 typedef int(*mbn_cb_InitInterface)(struct mbn_interface *, char *);
@@ -257,8 +257,8 @@ typedef int(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, 
 struct mbn_node_info {
   unsigned int MambaNetAddr;
   char Services;
-  unsigned char Description[64];
-  unsigned char Name[32];
+  char Description[64];
+  char Name[32];
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
   unsigned char HardwareMajorRevision, HardwareMinorRevision;
   unsigned char FirmwareMajorRevision, FirmwareMinorRevision;
@@ -271,7 +271,7 @@ struct mbn_node_info {
 
 /* Information about a custom object */
 struct mbn_object {
-  unsigned char Description[32];
+  char Description[32];
   unsigned char Services;
   unsigned char UpdateFrequency;
   unsigned char SensorType;

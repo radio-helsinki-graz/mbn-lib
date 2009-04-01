@@ -144,7 +144,7 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   switch(obj->Number) {
     case MBN_NODEOBJ_DESCRIPTION:
-      dat.Octets = mbn->node.Description;
+      dat.Octets = (unsigned char *)mbn->node.Description;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 64, &dat);
       break;
     case MBN_NODEOBJ_NAME: /* not a sensor */
@@ -213,8 +213,8 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
       i = obj->Number-1024;
       /* we don't have this object! */
       if(i < 0 || i > mbn->node.NumberOfObjects) {
-        dat.Error = (unsigned char *) "Object not found";
-        send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+        dat.Error = "Object not found";
+        send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen(dat.Error), &dat);
       /* we have, send callback if exists, and reply if we're allowed to */
       } else {
         r = 0;
@@ -240,7 +240,7 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   switch(obj->Number) {
     case MBN_NODEOBJ_NAME:
-      dat.Octets = mbn->node.Name;
+      dat.Octets = (unsigned char *)mbn->node.Name;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 32, &dat);
       break;
     case MBN_NODEOBJ_ENGINEADDRESS:
@@ -252,8 +252,8 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
         send_object_reply(mbn, msg, a, mbn->objects[obj->Number-1024].ActuatorType,
           mbn->objects[obj->Number-1024].ActuatorSize, &(mbn->objects[obj->Number-1024].ActuatorData));
       else {
-        dat.Error = (unsigned char *) "Object not found";
-        send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+        dat.Error = "Object not found";
+        send_object_reply(mbn, msg, a, MBN_DATATYPE_ERROR, strlen(dat.Error), &dat);
       }
       break;
   }
@@ -270,7 +270,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   /* Name */
   if(obj->Number == 1 && obj->DataType == MBN_DATATYPE_OCTETS && obj->DataSize <= 32) {
-    r = mbn->cb_NameChange == NULL ? 0 : mbn->cb_NameChange(mbn, obj->Data.Octets);
+    r = mbn->cb_NameChange == NULL ? 0 : mbn->cb_NameChange(mbn, (char *)obj->Data.Octets);
     if(r == 0) {
       memset((void *)mbn->node.Name, 0, 32);
       memcpy((void *)mbn->node.Name, (void *)obj->Data.Octets, obj->DataSize);
@@ -300,8 +300,8 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   /* something else */
   } else {
-    dat.Error = (unsigned char *) "Not implemented";
-    send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error), &dat);
+    dat.Error = "Not implemented";
+    send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_ERROR, strlen(dat.Error), &dat);
   }
 
   return 1;
@@ -314,8 +314,8 @@ int get_info(struct mbn_handler *mbn, struct mbn_message *msg) {
 
   /* Wrong object number! */
   if(i < 0 || i >= mbn->node.NumberOfObjects) {
-    dat.Error = (unsigned char *) "Object not found";
-    send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+    dat.Error = "Object not found";
+    send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, MBN_DATATYPE_ERROR, strlen(dat.Error)+1, &dat);
     return 1;
   }
 
@@ -350,8 +350,8 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
     /* Object specific engines addresses are reserved for future use, so don't accept them now */
     case MBN_OBJ_ACTION_SET_ENGINE:
-      dat.Error = (unsigned char *) "Not implemented";
-      send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+      dat.Error = "Not implemented";
+      send_object_reply(mbn, msg, MBN_OBJ_ACTION_ENGINE_RESPONSE, MBN_DATATYPE_ERROR, strlen(dat.Error)+1, &dat);
       return 1;
     case MBN_OBJ_ACTION_GET_ENGINE:
       dat.UInt = 0;
@@ -361,8 +361,8 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
     /* Frequency information */
     case MBN_OBJ_ACTION_GET_FREQUENCY:
       if(i < 0 || i >= mbn->node.NumberOfObjects) {
-        dat.Error = (unsigned char *) "Object not found";
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+        dat.Error = "Object not found";
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen(dat.Error)+1, &dat);
       } else {
         dat.State = mbn->objects[i].UpdateFrequency;
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
@@ -370,8 +370,8 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
       return 1;
     case MBN_OBJ_ACTION_SET_FREQUENCY: /* this one is pretty much internal, is the callback really useful? */
       if(i < 0 || i >= mbn->node.NumberOfObjects || obj->DataType != MBN_DATATYPE_STATE || obj->DataType > 7) {
-        dat.Error = (unsigned char *) "Object not found";
-        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen((char *)dat.Error)+1, &dat);
+        dat.Error = "Object not found";
+        send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen(dat.Error)+1, &dat);
       } else {
         if(mbn->objects[i].UpdateFrequency != obj->Data.State && mbn->cb_ObjectFrequencyChange != NULL)
           mbn->cb_ObjectFrequencyChange(mbn, i, obj->Data.State);
