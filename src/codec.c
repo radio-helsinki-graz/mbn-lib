@@ -553,7 +553,7 @@ int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigne
     case MBN_DATATYPE_ERROR:
       if((type == MBN_DATATYPE_OCTETS && length < 1) || length > 64)
         return 1;
-      memcpy((void *)buffer, (void *)(type == MBN_DATATYPE_ERROR ? dat->Error : dat->Octets), length);
+      memcpy((void *)buffer, (type == MBN_DATATYPE_ERROR ? (void *)dat->Error : (void *)dat->Octets), length);
       break;
 
     case MBN_DATATYPE_BITS:

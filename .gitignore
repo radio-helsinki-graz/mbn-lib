@@ -1,4 +1,5 @@
 main
+gateway
 src/mbn.h
 Makefile.inc
 *.a

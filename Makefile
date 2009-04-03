@@ -3,6 +3,9 @@ include Makefile.inc
 
 .PHONY: clean distclean lib error conf doc
 
+gateway: gateway.c lib
+	${CC} ${CFLAGS} gateway.c -Isrc -Lsrc -lmbn ${LFLAGS} -o gateway
+
 main: main.c lib
 	${CC} ${CFLAGS} main.c -Isrc -Lsrc -lmbn ${LFLAGS} -o main
 

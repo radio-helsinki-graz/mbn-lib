@@ -7,7 +7,7 @@ DYNAMIC = libmbn.so
 
 
 ifeq (${PLATFORM}, linux)
-	OBJECTS += if_eth_linux.o if_tcp.o
+	OBJECTS += if_eth_linux.o if_tcp.o if_scan.o
 else
 	OBJECTS += if_eth_wpcap.o if_tcp.o
 endif

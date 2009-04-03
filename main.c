@@ -60,15 +60,21 @@ void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, s
 
 void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
   printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
-  if(valid) {}
-    /*mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);*/
+  /*if(valid)
+    mbnSendPingRequest(mbn, MBN_BROADCAST_ADDRESS);*/
   mbn += 1;
 }
 
 
-void Error(struct mbn_handler *mbn, int code, const char *msg) {
+void Error(struct mbn_handler *mbn, int code, char *msg) {
   printf("Error(%d, \"%s\")\n", code, msg);
   mbn += 1;
+}
+
+int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
+  printf("ReceiveMessage from %08lX to %08lX type %d\n", msg->AddressFrom, msg->AddressTo, msg->MessageType);
+  mbn += 1;
+  return 0;
 }
 
 
@@ -77,7 +83,13 @@ int main(void) {
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
 
-#ifdef MBN_IF_ETHERNET
+#ifdef MBN_IF_CAN
+  itf = mbnCANOpen("can0", err);
+  if(itf == NULL) {
+    printf("Error: %s\n", err);
+    return 1;
+  }
+#elif defined(MBN_IF_ETHERNET)
   struct mbn_if_ethernet *ifl, *n;
   char *ifname;
   ifname = NULL;
@@ -115,10 +127,12 @@ int main(void) {
     printf("Error initializing mbn: %s\n", err);
     return 1;
   }
+  mbnForceAddress(mbn, 0x0000BEEF);
 
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetErrorCallback(mbn, Error);
+  mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
 
   /*sleep(60);*/
   pthread_exit(NULL);

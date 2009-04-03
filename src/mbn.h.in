@@ -40,6 +40,7 @@
  * (both TCP and ETHERNET are compiled using our makefile) */
 #define MBN_IF_ETHERNET
 #define MBN_IF_TCP
+#define MBN_IF_CAN
 
 /* Windows DLLs want flags for exportable functions */
 #ifdef MBNP_mingw
@@ -422,6 +423,9 @@ void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
 #endif
 #ifdef MBN_IF_TCP
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, char *);
+#endif
+#ifdef MBN_IF_CAN
+struct mbn_interface * MBN_EXPORT mbnCANOpen(char *, char *);
 #endif
 
 /* address.c */
