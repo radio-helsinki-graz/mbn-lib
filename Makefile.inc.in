@@ -1,15 +1,35 @@
 # Current recognised options for PLATFORM:
 #   mingw
 #     Mingw environment, static link to pthreadsGC2.a
-#     Requires the WinPcap developer pack to be unpacked in /WdpPack
-#     Interface modules: Ethernet & TCP
 #   linux
 #     Linux, dynamic link to libpthreads.so
-#     Interface modules: Ethernet & TCP
-PLATFORM=linux
+PLATFORM=
 
 # uncomment to build a static library
 #BUILD_STATIC=1
+
+
+# Ethernet modules:
+#  if_eth_linux
+#    Raw linux sockets, requires linux 2.6+
+#  if_eth_wpcap
+#    Raw ethernet access for windows using the WinPcap library.
+#    Compile-time: the WinPcap developer pack should be unpacked in /WdpPack
+#    Run-time: the WinPcap dll and driver should be installed
+#IF_ETHERNET=
+
+# TCP modules:
+#  if_tcp
+#    Works on both windows (XP, 2003 or higher) and linux
+#IF_TCP=
+
+# CAN modules:
+#  if_scan
+#    Linux SocketCAN, requires the SocketCAN kernel modules and
+#    header files to be installed and configured.
+#IF_CAN=
+
+
 
 CC = gcc
 CFLAGS = -Wall -Wextra
@@ -19,7 +39,7 @@ ifeq (${PLATFORM}, mingw)
 	CFLAGS += -DPTW32_STATIC_LIB -I/WpdPack/Include
 	LFLAGS = -lpthreadGC2 -lws2_32 -liphlpapi
 else
-	LFLAGS = -lpthread
 	CFLAGS += -std=c89 -pedantic
+	LFLAGS = -lpthread
 endif
 

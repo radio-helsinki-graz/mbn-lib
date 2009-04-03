@@ -6,10 +6,14 @@ OBJECTS = address.o codec.o mbn.o object.o
 DYNAMIC = libmbn.so
 
 
-ifeq (${PLATFORM}, linux)
-	OBJECTS += if_eth_linux.o if_tcp.o if_scan.o
-else
-	OBJECTS += if_eth_wpcap.o if_tcp.o
+ifdef IF_ETHERNET
+	OBJECTS += ${IF_ETHERNET}.o
+endif
+ifdef IF_TCP
+	OBJECTS += ${IF_TCP}.o
+endif
+ifdef IF_CAN
+	OBJECTS += ${IF_CAN}.o
 endif
 
 
@@ -44,6 +48,18 @@ mbn.h: mbn.h.in ../Makefile.inc
 	sed 's/#define MBNP_PLATFORM/#define MBNP_${PLATFORM}/' mbn.h.in > mbn.h
 ifndef BUILD_STATIC
 	sed 's/#define MBNP_STATIC/#undef MBNP_STATIC/' < mbn.h > mbn.h-
+	mv mbn.h- mbn.h
+endif
+ifdef IF_ETHERNET
+	sed 's/#undef MBN_IF_ETHERNET/#define MBN_IF_ETHERNET ${IF_ETHERNET}/' < mbn.h > mbn.h-
+	mv mbn.h- mbn.h
+endif
+ifdef IF_TCP
+	sed 's/#undef MBN_IF_TCP/#define MBN_IF_TCP ${IF_TCP}/' < mbn.h > mbn.h-
+	mv mbn.h- mbn.h
+endif
+ifdef IF_CAN
+	sed 's/#undef MBN_IF_CAN/#define MBN_IF_CAN ${IF_CAN}/' < mbn.h > mbn.h-
 	mv mbn.h- mbn.h
 endif
 

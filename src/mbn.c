@@ -14,6 +14,16 @@
 **
 ****************************************************************************/
 
+/* General project-wide TODO list (in addition to `grep TODO *.c`)
+ *  - Add more H/W interfaces:
+ *    > Serial line?
+ *    > SocketCAN?
+ *  - Test/port to OS X?
+ *  - Test suite?
+ *  - Buffering of outgoing packets (to make all mbn* calls non-blocking)
+*/
+
+
 #define _XOPEN_SOURCE 500
 
 #include <stdio.h>
