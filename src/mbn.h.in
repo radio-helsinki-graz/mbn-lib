@@ -32,6 +32,9 @@
 #undef MBN_IF_TCP
 #undef MBN_IF_CAN
 
+/* forcing a ManufacturerID? */
+#undef MBN_MANUFACTURERID
+
 /* Windows DLLs want flags for exportable functions */
 #ifdef MBNP_mingw
 # ifndef MBNP_STATIC

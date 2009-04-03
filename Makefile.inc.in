@@ -31,6 +31,11 @@ PLATFORM=
 
 
 
+# Force this compile to only allow a fixed Manufacturer ID
+#MANUFACTURERID=
+
+
+
 CC = gcc
 CFLAGS = -Wall -Wextra
 LFLAGS =

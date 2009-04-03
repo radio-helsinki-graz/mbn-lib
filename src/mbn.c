@@ -106,6 +106,13 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
     return NULL;
   }
 
+#ifdef MBN_MANUFACTURERID
+  if(node->ManufacturerID != 0xFFFF && node->ManufacturerID != MBN_MANUFACTURERID) {
+    sprintf(err, "This library has been built to only allow ManufacturerID %d", MBN_MANUFACTURERID);
+    return NULL;
+  }
+#endif
+
   mbn = (struct mbn_handler *) calloc(1, sizeof(struct mbn_handler));
   memcpy((void *)&(mbn->node), (void *)node, sizeof(struct mbn_node_info));
   mbn->node.Services &= 0x7F; /* turn off validated bit */
