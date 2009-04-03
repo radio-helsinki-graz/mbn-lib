@@ -127,7 +127,7 @@ This structure identifies a MambaNet node and holds all data related to this nod
    unsigned long State;
    unsigned char Bits[8];
    unsigned char *Octets;
-   unsigned char *Error;
+   char *Error;
    struct mbn_object *Info;
  };
 \end{verbatim}
@@ -240,8 +240,8 @@ Defines an object message. \textit{Number} starts at 1024 for custom objects, de
  struct mbn_node_info {
    unsigned int MambaNetAddr;
    char Services;
-   unsigned char Description[64];
-   unsigned char Name[32];
+   char Description[64];
+   char Name[32];
    unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
    unsigned char HardwareMajorRevision, HardwareMinorRevision;
    unsigned char FirmwareMajorRevision, FirmwareMinorRevision;
@@ -262,7 +262,7 @@ The protocol major and minor revisions are defined within the library as such no
 \subsection{mbn\_object}
 \begin{verbatim}
  struct mbn_object {
-   unsigned char Description[32];
+   char Description[32];
    unsigned char Services;
    unsigned char UpdateFrequency;
    unsigned char SensorType;
@@ -706,7 +706,7 @@ Tells interface module \textit{itf} to write \textit{buffer} (of \textit{buflen}
 \subsection{NameChange}
 \begin{verbatim}
  int NameChange(struct mbn_handler *mbn,
-                unsigned char *name);
+                char *name);
 \end{verbatim}
 Called when a node on the network attempts to change the name of MambaNet node \textit{mbn} to \textit{name}. Works the same as the DefaultEngineAddrChange() callback.
 
@@ -716,7 +716,7 @@ Called when a node on the network attempts to change the name of MambaNet node \
  void ObjectError(struct mbn_handler *mbn,
                   struct mbn_message *message,
                   unsigned short object,
-                  unsigned char *error);
+                  char *error);
 \end{verbatim}
 Called on receiving any object message with the \verb|MBN_DATATYPE_ERROR| datatype. \textit{object} is the object number of the object that the error originated from, and \textit{error} points to a human readable error string. The received message can be accessed using \textit{message}.
 
