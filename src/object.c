@@ -274,7 +274,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
     if(r == 0) {
       memset((void *)mbn->node.Name, 0, 32);
       memcpy((void *)mbn->node.Name, (void *)obj->Data.Octets, obj->DataSize);
-      if(msg->MessageID > 0 && r == 0) {
+      if(msg->MessageID > 0 && !msg->AcknowledgeReply && r == 0) {
         dat.Octets = obj->Data.Octets;
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_OCTETS, obj->DataSize, &dat);
       }
@@ -285,7 +285,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
     r = mbn->cb_DefaultEngineAddrChange == NULL ? 0 : mbn->cb_DefaultEngineAddrChange(mbn, obj->Data.UInt);
     if(r == 0) {
       dat.UInt = mbn->node.DefaultEngineAddr = obj->Data.UInt;
-      if(msg->MessageID > 0 && r == 0)
+      if(msg->MessageID && !msg->AcknowledgeReply > 0 && r == 0)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
     }
 
@@ -294,7 +294,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
       mbn->objects[i].ActuatorType != MBN_DATATYPE_NODATA && mbn->objects[i].ActuatorType == obj->DataType) {
     if(mbn->cb_SetActuatorData(mbn, i, obj->Data) == 0) {
       dat = mbn->objects[i].ActuatorData = obj->Data;
-      if(msg->MessageID > 0)
+      if(msg->MessageID && !msg->AcknowledgeReply > 0)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, obj->DataType, mbn->objects[i].ActuatorSize, &dat);
     }
 
@@ -376,7 +376,7 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
         if(mbn->objects[i].UpdateFrequency != obj->Data.State && mbn->cb_ObjectFrequencyChange != NULL)
           mbn->cb_ObjectFrequencyChange(mbn, i, obj->Data.State);
         mbn->objects[i].UpdateFrequency = obj->Data.State;
-        if(msg->MessageID)
+        if(msg->MessageID && !msg->AcknowledgeReply)
           send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
       }
       return 1;
@@ -394,31 +394,31 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
     case MBN_OBJ_ACTION_INFO_RESPONSE:
       if(mbn->cb_ObjectInformationResponse != NULL
           && mbn->cb_ObjectInformationResponse(mbn, msg, obj->Number, obj->Data.Info) == 0
-          && msg->MessageID)
+          && msg->MessageID && !msg->AcknowledgeReply)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_INFO_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_FREQUENCY_RESPONSE:
       if(mbn->cb_ObjectFrequencyResponse != NULL
           && mbn->cb_ObjectFrequencyResponse(mbn, msg, obj->Number, obj->Data.State) == 0
-          && msg->MessageID)
+          && msg->MessageID && !msg->AcknowledgeReply)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_SENSOR_RESPONSE:
       if(mbn->cb_SensorDataResponse != NULL
           && mbn->cb_SensorDataResponse(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
-          && msg->MessageID)
+          && msg->MessageID && !msg->AcknowledgeReply)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_SENSOR_CHANGED:
       if(mbn->cb_SensorDataChanged != NULL
           && mbn->cb_SensorDataChanged(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
-          && msg->MessageID)
+          && msg->MessageID && !msg->AcknowledgeReply)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_SENSOR_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
     case MBN_OBJ_ACTION_ACTUATOR_RESPONSE:
       if(mbn->cb_ActuatorDataResponse != NULL
           && mbn->cb_ActuatorDataResponse(mbn, msg, obj->Number, obj->DataType, obj->Data) == 0
-          && msg->MessageID)
+          && msg->MessageID && !msg->AcknowledgeReply)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, obj->DataType, obj->DataSize, &(obj->Data));
       return 1;
   }
