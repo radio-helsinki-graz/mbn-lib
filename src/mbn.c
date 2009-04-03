@@ -402,7 +402,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   /* lock, to make sure we have a unique message ID */
   LCK();
 
-  if(!(flags & MBN_SEND_FORCEID)) {
+  if(!(flags & MBN_SEND_FORCEID) && !msg->AcknowledgeReply) {
     msg->MessageID = 0;
     if(flags & MBN_SEND_ACKNOWLEDGE) {
       /* get a new message ID */
