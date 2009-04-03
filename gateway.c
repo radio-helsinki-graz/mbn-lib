@@ -43,6 +43,7 @@ void OnlineStatus(struct mbn_handler *mbn, unsigned long addr, char valid) {
   printf("OnlineStatus: %08lX %s\n", addr, valid ? "validated" : "invalid");
   if(valid)
     mbnForceAddress(mbn == can ? eth : can, addr);
+  this_node.MambaNetAddr = addr;
 }
 
 
@@ -57,21 +58,22 @@ int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
   /*printf("ReceiveMessage on %s from %08lX to %08lX type %d\n",
     mbn == can ? "can" : "eth", msg->AddressFrom, msg->AddressTo, msg->MessageType);*/
 
+  /* don't forward anything that's targeted to us */
+  if(msg->AddressTo == this_node.MambaNetAddr)
+    return 0;
+
+  /* filter out address reservation packets from ethernet */
   if(mbn == eth && msg->MessageType == MBN_MSGTYPE_ADDRESS && msg->Message.Address.Action == MBN_ADDR_ACTION_INFO)
     return 0;
 
-  /*
-  printf("%s ", mbn == can ? "<" : ">");
-  for(i=0;i<msg->rawlength;i++)
-    printf(" %02X", msg->raw[i]);
-  printf("\n");
-  */
+  /* print out what's happening */
   printf(" %s %1X %08lX %08lX %03X %1X:", mbn == can ? "<" : ">",
     msg->AcknowledgeReply, msg->AddressTo, msg->AddressFrom, msg->MessageID, msg->MessageType);
   for(i=0;i<msg->bufferlength;i++)
     printf(" %02X", msg->buffer[i]);
   printf("\n");
 
+  /* forward message */
   mbnSendMessage(mbn == can ? eth : can, msg, MBN_SEND_IGNOREVALID | MBN_SEND_FORCEADDR | MBN_SEND_NOCREATE | MBN_SEND_FORCEID);
   return 0;
 }

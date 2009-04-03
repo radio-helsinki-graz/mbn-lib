@@ -142,14 +142,6 @@ void *scan_receive(void *ptr) {
     src   = (frame.can_id>> 4) & 0x0FFF;
     seq   =  frame.can_id      & 0x000F;
 
-    /* print if it's from the gateway *
-    if(src == 1) {
-      printf(":: < %08X: ", frame.can_id);
-      for(n=0;n<8;n++)
-        printf(" %02X", frame.data[n]);
-      printf("\n");
-    }*/
-
     /* ignore if it's not for us */
     if(!(dest == 1 || (bcast && dest == 0)))
       continue;
@@ -207,31 +199,15 @@ int scan_transmit(struct mbn_interface *itf, unsigned char *buffer, int length, 
   struct can_frame frame;
   int i, n;
 
-  /*return 0;*/
-
-  frame.can_id = ifaddr ? (0x00000010 & ((struct can_ifaddr *)ifaddr)->addr) : 0x10000010;
+  frame.can_id = ifaddr ? (0x00000010 | (((struct can_ifaddr *)ifaddr)->addr << 16)) : 0x10000010;
   frame.can_id |= CAN_EFF_FLAG;
   frame.can_dlc = 8;
-
-  /*
-  printf("::");
-  for(i=0;i<length;i++)
-    printf(" %02X", buffer[i]);
-  printf("\n");
-  */
 
   for(i=0;i<=length/8;i++) {
     frame.can_id &= ~0xF;
     frame.can_id |= i;
     memset((void *)frame.data, 0, 8);
     memcpy((void *)frame.data, &(buffer[i*8]), i*8+8 > length ? length-i*8 : 8);
-
-    /*
-    printf("   > %08X >", frame.can_id);
-    for(n=0;n<8;n++)
-      printf(" %02X", frame.data[n]);
-    printf("\n");
-    */
 
     if((n = write(dat->sock, (void *)&frame, sizeof(struct can_frame))) < (int)sizeof(struct can_frame)) {
       sprintf(err, "send: %s", strerror(errno));
