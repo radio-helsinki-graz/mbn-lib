@@ -1,0 +1,30 @@
+\chapter{Introduction}
+This document describes version 2 of the MambaNet C Library. This library provides a high-level abstraction for writing software to communicate over the MambaNet protocol. This document assumes that the reader is familiar with the concept and implementation of the MambaNet protocol. Refer to the MambaNet protocol documentation for more information.
+
+
+\section{Features}
+The MambaNet C Library aids the development of MambaNet software by providing the following set of features:
+\begin{description}
+ \item[Cross-platform]
+  The library is available on both windows and linux, and provides a uniform API to access MambaNet networks from all platforms.
+ \item[High-level message generation]
+  The programmer will rarely need to write raw MambaNet messages manually, a comprehensive set of functions is provided for sending predefined MambaNet messages.
+ \item[Automatic handling of mandatory functions]
+  Requesting a MambaNet address and replying to information requests from other nodes on the network is handled automatically. All required node information can be passed at initialization, and the library will do the rest.
+ \item[Built-in node list]
+  The library maintains a list of all MambaNet nodes it has found on the network, and can notify the application whenever a new node is added or removed from the network.
+ \item[Easy object handling]
+  Adding custom node objects is done in just a few lines of code. Any incoming changes to the objects are sent to the application from special callbacks.
+ \item[Built-in communication over transport layers]
+  The library provides a uniform and cross-platform interface to communicate over different transport layers. MambaNet applications don't require any platform-specific code for accessing the Ethernet, TCP or CAN layers.
+\end{description}
+
+
+\section{Feature test macros}
+The library comes with a header file (\textit{mbn.h}) which contains all data type definitions, function prototypes and a set of useful macros. As not all functions are available on all platforms or may not be compiled in all binary distributions, the header file also provides a few defines for testing whether a particular feature or function is available. The most important ones being the \verb|MBN_IF_<interface>| macros that indicate which interface modules can be used. Refer to the API documentation for each function and data type to see how you can determine its availability.
+
+
+\section{Multithreading}
+All functions can be used in multithreaded programs, and can be called from multiple threads at the same time. This is internally implemented by locking access to any shared resources. As such, keep in mind that when calling a library function, another thread calling a library function at the same time can be blocked until the function in the earlier thread returns.
+
+Callbacks sent from the library to the application can also come from  different threads, and the same callback function could be called multiple times at the same time from different threads. Thus all callback functions are required to synchronise access to shared resources.
