@@ -20,6 +20,8 @@ A handle can be obtained by calling mbnInit(), this function expects various inf
   };
 
   // Open the ethernet interface
+  // The interface name is hardcoded in this example, but see
+  // the section about interface modules for a better solution.
   if((itf = mbnEthernetOpen("eth0", error)) == NULL) {
     printf("Error opening ethernet device: %s", error);
     return;
@@ -149,3 +151,45 @@ The address table can also be used when receiving a message from another node on
   // somewhere after initializing mbn...
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
 \end{verbatim}
+
+
+
+\section{Interface modules}
+The MambaNet protocol can be used over several different transport layers, the library handles this by providing ``interface modules'': modules that define and implement how the communication with the transport layer is done.
+
+The current library has two built-in interface modules: Ethernet and TCP. As seen in the section discussing initialization, an interface module has to be initialized and opened before calling mbnInit(). Each module provides its own set of functions to do this.
+
+The ethernet module provides a function to get the list of possible ethernet devices to use. The following example illustrates how to open the last available device on the machine. Refer to the documentation of the \verb|mbn_if_ethernet| struct and the mbnEthernetOpen() function for more information.
+\begin{verbatim}
+  // check for the availability of the ethernet module,
+  // this is done at compile-time.
+#ifndef MBN_IF_ETHERNET
+# error No ethernet module available!
+#else
+  struct mbn_if_ethernet *devices, *last;
+  struct mbn_interface *itf;
+  char error[MBN_ERRSIZE];
+  
+  // get the list of devices
+  if((devices = mbnEthernetIFList(error)) == NULL) {
+    printf("Couldn't get device list: %s\n", error);
+    return;
+  }
+  
+  // browse to the last device in the list
+  for(last=devices; devices->next!=NULL; last=devices->next)
+    ;
+  
+  // open the interface
+  if((itf = mbnEthernetOpen(last->name, error)) == NULL) {
+    printf("Couldn't open device "%s": %s\n", last->name, error);
+    return;
+  }
+  
+  // free the device list
+  mbnEthernetIFFree(devices);
+#endif
+\end{verbatim}
+
+The TCP module can be initialized using the mbnTCPOpen() function, refer to the API documentation for an explanation on how to use it.
+

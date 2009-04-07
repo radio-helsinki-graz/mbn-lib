@@ -203,7 +203,7 @@ Defines an object message. \textit{Number} starts at 1024 for custom objects, de
 \begin{verbatim}
  struct mbn_node_info {
    unsigned int MambaNetAddr;
-   char Services;
+   unsigned char Services;
    char Description[64];
    char Name[32];
    unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
@@ -247,16 +247,16 @@ Defines a custom object. \textit{SensorData} and \textit{ActuatorData} refer to 
 
 \cleardoublepage
 \section{Functions}
-\subsection{mbnCANOpen}
-\begin{verbatim}
-#ifdef MBN_IF_CAN
- struct mbn_interface *mbnCANOpen(char *ifname,
-                                  char *error);
-#endif
-\end{verbatim}
-Opens a connection to the CAN interface specified by \textit{ifname}, returning a pointer to an initialized \verb|mbn_interface| structure for use with mbnInit(). On error, \verb|NULL| is returned and an error message is available in \textit{error}, which should be able to hold at most \verb|MBN_ERRSIZE| bytes.
+%\subsection{mbnCANOpen}
+%\begin{verbatim}
+%#ifdef MBN_IF_CAN
+% struct mbn_interface *mbnCANOpen(char *ifname,
+%                                  char *error);
+%#endif
+%\end{verbatim}
+%Opens a connection to the CAN interface specified by \textit{ifname}, returning a pointer to an initialized \verb|mbn_interface| structure for use with mbnInit(). On error, \verb|NULL| is returned and an error message is available in \textit{error}, which should be able to hold at most \verb|MBN_ERRSIZE| bytes.
 
-\textbf{Important:} The current CAN interface module is only supposed to be used as a gateway, and should not be used for normal MambaNet nodes that communicate on the CAN bus. It is the responsibility of the programmer to make sure that only one gateway is connected to one CAN bus at a time!
+%\textbf{Important:} The current CAN interface module is only supposed to be used as a gateway, and should not be used for normal MambaNet nodes that communicate on the CAN bus. It is the responsibility of the programmer to make %sure that only one gateway is connected to one CAN bus at a time!
 
 
 \subsection{mbnEthernetIFFree}
@@ -296,7 +296,7 @@ Opens the ethernet interface described by \textit{ifname} and allocates an \verb
  void mbnForceAddress(struct mbn_handler *mbn,
                       unsigned long addr);
 \end{verbatim}
-Forces the MambaNet node \textit{mbn} to use address \textit{addr} and consider this address as validated. Should only be used by address servers or applications with multiple MambaNet nodes on different network interfaces.
+Forces the MambaNet node \textit{mbn} to use address \textit{addr} and consider this address as validated. Should only be used by address servers or applications with multiple MambaNet nodes on different network interfaces (e.g. gateway applications).
 
 
 \subsection{mbnFree}
@@ -319,6 +319,8 @@ Deallocates all resources and closes all connections associated to the MambaNet 
 \end{verbatim}
 Requests the actuator data of a node on the network and dispatch an ActuatorDataResponse() callback on receiving the response. See mbnGetSensorData() for details.
 
+When the \textit{acknowledge} argument is set to $1$, the message will be sent using the \verb|MBN_SEND_ACKOWLEDGE| flag to mbnSendMessage(). Using this option, the MambaNet library will automatically retry the get operation, and an AcknowledgeTimeout callback will be dispatched if the sensor data could not be received after 5 retries.
+
 
 \subsection{mbnGetObjectFrequency}
 \begin{verbatim}
@@ -327,7 +329,7 @@ Requests the actuator data of a node on the network and dispatch an ActuatorData
                             unsigned short object,
                             char acknowledge);
 \end{verbatim}
-Requests the object frequency state of a node on the network and dispatch an ObjectFrequencyResponse() callback on receiving the response. See mbnGetSensorData() for details.
+Requests the object frequency state of a node on the network and dispatch an ObjectFrequencyResponse() callback on receiving the response. See mbnGetActuatorData() for details on the \textit{acknowledge} argument.
 
 
 \subsection{mbnGetObjectInformation}
@@ -337,7 +339,7 @@ Requests the object frequency state of a node on the network and dispatch an Obj
                               unsigned short object,
                               char acknowledge);
 \end{verbatim}
-Requests the object information of a node on the network and dispatch an ObjectInformationResponse() callback on receiving the response. See mbnGetSensorData() for details.
+Requests the object information of a node on the network and dispatch an ObjectInformationResponse() callback on receiving the response. See mbnGetActuatorData() for details on the \textit{acknowledge} argument.
 
 
 \subsection{mbnGetSensorData}
@@ -347,9 +349,7 @@ Requests the object information of a node on the network and dispatch an ObjectI
                        unsigned short object,
                        char acknowledge);
 \end{verbatim}
-Requests the sensor data of object number \textit{object} of the node at MambaNet address \textit{addr}. The SensorDataResponse() callback will be called with the sensor data upon receiving the reply.
-
-When the \textit{acknowledge} argument is set to $1$, the message will be sent using the \verb|MBN_SEND_ACKOWLEDGE| flag to mbnSendMessage(). Using this option, the MambaNet library will automatically retry the get operation, and an AcknowledgeTimeout callback will be dispatched if the sensor data could not be received after 5 retries.
+Requests the sensor data of object number \textit{object} of the node at MambaNet address \textit{addr}. The SensorDataResponse() callback will be called with the sensor data upon receiving the reply. See mbnGetActuatorData() for details on the \textit{acknowledge} argument.
 
 
 \subsection{mbnInit}
@@ -363,7 +363,7 @@ This function creates a new MambaNet node, the \textit{info} argument should poi
 
 \textit{objects} should point to an array of initialized \verb|mbn_object| structures, or \verb|NULL| if the node has no custom objects. The length of the array is determined from \textit{info.NumberOfObjects}. The library creates an internal copy of the entire objects array, so any application-allocated memory for the object list can be freed after the call to mbnInit(). The value of the \textit{Services} field of the \verb|mbn_object| structures is ignored, this is handled internally.
 
-\textit{itf} should point to an \verb|mbn_interface| structure describing how the library can communicate to the outside. This pointer can be created using mbnEthernetOpen() or mbnTCPOpen(). \textbf{Important:} An interface pointer should be associated to only one MambaNet node!
+\textit{itf} should point to an \verb|mbn_interface| structure describing how the library can communicate to the outside. This pointer can be created using mbnEthernetOpen(), mbnTCPOpen(), or manually when writing a custom inferface module. \textbf{Important:} An interface pointer should be associated to only one MambaNet node!
 
 On success, mbnInit() returns a pointer to an \verb|mbn_handler| structure which can be used to perform operations on the newly created MambaNet node. On error, \verb|NULL| is returned and an error string is written to \textit{error}, which should have enough space for at least \verb|MBN_ERRSIZE| bytes.
 
@@ -447,7 +447,7 @@ Sends a ping request to MambaNet address \textit{addr}, or to all nodes on the n
                          union mbn_data data,
                          char acknowledge);
 \end{verbatim}
-Sets the actuator data of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{data}. The values of the \textit{type} and \textit{length} arguments should match the actuator data type and length configured in the target node. This information can be requested by using mbnGetObjectInformation(). The \textit{acknowledge} argument behaves the same as for mbnGetSensorData().
+Sets the actuator data of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{data}. The values of the \textit{type} and \textit{length} arguments should match the actuator data type and length configured in the target node. This information can be requested by using mbnGetObjectInformation(). The \textit{acknowledge} argument behaves the same as for mbnGetActuatorData().
 
 
 \subsection{mbnSet$<$cb$>$Callback \footnotesize{[macro]}}
@@ -468,7 +468,7 @@ Please note that callback functions intended to be used by interface modules can
                             unsigned char freq,
                             char acknowledge);
 \end{verbatim}
-Sets the object frequency state of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{freq}. The \textit{acknowledge} argument behaves the same as for mbnGetSensorData().
+Sets the object frequency state of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{freq}. The \textit{acknowledge} argument behaves the same as for mbnGetActuatorData().
 
 
 \subsection{mbnTCPOpen}
@@ -485,7 +485,7 @@ Opens TCP connection(s) and allocates an \verb|mbn_interface| structure for use 
 
 If \textit{remotehost} is not \verb|NULL|, a connection will be made to the server listening at port \textit{remoteport} on \textit{remotehost}. If \textit{localhost} is not \verb|NULL|, the library will act as a TCP server and listen for incoming connections on port \textit{localport}. \textit{remoteport} and \textit{localport} can be \verb|NULL| to use the default port for MambaNet. \textit{remotehost} and \textit{localhost} can be either an hostname or a numeric IP addresses. Both IPv4 and IPv6 are supported.
 
-\emph{Note:} This function performs hostname lookups and opens connections in a non-blocking fasion. It can block up to a few minutes in the worst case.
+\emph{Note:} This function performs hostname lookups and opens connections in a blocking fasion. It can block up to a few minutes in the worst case.
 
 
 \subsection{mbnUnset$<$cb$>$Callback \footnotesize{[macro]}}
@@ -501,7 +501,7 @@ Set of macros to remove callback function \verb|<cb>| from MambaNet node \textit
                             unsigned short object,
                             union mbn_data data);
 \end{verbatim}
-Changes the actuator data of custom object \textit{object} (counting from 0) of MambaNet node \textit{mbn} to \textit{data}.
+Changes the actuator data of object \textit{object} of MambaNet node \textit{mbn} to \textit{data}.
 
 
 \subsection{mbnUpdateEngineAddr}
@@ -652,7 +652,7 @@ Only to be used by interface modules. This callback should free the memory point
                    unsigned short object,
                    union mbn_data *data);
 \end{verbatim}
-Called when a node on the network requests the sensor data of custom object number \textit{object} (counting from 0) on MambaNet node \textit{mbn}. To reply to this request, the sensor data of the object should be written to \textit{data}, and the callback should return 0. The request can be ignored by returning anything other than 0.
+Called when a node on the network requests the sensor data of object number \textit{object} on MambaNet node \textit{mbn}. To reply to this request, the sensor data of the object should be written to \textit{data}, and the callback should return 0. The request can be ignored by returning anything other than 0.
 
 If this callback has not been set, the request will be replied to automatically with the sensor data known internally to the library, as set by the last call to mbnInit() or mbnUpdateSensorData().
 
@@ -772,4 +772,4 @@ Called on receiving a sensor data response from another node, usually after call
                      unsigned short object,
                      union mbn_data data);
 \end{verbatim}
-Called when a node on the network attempts to change the sensor data of object number \textit{object} (counting from 0) of MambaNet node \textit{mbn} to \textit{data}. The function should return 0 to indicate that the new data has been accepted or any other value otherwise. Works the same as the SetActuatorData() callback.
+Called when a node on the network attempts to change the sensor data of object number \textit{object} of MambaNet node \textit{mbn} to \textit{data}. The function should return 0 to indicate that the new data has been accepted or any other value otherwise. Works the same as the SetActuatorData() callback.
