@@ -250,7 +250,7 @@ typedef int(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, 
 /* All information required for the default objects of a node */
 struct mbn_node_info {
   unsigned int MambaNetAddr;
-  char Services;
+  unsigned char Services;
   char Description[64];
   char Name[32];
   unsigned short ManufacturerID, ProductID, UniqueIDPerProduct;
