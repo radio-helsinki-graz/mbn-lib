@@ -72,6 +72,7 @@ int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
   for(i=0;i<msg->bufferlength;i++)
     printf(" %02X", msg->buffer[i]);
   printf("\n");
+  fflush(stdout);
 
   /* forward message */
   mbnSendMessage(mbn == can ? eth : can, msg, MBN_SEND_IGNOREVALID | MBN_SEND_FORCEADDR | MBN_SEND_NOCREATE | MBN_SEND_FORCEID);

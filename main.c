@@ -51,9 +51,9 @@ struct mbn_object objects[2];
 void AddressTableChange(struct mbn_handler *mbn, struct mbn_address_node *old, struct mbn_address_node *new) {
   struct mbn_address_node *cur;
   cur = new == NULL ? old : new;
-  printf("%s: %08lX  ->  %04X:%04X:%04X (%02X)\n",
+  /*printf("%s: %08lX  ->  %04X:%04X:%04X (%02X)\n",
     old == NULL ? "New node" : new == NULL ? "Removed node" : "Node changed",
-    cur->MambaNetAddr, cur->ManufacturerID, cur->ProductID, cur->UniqueIDPerProduct, cur->Services);
+    cur->MambaNetAddr, cur->ManufacturerID, cur->ProductID, cur->UniqueIDPerProduct, cur->Services);*/
   mbn += 1;
 }
 
@@ -72,8 +72,19 @@ void Error(struct mbn_handler *mbn, int code, char *msg) {
 }
 
 int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
-  printf("ReceiveMessage from %08lX to %08lX type %d\n", msg->AddressFrom, msg->AddressTo, msg->MessageType);
-  mbn += 1;
+  /*printf("ReceiveMessage from %08lX to %08lX type %d\n", msg->AddressFrom, msg->AddressTo, msg->MessageType);*/
+  mbn += 1; msg += 1;
+  return 0;
+}
+
+int total = 0;
+int ObjectInformationResponse(struct mbn_handler *mbn, struct mbn_message *msg, unsigned short object, struct mbn_object *nfo) {
+  if(nfo == NULL) {
+    printf("ERROR: nfo == NULL\n");
+    exit(1);
+  }
+  printf("%4d (%4d: %s)\n", ++total, object, nfo->Description);
+  msg++; mbn++;
   return 0;
 }
 
@@ -82,14 +93,17 @@ int main(void) {
   struct mbn_handler *mbn;
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
+  /*int i, j, k;*/
 
+  /*
 #ifdef MBN_IF_CAN
   itf = mbnCANOpen("can0", err);
   if(itf == NULL) {
     printf("Error: %s\n", err);
     return 1;
   }
-#elif defined(MBN_IF_ETHERNET)
+#elif defined(MBN_IF_ETHERNET)*/
+#ifdef MBN_IF_ETHERNET
   struct mbn_if_ethernet *ifl, *n;
   char *ifname;
   ifname = NULL;
@@ -119,22 +133,35 @@ int main(void) {
   }
 #endif
 
-  objects[0] = MBN_OBJ("Object #1", 1, MBN_DATATYPE_UINT, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
-  objects[1] = MBN_OBJ("Object #2", 0, MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
+  objects[0] = MBN_OBJ("Object #1", MBN_DATATYPE_UINT, 0, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
+  objects[1] = MBN_OBJ("Object #2", MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
 
   mbn = mbnInit(&this_node, objects, itf, err);
   if(mbn == NULL) {
     printf("Error initializing mbn: %s\n", err);
     return 1;
   }
-  mbnForceAddress(mbn, 0x0000BEEF);
 
   mbnSetAddressTableChangeCallback(mbn, AddressTableChange);
   mbnSetOnlineStatusCallback(mbn, OnlineStatus);
   mbnSetErrorCallback(mbn, Error);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
+  mbnSetObjectInformationResponseCallback(mbn, ObjectInformationResponse);
 
-  /*sleep(60);*/
+  /*
+  sleep(5);
+  k=1024;
+  for(i=1;i<=50;i++) {
+    j = 50;
+    printf("get %d\n", j);
+    total = 0;
+    for(;j>0;j--)
+      mbnGetObjectInformation(mbn, 0x106, k++, 0);
+    sleep(1);
+  }
+  sleep(1);
+  */
+
   pthread_exit(NULL);
   mbnFree(mbn);
   return 0;

@@ -47,7 +47,7 @@ void send_object_changed(struct mbn_handler *mbn, unsigned short obj) {
   msg.AddressTo = dest;
   msg.MessageType = MBN_MSGTYPE_OBJECT;
   msg.Message.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
-  msg.Message.Object.Number = obj+1024;
+  msg.Message.Object.Number = obj;
   msg.Message.Object.DataType = mbn->objects[obj].SensorType;
   msg.Message.Object.DataSize = mbn->objects[obj].SensorSize;
   msg.Message.Object.Data = mbn->objects[obj].SensorData;
@@ -102,7 +102,7 @@ void *throttle_thread(void *arg) {
       if(!mbn->objects[i].changed)
         continue;
       /* we can send the message */
-      send_object_changed(mbn, i);
+      send_object_changed(mbn, i+1024);
       /* reset the timeout (see timing info above for detailed explanation) */
       f = mbn->objects[i].UpdateFrequency;
       mbn->objects[i].timeout =
@@ -221,7 +221,7 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
         if(mbn->cb_GetSensorData == NULL || mbn->objects[i].SensorType == MBN_DATATYPE_NODATA)
           dat = mbn->objects[i].SensorData;
         else {
-          if((r = mbn->cb_GetSensorData(mbn, i, &dat)) == 0)
+          if((r = mbn->cb_GetSensorData(mbn, obj->Number, &dat)) == 0)
             mbn->objects[i].SensorData = dat;
         }
         if(r == 0)
@@ -292,7 +292,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   /* custom object */
   } else if(i >= 0 && i < mbn->node.NumberOfObjects && mbn->cb_SetActuatorData != NULL &&
       mbn->objects[i].ActuatorType != MBN_DATATYPE_NODATA && mbn->objects[i].ActuatorType == obj->DataType) {
-    if(mbn->cb_SetActuatorData(mbn, i, obj->Data) == 0) {
+    if(mbn->cb_SetActuatorData(mbn, obj->Number, obj->Data) == 0) {
       dat = mbn->objects[i].ActuatorData = obj->Data;
       if(msg->MessageID && !msg->AcknowledgeReply > 0)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, obj->DataType, mbn->objects[i].ActuatorSize, &dat);
@@ -374,7 +374,7 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_ERROR, strlen(dat.Error)+1, &dat);
       } else {
         if(mbn->objects[i].UpdateFrequency != obj->Data.State && mbn->cb_ObjectFrequencyChange != NULL)
-          mbn->cb_ObjectFrequencyChange(mbn, i, obj->Data.State);
+          mbn->cb_ObjectFrequencyChange(mbn, obj->Number, obj->Data.State);
         mbn->objects[i].UpdateFrequency = obj->Data.State;
         if(msg->MessageID && !msg->AcknowledgeReply)
           send_object_reply(mbn, msg, MBN_OBJ_ACTION_FREQUENCY_RESPONSE, MBN_DATATYPE_STATE, 1, &dat);
@@ -427,6 +427,8 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+  object -= 1024;
+
   /* update internal sensor data */
   mbn->objects[object].SensorData = dat;
 
@@ -436,11 +438,11 @@ void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short obje
 
   /* object frequency = 1, create & send message now */
   if(mbn->objects[object].UpdateFrequency == 1)
-    send_object_changed(mbn, object);
+    send_object_changed(mbn, object+1024);
 }
 
 void MBN_EXPORT mbnUpdateActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
-  mbn->objects[object].ActuatorData = dat;
+  mbn->objects[object-1024].ActuatorData = dat;
 }
 
 
