@@ -1,0 +1,151 @@
+\chapter{Using the Library}
+\section{Initialization}
+Each MambaNet node the application provides has a special handle. All library functions that act from the node need this handle as argument, and all callback functions will receive it to determine from which MambaNet node the callback came from.
+
+A handle can be obtained by calling mbnInit(), this function expects various information about the node as argument and will then initialize the node and request a MambaNet address. The following example illustrates how to initialize a node on Ethernet without custom objects:
+\begin{verbatim}
+  #include <mbn.h>
+
+  struct mbn_interface *itf;
+  struct mbn_handler *mbn;
+  char error[MBN_ERRSIZE];
+
+  // Information about the node
+  struct mbn_node_info node = {
+    0, 0,                            // MambaNetAddr, Services
+    "MambaNet Library Example Node", // Description
+    "Example #1",                    // Name
+    0xFFFF, 0x0001, 0x0001           // UniqueMediaAccessID
+    // other fields can be left blank
+  };
+
+  // Open the ethernet interface
+  if((itf = mbnEthernetOpen("eth0", error)) == NULL) {
+    printf("Error opening ethernet device: %s", error);
+    return;
+  }
+
+  // Initialize the MambaNet node
+  if((mbn = mbnInit(&node, NULL, itf, error)) == NULL) {
+    printf("Error initializing MambaNet node: %s", error);
+    return;
+  }
+\end{verbatim}
+
+After successful execution, \textit{mbn} points to a valid MambaNet node handle and can be used to attach callback functions and call library functions. In an actual application you would usually want to provide more information in \textit{node} and you would want to make the ethernet device configurable, this will be discussed later in this document.
+
+Keep in mind that right after initialization, the MambaNet node does not have a validated address. You have to wait for the OnlineStatus() callback before sending (object) messages to the network.
+
+\verb|mbnFree(mbn)| can be called to deallocate and remove the node from the network after initialization. This will also automatically deallocate the memory returned by \textit{mbnEthernetOpen()}, so the application doesn't need to keep track of the \textit{itf} pointer.
+
+
+
+
+\section{Custom objects}
+Custom node objects can be added to a MambaNet node at intialization by setting the \textit{NumberOfObjects} field in the \verb|mbn_node_info| structure passed to mbnInit(), and by providing a pointer to an array of \verb|mbn_object| structures to the \textit{objects} argument. A helper function is available to create this array without having to initialize all fields manually. The following example illustrates how to use this function and add the objects to the MambaNet node. Refer to the API documentation for \verb|mbn_object| and MBN\_OBJ() for more information.
+\begin{verbatim}
+  // Tell mbn.h to add MBN_OBJ() to our code
+  #define MBN_VARARG
+  #include "mhn.h"
+  
+  // allocate an array for 3 objects
+  struct mbn_object objects[3];
+  
+  // object #1: sensor of type unsigned int
+  objects[0] = MBN_OBJ(
+    "Object #1", // name
+    // sensor type,  freq, size (bytes), min, max, current value
+    MBN_DATATYPE_UINT,  0,    2        ,   0, 512,           256,
+    // actuator (none)
+    MBN_DATATYPE_NODATA
+  );
+  
+  // object #2: actuator of type float
+  objects[1] = MBN_OBJ(
+    "Object #2", // name
+    // sensor (none)
+    MBN_DATATYPE_NODATA,
+    // actuator type, size,   min,  max, default, current
+    MBN_DATATYPE_FLOAT,  4, -30.0, 10.0,     0.0,     0.0
+  );
+  
+  // object #3: signed int sensor and float actuator
+  objects[2] = MBN_OBJ(
+    "Object #3",
+    MBN_DATATYPE_SINT, 0, 4, -100, 100, 0,
+    MBN_DATATYPE_FLOAT, 4, -100.0, 100.0, 0.0
+  );
+  
+  // specify how many objects we have
+  info.NumberOfObjects = 3;
+  
+  // initialize the MambaNet node
+  mbn = mbnInit(&info, objects, itf, error);
+\end{verbatim}
+
+The library will then automatically reply to object messages from other nodes on the network. Interaction with these objects can be done through several functions and callbacks. The following example shows how you can link the actuator ``input'' of Object \#3 to the sensor ``output'' of the same object.
+\begin{verbatim}
+  int SetActuatorData(struct mbn_handler *mbn,
+                      unsigned short object,
+                      union mbn_data in) {
+    union mbn_data out;
+    
+    // execute the default action if this is not object #3
+    // (object counts from 0)
+    // normally, an application should handle all defined objects
+    if(object != 2)
+      return 0;
+
+    // set the sensor data to the actuator data
+    // (converting float to signed int)
+    out.SInt = (int)in.Float;
+    mbnUpdateSensorData(mbn, 2, out);
+    
+    // always return 0, unless something went wrong
+    return 0;
+  }
+  
+  int main() {
+    struct mbn_handler *mbn;
+    // [initialization omitted, we know how that works already]
+    
+    // set the callback
+    // (no, the double 'Set' here is not a typo)
+    mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
+    
+    // [do some work here to keep the program alive]
+  }
+\end{verbatim}
+
+
+
+\section{Address table}
+The library keeps track of all MambaNet nodes on the network and notifies the application whenever a change occurs through the AddressTableChange callback. It is also possible to browse through the address table at any time in the application using the mbnNextNode() function. The following example illustrates how this function can be used to output a list of online nodes:
+\begin{verbatim}
+  struct mbn_address_node *node;
+
+  for(node=NULL; (node=mbnNextNode(mbn, node))!=NULL; ) {
+    printf("%08lX -> %04X:%04X:%04X\n",
+      node->MambaNetAddr, node->ManufacturerID,
+      node->ProductID, node->UniqueIDPerProduct);
+  }
+\end{verbatim}
+
+MambaNet nodes that are currently not on the network can not be detected, and will thus not be available in the list. Refer to the API documentation for \verb|mbn_address_node| for more information about which information is known.
+
+The address table can also be used when receiving a message from another node on the network, and you want to know more about that node without having to send extra messages over the network. To do this, call the mbnNodeStatus() function. The following example shows how to ignore all incoming MambaNet messages from ManufacurerID 0xFFFF.
+\begin{verbatim}
+  int ReceiveMessage(struct mbn_handler *mbn,
+                     struct mbn_message *msg) {
+    struct mbn_address_node *node;
+    
+    node = mbnNodeStatus(mbn, msg->AddressFrom);
+    if(node && node->ManufacturerID == 0xFFFF)
+      return 1;
+    else
+      return 0;
+  }
+  
+  // somewhere after initializing mbn...
+  mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
+\end{verbatim}
