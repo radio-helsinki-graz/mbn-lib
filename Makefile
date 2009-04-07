@@ -10,11 +10,6 @@ TARGETS=lib main
 
 all: lib
 	${CC} ${CFLAGS} main.c -Isrc -Lsrc -lmbn ${LFLAGS} -o main
-ifdef IF_CAN
-ifdef IF_ETHERNET
-	${CC} ${CFLAGS} gateway.c -Isrc -Lsrc -lmbn ${LFLAGS} -o gateway
-endif
-endif
 
 main: all
 gateway: all
