@@ -504,45 +504,50 @@ void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 /* One VA_ARG functions embedded in the .h, as exporting them
  *  from .dlls be a bit problematic on some systems */
 
-struct mbn_object MBN_OBJ(char *desc, unsigned char freq, ...) {
+struct mbn_object MBN_OBJ(char *desc, ...) {
   struct mbn_object obj;
   va_list va;
-  va_start(va, freq);
+  va_start(va, desc);
 
   /* basic info */
   memcpy((void *)obj.Description, (void *)desc, strlen((char *)desc)+1);
   obj.EngineAddr = 0;
-  obj.UpdateFrequency = freq;
+  obj.UpdateFrequency = 0;
 
   /* sensor */
   obj.SensorType = (unsigned char) va_arg(va, int);
   switch(obj.SensorType) {
     case MBN_DATATYPE_UINT:
     case MBN_DATATYPE_STATE:
+      obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
       obj.SensorMin.UInt  = (unsigned long) va_arg(va, unsigned long);
       obj.SensorMax.UInt  = (unsigned long) va_arg(va, unsigned long);
       obj.SensorData.UInt = (unsigned long) va_arg(va, unsigned long);
       break;
     case MBN_DATATYPE_SINT:
+      obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
       obj.SensorMin.SInt  = (long) va_arg(va, long);
       obj.SensorMax.SInt  = (long) va_arg(va, long);
       obj.SensorData.SInt = (long) va_arg(va, long);
       break;
     case MBN_DATATYPE_FLOAT:
+      obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
       obj.SensorMin.Float  = (float) va_arg(va, double);
       obj.SensorMax.Float  = (float) va_arg(va, double);
       obj.SensorData.Float = (float) va_arg(va, double);
       break;
     case MBN_DATATYPE_OCTETS:
+      obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
       obj.SensorMin.Octets  = (unsigned char *) va_arg(va, char *);
       obj.SensorMax.Octets  = (unsigned char *) va_arg(va, char *);
       obj.SensorData.Octets = (unsigned char *) va_arg(va, char *);
       break;
     case MBN_DATATYPE_BITS:
+      obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
       memcpy((void *)obj.SensorMin.Bits,  (void *)va_arg(va, unsigned char *), obj.SensorSize);
       memcpy((void *)obj.SensorMax.Bits,  (void *)va_arg(va, unsigned char *), obj.SensorSize);
@@ -581,16 +586,16 @@ struct mbn_object MBN_OBJ(char *desc, unsigned char freq, ...) {
       break;
     case MBN_DATATYPE_OCTETS:
       obj.ActuatorSize = (unsigned char) va_arg(va, int);
-      obj.ActuatorMin.Octets  = (unsigned char *) va_arg(va, char *);
-      obj.ActuatorMax.Octets  = (unsigned char *) va_arg(va, char *);
-      obj.ActuatorDefault.Octets  = (unsigned char *) va_arg(va, char *);
+      obj.ActuatorMin.UInt  = (unsigned long) va_arg(va, unsigned long);
+      obj.ActuatorMax.UInt  = (unsigned long) va_arg(va, unsigned long);
+      obj.ActuatorDefault.UInt  = (unsigned long) va_arg(va, unsigned long);
       obj.ActuatorData.Octets = (unsigned char *) va_arg(va, char *);
       break;
     case MBN_DATATYPE_BITS:
       obj.ActuatorSize = (unsigned char) va_arg(va, int);
-      memcpy((void *)obj.ActuatorMin.Bits,  (void *)va_arg(va, unsigned char *), obj.ActuatorSize);
-      memcpy((void *)obj.ActuatorMax.Bits,  (void *)va_arg(va, unsigned char *), obj.ActuatorSize);
-      memcpy((void *)obj.ActuatorDefault.Bits,  (void *)va_arg(va, unsigned char *), obj.ActuatorSize);
+      obj.ActuatorMin.UInt  = (unsigned long) va_arg(va, unsigned long);
+      obj.ActuatorMax.UInt  = (unsigned long) va_arg(va, unsigned long);
+      obj.ActuatorDefault.UInt  = (unsigned long) va_arg(va, unsigned long);
       memcpy((void *)obj.ActuatorData.Bits, (void *)va_arg(va, unsigned char *), obj.ActuatorSize);
       break;
     default:
