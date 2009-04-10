@@ -212,14 +212,13 @@ Defines an object message. \textit{Number} starts at 1024 for custom objects, de
    unsigned char FPGAFirmwareMajorRevision, FPGAFirmwareMinorRevision;
    unsigned short NumberOfObjects;
    unsigned int DefaultEngineAddr;
-   unsigned char HardwareParent[6];
+   unsigned short HardwareParent[3];
    unsigned char ServiceRequest;
  };
 \end{verbatim}
 Holds all information required about the MambaNet node. \textit{MambaNetAddr} indicates the current MambaNet address of the node, and can be 0 if it doesn't have one (yet). \textit{Services} is a set of \verb|MBN_ADDR_SERVICES_*| flags. Any of the \textit{-Revision} fields can be 0 to indicate that the item is not present or does not have a version number assigned. \textit{DefaultEngineAddr} can be 0 to indicate that no default engine address is set. The \textit{ServiceRequest} field should be either 1 to indicate that the node requires service, or 0 otherwise.
 
-\textit{HardwareParent} specifies the UniqueMediaAccessID of the MambaNet node that is the ``hardware parent'' of this node in the format 0xMMMMPPPPUUUU, where M is the ManufacturerID, P the ProductID and U the UniqueIDPerProduct. Can be 0x000000000000 or the UniqueMediaAccessID of the current node if no hardware parent is present.
-
+\textit{HardwareParent} specifies the UniqueMediaAccessID of the MambaNet node that is the ``hardware parent'' of this node in an array with the ManufacturerID, ProductID and UniqueIDPerProduct, in that order. Can be \verb|{0,0,0}| or the UniqueMediaAccessID of the current node if no hardware parent is present.
 The protocol major and minor revisions are defined within the library as such not configurable and not defined in this structure.
 
 
