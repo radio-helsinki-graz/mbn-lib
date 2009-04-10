@@ -36,13 +36,13 @@ struct mbn_node_info this_node = {
   "MambaNet Stack Test Application",
   ">> YorHel's Power Node! <<",
   0xFFFF, 0x0001, 0x0001,   /* UniqueMediaAccessId */
-  0, 0,          /* Hardware revision */
-  0, 0,          /* Firmware revision */
-  0, 0,          /* FPGAFirmware revision */
-  2,             /* NumberOfObjects */
-  0,             /* DefaultEngineAddr */
-  {0,0,0,0,0,0}, /* Hardwareparent */
-  0              /* Service request */
+  0, 0,     /* Hardware revision */
+  0, 0,     /* Firmware revision */
+  0, 0,     /* FPGAFirmware revision */
+  2,        /* NumberOfObjects */
+  0,        /* DefaultEngineAddr */
+  {0,0,0},  /* Hardwareparent */
+  0         /* Service request */
 };
 
 struct mbn_object objects[2];
@@ -93,7 +93,6 @@ int main(void) {
   struct mbn_handler *mbn;
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
-  /*int i, j, k;*/
 
   /*
 #ifdef MBN_IF_CAN
@@ -147,20 +146,6 @@ int main(void) {
   mbnSetErrorCallback(mbn, Error);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetObjectInformationResponseCallback(mbn, ObjectInformationResponse);
-
-  /*
-  sleep(5);
-  k=1024;
-  for(i=1;i<=50;i++) {
-    j = 50;
-    printf("get %d\n", j);
-    total = 0;
-    for(;j>0;j--)
-      mbnGetObjectInformation(mbn, 0x106, k++, 0);
-    sleep(1);
-  }
-  sleep(1);
-  */
 
   pthread_exit(NULL);
   mbnFree(mbn);

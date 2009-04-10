@@ -140,6 +140,7 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
   struct mbn_message_object *obj = &(msg->Message.Object);
   union mbn_data dat;
   unsigned char a = MBN_OBJ_ACTION_SENSOR_RESPONSE;
+  unsigned char par[6];
   int i, r;
 
   switch(obj->Number) {
@@ -202,7 +203,13 @@ int get_sensor(struct mbn_handler *mbn, struct mbn_message *msg) {
       send_object_reply(mbn, msg, a, MBN_DATATYPE_NODATA, 0, &dat);
       break;
     case MBN_NODEOBJ_HWPARENT:
-      dat.Octets = mbn->node.HardwareParent;
+      par[0] = (unsigned char)(mbn->node.HardwareParent[0]>>8);
+      par[1] = (unsigned char)(mbn->node.HardwareParent[0]&0xFF);
+      par[2] = (unsigned char)(mbn->node.HardwareParent[1]>>8);
+      par[3] = (unsigned char)(mbn->node.HardwareParent[1]&0xFF);
+      par[4] = (unsigned char)(mbn->node.HardwareParent[2]>>8);
+      par[5] = (unsigned char)(mbn->node.HardwareParent[2]&0xFF);
+      dat.Octets = par;
       send_object_reply(mbn, msg, a, MBN_DATATYPE_OCTETS, 6, &dat);
       break;
     case MBN_NODEOBJ_SERVICEREQUEST:

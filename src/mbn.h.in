@@ -259,7 +259,7 @@ struct mbn_node_info {
   unsigned char FPGAFirmwareMajorRevision, FPGAFirmwareMinorRevision;
   unsigned short NumberOfObjects;
   unsigned int DefaultEngineAddr;
-  unsigned char HardwareParent[6];
+  unsigned short HardwareParent[3];
   unsigned char ServiceRequest;
 };
 
