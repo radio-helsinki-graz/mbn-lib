@@ -199,6 +199,9 @@ int parsemsg_address(struct mbn_message *msg) {
   addr->EngineAddr         = ((unsigned long)  msg->buffer[11]<<24) |((unsigned long)  msg->buffer[12]<<16)
                            | ((unsigned long)  msg->buffer[13]<< 8) | (unsigned long)  msg->buffer[14];
   addr->Services = msg->buffer[15];
+  /* don't allow messages with empty UniqueMediaAccessID */
+  if(addr->ManufacturerID == 0 || addr->ProductID == 0 || addr->UniqueIDPerProduct == 0)
+    return 2;
   return 0;
 }
 
