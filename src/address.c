@@ -247,11 +247,14 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
     case MBN_ADDR_ACTION_RESPONSE:
       if(MBN_ADDR_EQ(&(msg->Message.Address), &(mbn->node))) {
         /* check for mambanet address/valid bit change */
-        if(mbn->node.MambaNetAddr != msg->Message.Address.MambaNetAddr || !(mbn->node.Services & MBN_ADDR_SERVICES_VALID)) {
+        if(mbn->node.MambaNetAddr != msg->Message.Address.MambaNetAddr) {
           mbn->node.MambaNetAddr = msg->Message.Address.MambaNetAddr;
-          mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
+          if(msg->Message.Address.Services & MBN_ADDR_SERVICES_VALID && mbn->node.MambaNetAddr > 0)
+            mbn->node.Services |= MBN_ADDR_SERVICES_VALID;
+          else
+            mbn->node.Services &= ~MBN_ADDR_SERVICES_VALID;
           if(mbn->cb_OnlineStatus != NULL)
-            mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, 1);
+            mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, mbn->node.Services & MBN_ADDR_SERVICES_VALID);
         }
         /* check for engine address change */
         if(mbn->node.DefaultEngineAddr != msg->Message.Address.EngineAddr) {
