@@ -50,12 +50,13 @@ void *scan_receive(void *);
 int scan_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
-struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, char *err) {
+struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, short *parent, char *err) {
   struct mbn_interface *itf;
   struct can_data *dat;
   struct ifreq ifr;
   struct sockaddr_can addr;
-  int error = 0;
+  struct can_frame frame;
+  int error = 0, n;
 
   itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
   dat = (struct can_data *)calloc(1, sizeof(struct can_data));
@@ -80,6 +81,27 @@ struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, char *err) {
   if(!error && bind(dat->sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_can)) < 0) {
     sprintf(err, "Couldn't bind socket: %s", strerror(errno));
     error++;
+  }
+
+  /* wait for hardware parent (which should be received within a second if the network is working)
+   * TODO: timeout? */
+  if(!error && parent != NULL) {
+    while((n = read(dat->sock, &frame, sizeof(struct can_frame))) >= 0 && n == (int)sizeof(struct can_frame)) {
+      frame.can_id &= CAN_ERR_MASK;
+      if(frame.can_id != 0x0FFFFFF1)
+        continue;
+      parent[0] = ((short)frame.data[0]<<8) | frame.data[1];
+      parent[1] = ((short)frame.data[2]<<8) | frame.data[3];
+      parent[2] = ((short)frame.data[4]<<8) | frame.data[5];
+      break;
+    }
+    if(n != (int)sizeof(struct can_frame)) {
+      if(n < 0)
+        sprintf(err, "Reading from network: %s", strerror(errno));
+      else
+        sprintf(err, "Received invalid CAN frame size");
+      error++;
+    }
   }
 
   if(error) {

@@ -418,7 +418,7 @@ void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, char *);
 #endif
 #ifdef MBN_IF_CAN
-struct mbn_interface * MBN_EXPORT mbnCANOpen(char *, char *);
+struct mbn_interface * MBN_EXPORT mbnCANOpen(char *, short *, char *);
 #endif
 
 /* address.c */
