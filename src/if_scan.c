@@ -88,7 +88,7 @@ struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, unsigned short *paren
   if(!error && parent != NULL) {
     while((n = read(dat->sock, &frame, sizeof(struct can_frame))) >= 0 && n == (int)sizeof(struct can_frame)) {
       frame.can_id &= CAN_ERR_MASK;
-      if(frame.can_id != 0x0FFFFFF1)
+      if(frame.can_id != 0x0FFF0001)
         continue;
       parent[0] = ((unsigned short)frame.data[0]<<8) | frame.data[1];
       parent[1] = ((unsigned short)frame.data[2]<<8) | frame.data[3];
