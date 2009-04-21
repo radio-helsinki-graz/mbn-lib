@@ -50,7 +50,7 @@ void *scan_receive(void *);
 int scan_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
-struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, short *parent, char *err) {
+struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, unsigned short *parent, char *err) {
   struct mbn_interface *itf;
   struct can_data *dat;
   struct ifreq ifr;
@@ -90,9 +90,9 @@ struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, short *parent, char *
       frame.can_id &= CAN_ERR_MASK;
       if(frame.can_id != 0x0FFFFFF1)
         continue;
-      parent[0] = ((short)frame.data[0]<<8) | frame.data[1];
-      parent[1] = ((short)frame.data[2]<<8) | frame.data[3];
-      parent[2] = ((short)frame.data[4]<<8) | frame.data[5];
+      parent[0] = ((unsigned short)frame.data[0]<<8) | frame.data[1];
+      parent[1] = ((unsigned short)frame.data[2]<<8) | frame.data[3];
+      parent[2] = ((unsigned short)frame.data[4]<<8) | frame.data[5];
       break;
     }
     if(n != (int)sizeof(struct can_frame)) {
