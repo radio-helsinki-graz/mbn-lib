@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
+#include <sys/time.h>
 #include <linux/if_arp.h>
 #include <linux/can.h>
 
@@ -23,6 +24,7 @@
 #endif
 
 #define ADDLSTSIZE 1000 /* assume we don't have more than 1000 nodes on one CAN bus */
+#define HWPARTIMEOUT 10 /* timeout for receiving the hardware parent, in seconds */
 
 
 struct can_ifaddr;
@@ -44,6 +46,7 @@ struct can_ifaddr {
 
 
 int scan_init(struct mbn_interface *, char *);
+int scan_hwparent(int, unsigned short *, char *);
 void scan_free(struct mbn_interface *);
 void scan_free_addr(void *);
 void *scan_receive(void *);
@@ -55,8 +58,7 @@ struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, unsigned short *paren
   struct can_data *dat;
   struct ifreq ifr;
   struct sockaddr_can addr;
-  struct can_frame frame;
-  int error = 0, n;
+  int error = 0;
 
   itf = (struct mbn_interface *)calloc(1, sizeof(struct mbn_interface));
   dat = (struct can_data *)calloc(1, sizeof(struct can_data));
@@ -83,25 +85,10 @@ struct mbn_interface * MBN_EXPORT mbnCANOpen(char *ifname, unsigned short *paren
     error++;
   }
 
-  /* wait for hardware parent (which should be received within a second if the network is working)
-   * TODO: timeout? */
+  /* wait for hardware parent */
   if(!error && parent != NULL) {
-    while((n = read(dat->sock, &frame, sizeof(struct can_frame))) >= 0 && n == (int)sizeof(struct can_frame)) {
-      frame.can_id &= CAN_ERR_MASK;
-      if(frame.can_id != 0x0FFF0001)
-        continue;
-      parent[0] = ((unsigned short)frame.data[0]<<8) | frame.data[1];
-      parent[1] = ((unsigned short)frame.data[2]<<8) | frame.data[3];
-      parent[2] = ((unsigned short)frame.data[4]<<8) | frame.data[5];
-      break;
-    }
-    if(n != (int)sizeof(struct can_frame)) {
-      if(n < 0)
-        sprintf(err, "Reading from network: %s", strerror(errno));
-      else
-        sprintf(err, "Received invalid CAN frame size");
+    if(scan_hwparent(dat->sock, parent, err))
       error++;
-    }
   }
 
   if(error) {
@@ -126,6 +113,54 @@ int scan_init(struct mbn_interface *itf, char *err) {
   if((i = pthread_create(&(dat->thread), NULL, scan_receive, (void *)itf)) != 0) {
     sprintf(err, "Can't create thread: %s (%d)", strerror(i), i);
     return 1;
+  }
+  return 0;
+}
+
+
+int scan_hwparent(int sock, unsigned short *par, char *err) {
+  struct can_frame frame;
+  struct timeval tv, end;
+  int n;
+  fd_set rd;
+
+  gettimeofday(&end, NULL);
+  end.tv_sec += HWPARTIMEOUT;
+  tv.tv_sec = 0;
+  tv.tv_usec = 500000;
+
+  while(1) {
+    FD_ZERO(&rd);
+    FD_SET(sock, &rd);
+    n = select(sock+1, &rd, NULL, NULL, &tv);
+    /* handle errors */
+    if(n < 0) {
+      sprintf(err, "Checking read state: %s", strerror(errno));
+      return 1;
+    }
+    /* received frame, check for ID */
+    if(n > 0) {
+      n = read(sock, &frame, sizeof(struct can_frame));
+      if(n < 0 || n != (int)sizeof(struct can_frame)) {
+        sprintf(err, "Reading from network: %s", strerror(errno));
+        return 1;
+      }
+      frame.can_id &= CAN_ERR_MASK;
+      if(frame.can_id == 0x0FFF0001) {
+        par[0] = ((unsigned short)frame.data[0]<<8) | frame.data[1];
+        par[1] = ((unsigned short)frame.data[2]<<8) | frame.data[3];
+        par[2] = ((unsigned short)frame.data[4]<<8) | frame.data[5];
+        return 0;
+      }
+    }
+    /* no parent found, check for timeout and try again */
+    gettimeofday(&tv, NULL);
+    if(tv.tv_sec > end.tv_sec || (tv.tv_sec == end.tv_sec && tv.tv_usec > end.tv_usec)) {
+      sprintf(err, "Timeout in getting hardware parent");
+      return 1;
+    }
+    tv.tv_sec = 0;
+    tv.tv_usec = 500000;
   }
   return 0;
 }
