@@ -145,8 +145,7 @@ int scan_hwparent(int sock, unsigned short *par, char *err) {
         sprintf(err, "Reading from network: %s", strerror(errno));
         return 1;
       }
-      frame.can_id &= CAN_ERR_MASK;
-      if(frame.can_id == 0x0FFF0001) {
+      if((frame.can_id & CAN_ERR_MASK & 0xFFFF000F) == 0x0FFF0001) {
         par[0] = ((unsigned short)frame.data[0]<<8) | frame.data[1];
         par[1] = ((unsigned short)frame.data[2]<<8) | frame.data[3];
         par[2] = ((unsigned short)frame.data[4]<<8) | frame.data[5];
