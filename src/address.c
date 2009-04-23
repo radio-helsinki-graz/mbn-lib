@@ -254,7 +254,7 @@ int process_address_message(struct mbn_handler *mbn, struct mbn_message *msg, vo
           else
             mbn->node.Services &= ~MBN_ADDR_SERVICES_VALID;
           if(mbn->cb_OnlineStatus != NULL)
-            mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, mbn->node.Services & MBN_ADDR_SERVICES_VALID);
+            mbn->cb_OnlineStatus(mbn, mbn->node.MambaNetAddr, mbn->node.Services & MBN_ADDR_SERVICES_VALID ? 1 : 0);
         }
         /* check for engine address change */
         if(mbn->node.DefaultEngineAddr != msg->Message.Address.EngineAddr) {
