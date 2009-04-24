@@ -24,16 +24,26 @@
 #endif
 
 #define ADDLSTSIZE 1000 /* assume we don't have more than 1000 nodes on one CAN bus */
+#define TXBUFLEN   5000 /* maxumum number of mambanet messages in the send buffer */
+#define TXDELAY    1024 /* delay between each CAN frame transmit in us (with bursts for MambaNet messages) */
 #define HWPARTIMEOUT 10 /* timeout for receiving the hardware parent, in seconds */
 
 
 struct can_ifaddr;
 
+struct can_queue {
+  int length, canid;
+  unsigned char *buf;
+};
+
 struct can_data {
   int sock;
   int ifindex;
-  pthread_t thread;
+  pthread_t rxthread, txthread;
+  pthread_mutex_t *txmutex;
+  int txstart;
   struct can_ifaddr *addrs[ADDLSTSIZE];
+  struct can_queue *tx[TXBUFLEN];
 };
 
 struct can_ifaddr {
@@ -44,12 +54,12 @@ struct can_ifaddr {
   int lnkindex; /* so we know where in the list we are */
 };
 
-
 int scan_init(struct mbn_interface *, char *);
 int scan_hwparent(int, unsigned short *, char *);
 void scan_free(struct mbn_interface *);
 void scan_free_addr(void *);
 void *scan_receive(void *);
+void *scan_send(void *);
 int scan_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
@@ -110,8 +120,14 @@ int scan_init(struct mbn_interface *itf, char *err) {
   struct can_data *dat = (struct can_data *)itf->data;
   int i;
 
-  if((i = pthread_create(&(dat->thread), NULL, scan_receive, (void *)itf)) != 0) {
-    sprintf(err, "Can't create thread: %s (%d)", strerror(i), i);
+  dat->txmutex = malloc(sizeof(pthread_mutex_t));
+  pthread_mutex_init(dat->txmutex, NULL);
+  if((i = pthread_create(&(dat->rxthread), NULL, scan_receive, (void *)itf)) != 0) {
+    sprintf(err, "Can't create rxthread: %s (%d)", strerror(i), i);
+    return 1;
+  }
+  if((i = pthread_create(&(dat->txthread), NULL, scan_send, (void *)itf)) != 0) {
+    sprintf(err, "Can't create txthread: %s (%d)", strerror(i), i);
     return 1;
   }
   return 0;
@@ -167,8 +183,11 @@ int scan_hwparent(int sock, unsigned short *par, char *err) {
 
 void scan_free(struct mbn_interface *itf) {
   struct can_data *dat = (struct can_data *)itf->data;
-  pthread_cancel(dat->thread);
-  pthread_join(dat->thread, NULL);
+  pthread_cancel(dat->rxthread);
+  pthread_cancel(dat->txthread);
+  pthread_join(dat->rxthread, NULL);
+  pthread_join(dat->txthread, NULL);
+  pthread_mutex_destroy(dat->txmutex);
   free(dat);
   free(itf);
 }
@@ -250,26 +269,71 @@ void *scan_receive(void *ptr) {
 }
 
 
-int scan_transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void *ifaddr, char *err) {
+void *scan_send(void *ptr) {
+  struct mbn_interface *itf = (struct mbn_interface *)ptr;
   struct can_data *dat = (struct can_data *)itf->data;
   struct can_frame frame;
-  int i, n;
+  struct can_queue *q;
+  struct timeval tv;
+  int i;
 
-  frame.can_id = ifaddr ? (0x00000010 | (((struct can_ifaddr *)ifaddr)->addr << 16)) : 0x10000010;
-  frame.can_id |= CAN_EFF_FLAG;
-  frame.can_dlc = 8;
-
-  for(i=0;i<=length/8;i++) {
-    frame.can_id &= ~0xF;
-    frame.can_id |= i;
-    memset((void *)frame.data, 0, 8);
-    memcpy((void *)frame.data, &(buffer[i*8]), i*8+8 > length ? length-i*8 : 8);
-
-    if((n = write(dat->sock, (void *)&frame, sizeof(struct can_frame))) < (int)sizeof(struct can_frame)) {
-      sprintf(err, "send: %s", strerror(errno));
-      return 1;
+  tv.tv_sec = 0;
+  tv.tv_usec = 10000;
+  while(1) {
+    pthread_mutex_lock(dat->txmutex);
+    q = dat->tx[dat->txstart];
+    if(q != NULL) {
+      frame.can_id = q->canid | CAN_EFF_FLAG;
+      frame.can_dlc = 8;
+      for(i=0; i<=q->length/8; i++) {
+        frame.can_id &= ~0xF;
+        frame.can_id |= i;
+        memset((void *)frame.data, 0, 8);
+        memcpy((void *)frame.data, &(q->buf[i*8]), i*8+8 > q->length ? q->length-i*8 : 8);
+        if(write(dat->sock, (void *)&frame, sizeof(struct can_frame)) < (int)sizeof(struct can_frame))
+          fprintf(stderr, "send: %s", strerror(errno));
+      }
+      if(++dat->txstart >= TXBUFLEN)
+        dat->txstart = 0;
+      free(q->buf);
+      free(q);
+      tv.tv_sec = 0;
+      tv.tv_usec = TXDELAY*i;
+    } else {
+      tv.tv_sec = 0;
+      tv.tv_usec = 10000;
     }
+    pthread_mutex_unlock(dat->txmutex);
+    select(0, NULL, NULL, NULL, &tv);
   }
+  return NULL;
+}
+
+
+int scan_transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void *ifaddr, char *err) {
+  struct can_data *dat = (struct can_data *)itf->data;
+  int i;
+
+  pthread_mutex_lock(dat->txmutex);
+  for(i=dat->txstart; i<TXBUFLEN; i++)
+    if(dat->tx[i] == NULL)
+      break;
+  if(i == TXBUFLEN)
+    for(i=0; i<dat->txstart; i++)
+      if(dat->tx[i] == NULL)
+        break;
+  if(dat->tx[i] != NULL) {
+    pthread_mutex_unlock(dat->txmutex);
+    sprintf(err, "Buffer overrun");
+    return 1;
+  }
+
+  dat->tx[i] = malloc(sizeof(struct can_queue));
+  dat->tx[i]->buf = malloc(length);
+  memcpy(dat->tx[i]->buf, buffer, length);
+  dat->tx[i]->canid = ifaddr ? (0x00000010 | (((struct can_ifaddr *)ifaddr)->addr << 16)) : 0x10000010;
+  dat->tx[i]->length = length;
+  pthread_mutex_unlock(dat->txmutex);
   return 0;
 }
 
