@@ -293,6 +293,7 @@ void *scan_send(void *ptr) {
         if(write(dat->sock, (void *)&frame, sizeof(struct can_frame)) < (int)sizeof(struct can_frame))
           fprintf(stderr, "send: %s", strerror(errno));
       }
+      dat->tx[dat->txstart] = NULL;
       if(++dat->txstart >= TXBUFLEN)
         dat->txstart = 0;
       free(q->buf);
