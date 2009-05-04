@@ -329,7 +329,7 @@ int parse_datatype(unsigned char type, unsigned char *buffer, int length, union 
           free(nfo);
           return 3;
         }
-        i += nfo->SensorSize;
+        i += nfo->ActuatorSize;
         if(parse_datatype(nfo->ActuatorType, &(buffer[i]), nfo->ActuatorSize, &(nfo->ActuatorDefault)) != 0) {
           free(nfo);
           return 3;
