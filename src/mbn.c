@@ -44,6 +44,9 @@
 # include <unistd.h>
 #endif
 
+#define MMTYPE(t, s)\
+  (t == MBN_DATATYPE_OCTETS || t == MBN_DATATYPE_BITS ? MBN_DATATYPE_UINT : t),\
+  (t == MBN_DATATYPE_OCTETS || t == MBN_DATATYPE_BITS ? 1 : s)
 
 int mbnhandlers = 0;
 
@@ -133,14 +136,14 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
     for(i=0;i<mbn->node.NumberOfObjects;i++) {
       obj = &(mbn->objects[i]);
       if(objects[i].SensorSize > 0) {
-        copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
-        copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
+        copy_datatype(MMTYPE(objects[i].SensorType, objects[i].SensorSize), &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
+        copy_datatype(MMTYPE(objects[i].SensorType, objects[i].SensorSize), &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
         copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorData), &(mbn->objects[i].SensorData));
       }
       if(objects[i].ActuatorSize > 0) {
-        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
-        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
-        copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
+        copy_datatype(MMTYPE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
+        copy_datatype(MMTYPE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
+        copy_datatype(MMTYPE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
         copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorData), &(mbn->objects[i].ActuatorData));
       }
       mbn->objects[i].changed = mbn->objects[i].timeout = 0;
