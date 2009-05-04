@@ -591,7 +591,7 @@ int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigne
       buffer[i++] = dat->Info->ActuatorType;
       buffer[i++] = dat->Info->ActuatorSize;
       if(dat->Info->ActuatorType == MBN_DATATYPE_BITS || dat->Info->ActuatorType == MBN_DATATYPE_OCTETS) {
-        if(i+2 > length)
+        if(i+3 > length)
           return 4;
         buffer[i++] = dat->Info->ActuatorMin.UInt;
         buffer[i++] = dat->Info->ActuatorMax.UInt;
@@ -630,7 +630,9 @@ int createmsg_object(struct mbn_message *msg) {
       obj->Data.Info->SensorSize = 0;
     if(obj->Data.Info->ActuatorType == MBN_DATATYPE_NODATA)
       obj->Data.Info->ActuatorSize = 0;
-    obj->DataSize = 37 + 2*obj->Data.Info->SensorSize + 3*obj->Data.Info->ActuatorSize;
+    obj->DataSize = 37
+      + 2*(obj->Data.Info->SensorType == MBN_DATATYPE_OCTETS || obj->Data.Info->SensorType == MBN_DATATYPE_BITS ? 1 : obj->Data.Info->SensorSize)
+      + 3*(obj->Data.Info->ActuatorType == MBN_DATATYPE_OCTETS || obj->Data.Info->ActuatorType == MBN_DATATYPE_BITS ? 1 : obj->Data.Info->ActuatorSize);
   }
 
   /* header */
