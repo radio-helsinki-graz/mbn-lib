@@ -281,7 +281,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   /* TODO: check object min/max? */
 
   /* Name */
-  if(obj->Number == 1 && obj->DataType == MBN_DATATYPE_OCTETS && obj->DataSize <= 32) {
+  if(obj->Number == MBN_NODEOBJ_NAME && obj->DataType == MBN_DATATYPE_OCTETS && obj->DataSize <= 32) {
     r = mbn->cb_NameChange == NULL ? 0 : mbn->cb_NameChange(mbn, (char *)obj->Data.Octets);
     if(r == 0) {
       memset((void *)mbn->node.Name, 0, 32);
@@ -293,13 +293,18 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
     }
 
   /* Default Engine Address */
-  } else if(obj->Number == 14 && obj->DataType == MBN_DATATYPE_UINT && obj->DataSize == 4) {
+  } else if(obj->Number == MBN_NODEOBJ_ENGINEADDRESS && obj->DataType == MBN_DATATYPE_UINT && obj->DataSize == 4) {
     r = mbn->cb_DefaultEngineAddrChange == NULL ? 0 : mbn->cb_DefaultEngineAddrChange(mbn, obj->Data.UInt);
     if(r == 0) {
       dat.UInt = mbn->node.DefaultEngineAddr = obj->Data.UInt;
       if(msg->MessageID && !msg->AcknowledgeReply > 0 && r == 0)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, MBN_DATATYPE_UINT, 4, &dat);
     }
+
+  /* time */
+  } else if(obj->Number == MBN_NODEOBJ_TIMESTAMP && obj->DataType == MBN_DATATYPE_UINT && obj->DataSize == 4) {
+    if(obj->Data.UInt != 0 && mbn->cb_SynchroniseDateTime != NULL)
+      mbn->cb_SynchroniseDateTime(mbn, obj->Data.UInt);
 
   /* custom object */
   } else if(i >= 0 && i < mbn->node.NumberOfObjects && mbn->cb_SetActuatorData != NULL &&

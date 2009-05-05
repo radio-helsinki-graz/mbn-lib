@@ -17,6 +17,7 @@
 #ifndef MBN_H
 #define MBN_H
 
+#include <time.h>
 
 /* These two lines should be modified by our Makefile. */
 #define MBNP_PLATFORM
@@ -219,6 +220,7 @@ typedef void(*mbn_cb_Error)(struct mbn_handler *, int, char *);
 typedef void(*mbn_cb_OnlineStatus)(struct mbn_handler *, unsigned long, char);
 typedef int(*mbn_cb_NameChange)(struct mbn_handler *, char *);
 typedef int(*mbn_cb_DefaultEngineAddrChange)(struct mbn_handler *, unsigned long);
+typedef void(*mbn_cb_SynchroniseDateTime)(struct mbn_handler *, time_t);
 typedef void(*mbn_cb_AddressTableChange)(struct mbn_handler *, struct mbn_address_node *, struct mbn_address_node *);
 
 /* messages */
@@ -387,6 +389,7 @@ struct mbn_handler {
   mbn_cb_Error cb_Error;
   mbn_cb_AcknowledgeTimeout cb_AcknowledgeTimeout;
   mbn_cb_AcknowledgeReply cb_AcknowledgeReply;
+  mbn_cb_SynchroniseDateTime cb_SynchroniseDateTime;
 };
 
 
@@ -490,6 +493,8 @@ void MBN_EXPORT mbnSetObjectFrequency(struct mbn_handler *, unsigned long, unsig
 #define mbnUnsetAcknowledgeTimeoutCallback(mbn)            ((mbn)->cb_AcknowledgeTimeout = NULL)
 #define mbnSetAcknowledgeReplyCallback(mbn, func)          ((mbn)->cb_AcknowledgeReply = func)
 #define mbnUnsetAcknowledgeReplyCallback(mbn)              ((mbn)->cb_AcknowledgeReply = NULL)
+#define mbnSetSynchroniseDateTimeCallback(mbn, func)       ((mbn)->cb_SynchroniseDateTime = func)
+#define mbnUnsetSynchroniseDateTimeCallback(mbn)           ((mbn)->cb_SynchroniseDateTime = NULL)
 
 
 
