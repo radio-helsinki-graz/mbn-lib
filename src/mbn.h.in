@@ -133,6 +133,7 @@
 #define MBN_NODEOBJ_ENGINEADDRESS   14
 #define MBN_NODEOBJ_HWPARENT        15
 #define MBN_NODEOBJ_SERVICEREQUEST  16
+#define MBN_NODEOBJ_TIMESTAMP       17
 
 /* flags for mbnSendMessage() */
 #define MBN_SEND_IGNOREVALID  0x01 /* send the message regardless of our valid bit */

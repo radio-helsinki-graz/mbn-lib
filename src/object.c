@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "mbn.h"
 #include "object.h"
@@ -252,6 +253,10 @@ int get_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
       break;
     case MBN_NODEOBJ_ENGINEADDRESS:
       dat.UInt = mbn->node.DefaultEngineAddr;
+      send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
+      break;
+    case MBN_NODEOBJ_TIMESTAMP:
+      dat.UInt = time(NULL);
       send_object_reply(mbn, msg, a, MBN_DATATYPE_UINT, 4, &dat);
       break;
     default:
