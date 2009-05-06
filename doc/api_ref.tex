@@ -61,6 +61,7 @@ These defines represent the object numbers of the default node objects that ever
  \item[MBN\_NODEOBJ\_ENGINEADDRESS] Actuator, default engine address.
  \item[MBN\_NODEOBJ\_HWPARENT] Hardware parent.
  \item[MBN\_NODEOBJ\_SERVICEREQUEST] Service request.
+ \item[MBN\_NODEOBJ\_TIMESTAMP] Actuator, system date and time.
 \end{description}
 
 
@@ -772,3 +773,11 @@ Called on receiving a sensor data response from another node, usually after call
                      union mbn_data data);
 \end{verbatim}
 Called when a node on the network attempts to change the sensor data of object number \textit{object} of MambaNet node \textit{mbn} to \textit{data}. The function should return 0 to indicate that the new data has been accepted or any other value otherwise. Works the same as the SetActuatorData() callback.
+
+
+\subsection{SynchroniseDateTime}
+\begin{verbatim}
+ int SynchroniseDateTime(struct mbn_handler *mbn,
+                         time_t datetime);
+\end{verbatim}
+Called on receiving a set actuator data on the timestamp default node object. This callback should be used to set the date/time of the system to \textit{datetime}.
