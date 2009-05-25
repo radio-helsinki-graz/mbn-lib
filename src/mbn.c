@@ -64,7 +64,7 @@ void *msgqueue_thread(void *arg) {
   while(1) {
     for(q=last=mbn->queue; q!=NULL; ) {
       /* Remove item from the list */
-      if(q->retries == -1 || ++q->retries >= MBN_ACKNOWLEDGE_RETRIES) {
+      if(q->retries == -1 || q->retries++ >= MBN_ACKNOWLEDGE_RETRIES) {
         /* send callback if the message timed out */
         if(q->retries >= 0 && mbn->cb_AcknowledgeTimeout != NULL)
           mbn->cb_AcknowledgeTimeout(mbn, &(q->msg));
@@ -81,6 +81,9 @@ void *msgqueue_thread(void *arg) {
         ULCK();
         continue;
       }
+      /* Wait a sec. */
+      if(q->retries == 1)
+        continue;
       /* No reply yet, let's try again */
       mbnSendMessage(mbn, &(q->msg), MBN_SEND_NOCREATE | MBN_SEND_FORCEID);
       last = q;
