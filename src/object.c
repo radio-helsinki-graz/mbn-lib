@@ -49,9 +49,9 @@ void send_object_changed(struct mbn_handler *mbn, unsigned short obj) {
   msg.MessageType = MBN_MSGTYPE_OBJECT;
   msg.Message.Object.Action = MBN_OBJ_ACTION_SENSOR_CHANGED;
   msg.Message.Object.Number = obj;
-  msg.Message.Object.DataType = mbn->objects[obj].SensorType;
-  msg.Message.Object.DataSize = mbn->objects[obj].SensorSize;
-  msg.Message.Object.Data = mbn->objects[obj].SensorData;
+  msg.Message.Object.DataType = mbn->objects[obj-1024].SensorType;
+  msg.Message.Object.DataSize = mbn->objects[obj-1024].SensorSize;
+  msg.Message.Object.Data = mbn->objects[obj-1024].SensorData;
   mbnSendMessage(mbn, &msg, 0);
 }
 
@@ -444,6 +444,8 @@ int process_object_message(struct mbn_handler *mbn, struct mbn_message *msg) {
 
 
 void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+  if(object < 1024 || object >= mbn->node.NumberOfObjects+1024)
+    return;
   object -= 1024;
 
   /* update internal sensor data */
@@ -459,6 +461,8 @@ void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short obje
 }
 
 void MBN_EXPORT mbnUpdateActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
+  if(object < 1024 || object >= mbn->node.NumberOfObjects+1024)
+    return;
   mbn->objects[object-1024].ActuatorData = dat;
 }
 
