@@ -317,7 +317,7 @@ Deallocates all resources and closes all connections associated to the MambaNet 
                          unsigned short object,
                          char acknowledge);
 \end{verbatim}
-Requests the actuator data of a node on the network and dispatch an ActuatorDataResponse() callback on receiving the response. See mbnGetSensorData() for details.
+Requests the actuator data of a node on the network and dispatch an ActuatorDataResponse() callback on receiving the response.
 
 When the \textit{acknowledge} argument is set to $1$, the message will be sent using the \verb|MBN_SEND_ACKOWLEDGE| flag to mbnSendMessage(). Using this option, the MambaNet library will automatically retry the get operation, and an AcknowledgeTimeout callback will be dispatched if the sensor data could not be received after 5 retries.
 

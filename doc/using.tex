@@ -93,15 +93,15 @@ The library will then automatically reply to object messages from other nodes on
     union mbn_data out;
     
     // execute the default action if this is not object #3
-    // (object counts from 0)
+    // (object number 1024 is the first custom object)
     // normally, an application should handle all defined objects
-    if(object != 2)
+    if(object != 1026)
       return 0;
 
     // set the sensor data to the actuator data
     // (converting float to signed int)
     out.SInt = (int)in.Float;
-    mbnUpdateSensorData(mbn, 2, out);
+    mbnUpdateSensorData(mbn, 1026, out);
     
     // always return 0, unless something went wrong
     return 0;
