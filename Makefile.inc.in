@@ -29,7 +29,10 @@ PLATFORM=
 #    header files to be installed and configured.
 #IF_CAN=
 
-
+# TTY modules:
+#  if_tty
+#    Only works on Linux /dev/ttySx
+#IF_TTY=
 
 # Force this compile to only allow a fixed Manufacturer ID
 #MANUFACTURERID=

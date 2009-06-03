@@ -32,6 +32,7 @@
 #undef MBN_IF_ETHERNET
 #undef MBN_IF_TCP
 #undef MBN_IF_CAN
+#undef MBN_IF_TTY
 
 /* forcing a ManufacturerID? */
 #undef MBN_MANUFACTURERID
@@ -423,6 +424,9 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, cha
 #endif
 #ifdef MBN_IF_CAN
 struct mbn_interface * MBN_EXPORT mbnCANOpen(char *, unsigned short *, char *);
+#endif
+#ifdef MBN_IF_TTY
+struct mbn_interface * MBN_EXPORT mbnTTYOpen(char *, unsigned short *, char *);
 #endif
 
 /* address.c */

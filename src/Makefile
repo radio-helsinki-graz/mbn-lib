@@ -15,6 +15,9 @@ endif
 ifdef IF_CAN
 	OBJECTS += ${IF_CAN}.o
 endif
+ifdef IF_TTY
+	OBJECTS += $(IF_TTY).o
+endif
 
 
 ifdef BUILD_STATIC
@@ -60,6 +63,10 @@ ifdef IF_TCP
 endif
 ifdef IF_CAN
 	sed 's/#undef MBN_IF_CAN/#define MBN_IF_CAN ${IF_CAN}/' < mbn.h > mbn.h-
+	mv mbn.h- mbn.h
+endif
+ifdef IF_TTY
+	sed 's/#undef MBN_IF_TTY/#define MBN_IF_TTY ${IF_TTY}/' < mbn.h > mbn.h-
 	mv mbn.h- mbn.h
 endif
 ifdef MANUFACTURERID
