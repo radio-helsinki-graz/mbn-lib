@@ -247,18 +247,6 @@ Defines a custom object. \textit{SensorData} and \textit{ActuatorData} refer to 
 
 \cleardoublepage
 \section{Functions}
-%\subsection{mbnCANOpen}
-%\begin{verbatim}
-%#ifdef MBN_IF_CAN
-% struct mbn_interface *mbnCANOpen(char *ifname,
-%                                  char *error);
-%#endif
-%\end{verbatim}
-%Opens a connection to the CAN interface specified by \textit{ifname}, returning a pointer to an initialized \verb|mbn_interface| structure for use with mbnInit(). On error, \verb|NULL| is returned and an error message is available in \textit{error}, which should be able to hold at most \verb|MBN_ERRSIZE| bytes.
-
-%\textbf{Important:} The current CAN interface module is only supposed to be used as a gateway, and should not be used for normal MambaNet nodes that communicate on the CAN bus. It is the responsibility of the programmer to make %sure that only one gateway is connected to one CAN bus at a time!
-
-
 \subsection{mbnEthernetIFFree}
 \begin{verbatim}
 #ifdef MBN_IF_ETHERNET
@@ -781,3 +769,4 @@ Called when a node on the network attempts to change the sensor data of object n
                          time_t datetime);
 \end{verbatim}
 Called on receiving a set actuator data on the timestamp default node object. This callback should be used to set the date/time of the system to \textit{datetime}.
+

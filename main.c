@@ -94,14 +94,6 @@ int main(void) {
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
 
-  /*
-#ifdef MBN_IF_CAN
-  itf = mbnCANOpen("can0", err);
-  if(itf == NULL) {
-    printf("Error: %s\n", err);
-    return 1;
-  }
-#elif defined(MBN_IF_ETHERNET)*/
 #ifdef MBN_IF_ETHERNET
   struct mbn_if_ethernet *ifl, *n;
   char *ifname;

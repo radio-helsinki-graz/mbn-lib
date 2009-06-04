@@ -36,7 +36,7 @@ ifeq (${PLATFORM}, mingw)
 	CFLAGS += -DPTW32_STATIC_LIB -I/WpdPack/Include
 	LFLAGS = -lpthreadGC2 -lws2_32 -liphlpapi
 else
-  CFLAGS += -std=c89 -pedantic
+	CFLAGS += -std=c89 -pedantic
 	LFLAGS = -lpthread
 endif
 

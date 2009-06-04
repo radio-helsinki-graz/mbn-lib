@@ -12,12 +12,6 @@ endif
 ifdef IF_TCP
 	OBJECTS += ${IF_TCP}.o
 endif
-ifdef IF_CAN
-	OBJECTS += ${IF_CAN}.o
-endif
-ifdef IF_TTY
-	OBJECTS += $(IF_TTY).o
-endif
 
 
 ifdef BUILD_STATIC
