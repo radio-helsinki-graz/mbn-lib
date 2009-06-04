@@ -30,9 +30,7 @@ Makefile.inc: Makefile.inc.in
 	  echo "Detected target: linux";\
 	  sed 's/PLATFORM=/PLATFORM=linux/' Makefile.inc.in |\
 	  sed 's/#IF_ETHERNET=/IF_ETHERNET=if_eth_linux/' |\
-	  sed 's/#IF_TCP=/IF_TCP=if_tcp/' |\
-	  sed 's/#IF_CAN=/IF_CAN=if_scan/' |\
-		sed 's/#IF_TTY=/IF_TTY=if_tty/' > Makefile.inc;\
+	  sed 's/#IF_TCP=/IF_TCP=if_tcp/' > Makefile.inc;\
 	else\
 	  echo "Detected target: mingw";\
 	  sed 's/PLATFORM=/PLATFORM=mingw/' Makefile.inc.in |\

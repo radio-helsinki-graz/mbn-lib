@@ -23,17 +23,6 @@ PLATFORM=
 #    Works on both windows (XP, 2003 or higher) and linux
 #IF_TCP=
 
-# CAN modules:
-#  if_scan
-#    Linux SocketCAN, requires the SocketCAN kernel modules and
-#    header files to be installed and configured.
-#IF_CAN=
-
-# TTY modules:
-#  if_tty
-#    Only works on Linux /dev/ttySx
-#IF_TTY=
-
 # Force this compile to only allow a fixed Manufacturer ID
 #MANUFACTURERID=
 
@@ -47,7 +36,7 @@ ifeq (${PLATFORM}, mingw)
 	CFLAGS += -DPTW32_STATIC_LIB -I/WpdPack/Include
 	LFLAGS = -lpthreadGC2 -lws2_32 -liphlpapi
 else
-	CFLAGS += -std=c89 -pedantic
+  CFLAGS += -std=c89 -pedantic
 	LFLAGS = -lpthread
 endif
 
