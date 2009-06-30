@@ -33,18 +33,22 @@
 
 #define ETH_P_DNR  0x8820
 #define BUFFERSIZE 512
+#define ADDLSTSIZE 1000 /* assume we don't have more than 1000 nodes on ethernet */
+
 
 
 struct ethdat {
   int socket;
   int ifindex;
   unsigned char address[6];
+  unsigned char macs[ADDLSTSIZE][6];
   pthread_t thread;
 };
 
 int ethernet_init(struct mbn_interface *, char *);
 void *receive_packets(void *);
 void ethernet_free(struct mbn_interface *);
+void ethernet_free_addr(void *);
 int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
@@ -109,7 +113,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface, char *err) {
   }
 
   itf = (struct mbn_interface *) calloc(1, sizeof(struct mbn_interface));
-  data = (struct ethdat *) malloc(sizeof(struct ethdat));
+  data = (struct ethdat *) calloc(1, sizeof(struct ethdat));
   itf->data = (void *) data;
 
   /* create a socket
@@ -162,7 +166,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface, char *err) {
 
   itf->cb_init = ethernet_init;
   itf->cb_free = ethernet_free;
-  itf->cb_free_addr = free;
+  itf->cb_free_addr = ethernet_free_addr;
   itf->cb_transmit = transmit;
 
   return itf;
@@ -191,19 +195,23 @@ void ethernet_free(struct mbn_interface *itf) {
 }
 
 
+void ethernet_free_addr(void *arg) {
+  memset(arg, 0, 6);
+}
+
+
 /* Waits for input from network */
 void *receive_packets(void *ptr) {
   struct mbn_interface *itf = (struct mbn_interface *)ptr;
-  struct mbn_address_node *addrnode;
   struct ethdat *dat = (struct ethdat *) itf->data;
   unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
   char err[MBN_ERRSIZE];
-  int i, msgbuflen = 0;
+  int i, j, msgbuflen = 0;
   fd_set rdfd;
   struct timeval tv;
   struct sockaddr_ll from;
   ssize_t rd;
-  void *ifaddr;
+  void *ifaddr, *hwaddr;
   socklen_t addrlength = sizeof(struct sockaddr_ll);
 
   while(1) {
@@ -246,16 +254,18 @@ void *receive_packets(void *ptr) {
       if(buffer[i] == 0xFF) {
         if(msgbuflen >= MBN_MIN_MESSAGE_SIZE) {
           /* get HW address pointer from mbn */
-          ifaddr = NULL;
-          for(addrnode=NULL; (addrnode=mbnNextNode(itf->mbn, addrnode)) != NULL;) {
-            if(addrnode->ifaddr != NULL && memcmp(addrnode->ifaddr, (void *)from.sll_addr, from.sll_halen) == 0) {
-              ifaddr = addrnode->ifaddr;
+          hwaddr = ifaddr = NULL;
+          for(j=0; j<ADDLSTSIZE-1; j++) {
+            if(hwaddr == NULL && memcmp(dat->macs[j], "\0\0\0\0\0\0", 6) == 0)
+              hwaddr = dat->macs[j];
+            if(memcmp(dat->macs[j], (void *)from.sll_addr, 6) == 0) {
+              ifaddr = dat->macs[j];
               break;
             }
           }
           if(ifaddr == NULL) {
-            ifaddr = malloc(from.sll_halen);
-            memcpy(ifaddr, (void *)from.sll_addr, from.sll_halen);
+            ifaddr = hwaddr;
+            memcpy(ifaddr, (void *)from.sll_addr, 6);
           }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }
