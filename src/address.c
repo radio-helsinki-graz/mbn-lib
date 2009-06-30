@@ -95,15 +95,14 @@ void free_addresses(struct mbn_handler *mbn) {
   int i, j;
 
   /* free all ifaddr pointers */
-  for(i=0; i<mbn->addrsize; i++) {
+  for(i=0; i<mbn->addrsize; i++)
     if(mbn->addresses[i].used && mbn->addresses[i].ifaddr != NULL) {
-      for(j=i+1; i<mbn->addrsize; i++)
-        if(mbn->addresses[j].used && mbn->addresses[j].ifaddr == mbn->addresses[j].ifaddr)
+      for(j=i+1; j<mbn->addrsize; j++)
+        if(mbn->addresses[j].used && mbn->addresses[j].ifaddr == mbn->addresses[i].ifaddr)
           break;
       if(j >= mbn->addrsize)
         mbn->itf->cb_free_addr(mbn->addresses[i].ifaddr);
     }
-  }
   /* free the array */
   free(mbn->addresses);
   mbn->addrsize = 0;

@@ -232,12 +232,12 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   free(mbn->throttle_thread);
   free(mbn->msgqueue_thread);
 
+  /* free address list */
+  free_addresses(mbn);
+
   /* free interface */
   if(mbn->itf->cb_free != NULL)
     mbn->itf->cb_free(mbn->itf);
-
-  /* free address list */
-  free_addresses(mbn);
 
   /* free objects */
   for(i=0; i<mbn->node.NumberOfObjects; i++) {
@@ -258,6 +258,7 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   /* and get rid of our mutex */
   pthread_mutex_destroy((pthread_mutex_t *)mbn->mbn_mutex);
   free(mbn->mbn_mutex);
+  free(mbn);
 
 #ifdef PTW32_STATIC_LIB
   /* attach_np() doesn't seem to work again after we've

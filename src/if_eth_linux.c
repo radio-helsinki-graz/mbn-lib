@@ -194,6 +194,7 @@ void ethernet_free(struct mbn_interface *itf) {
 /* Waits for input from network */
 void *receive_packets(void *ptr) {
   struct mbn_interface *itf = (struct mbn_interface *)ptr;
+  struct mbn_address_node *addrnode;
   struct ethdat *dat = (struct ethdat *) itf->data;
   unsigned char buffer[BUFFERSIZE], msgbuf[MBN_MAX_MESSAGE_SIZE];
   char err[MBN_ERRSIZE];
@@ -244,8 +245,18 @@ void *receive_packets(void *ptr) {
       /* we have a full message, send buffer to mambanet stack for processing */
       if(buffer[i] == 0xFF) {
         if(msgbuflen >= MBN_MIN_MESSAGE_SIZE) {
-          ifaddr = malloc(from.sll_halen);
-          memcpy(ifaddr, (void *)from.sll_addr, from.sll_halen);
+          /* get HW address pointer from mbn */
+          ifaddr = NULL;
+          for(addrnode=NULL; (addrnode=mbnNextNode(itf->mbn, addrnode)) != NULL;) {
+            if(addrnode->ifaddr != NULL && memcmp(addrnode->ifaddr, (void *)from.sll_addr, from.sll_halen) == 0) {
+              ifaddr = addrnode->ifaddr;
+              break;
+            }
+          }
+          if(ifaddr == NULL) {
+            ifaddr = malloc(from.sll_halen);
+            memcpy(ifaddr, (void *)from.sll_addr, from.sll_halen);
+          }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }
         msgbuflen = 0;
