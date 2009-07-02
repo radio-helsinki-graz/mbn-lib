@@ -29,6 +29,7 @@
 
 
 #define BUFFERSIZE 512
+#define ADDLSTSIZE 1000
 
 
 /* dynamic loading of wpcap.dll functions */
@@ -82,10 +83,12 @@ struct pcapdat {
   pthread_t thread;
   char thread_run;
   unsigned char mymac[6];
+  unsigned char macs[ADDLSTSIZE][6];
 };
 
 
 void free_pcap(struct mbn_interface *);
+void free_pcap_addr(void *);
 int init_pcap(struct mbn_interface *, char *);
 void *receive_packets(void *ptr);
 int wpcaptransmit(struct mbn_interface *, unsigned char *, int, void *, char *);
@@ -254,7 +257,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   dat->pc = pc;
   itf->cb_free = free_pcap;
   itf->cb_init = init_pcap;
-  itf->cb_free_addr = free;
+  itf->cb_free_addr = free_pcap_addr;
   itf->cb_transmit = wpcaptransmit;
 
   return itf;
@@ -279,6 +282,11 @@ void free_pcap(struct mbn_interface *itf) {
 }
 
 
+void free_pcap_addr(void *arg) {
+  memset(arg, 0, 6);
+}
+
+
 int init_pcap(struct mbn_interface *itf, char *err) {
   struct pcapdat *dat = (struct pcapdat *)itf->data;
   int i;
@@ -297,10 +305,10 @@ void *receive_packets(void *ptr) {
   struct mbn_interface *itf = (struct mbn_interface *)ptr;
   struct pcapdat *dat = (struct pcapdat *) itf->data;
   struct pcap_pkthdr *hdr;
-  void *ifaddr;
+  void *ifaddr, *hwaddr;
   unsigned char *buffer;
   char err[MBN_ERRSIZE];
-  int i;
+  int i,j;
 
   dat->thread_run = 1;
 
@@ -317,9 +325,21 @@ void *receive_packets(void *ptr) {
     if(i == 0)
       continue;
 
-    /* directly forward message to mbn, with source MAC address as ifaddr */
-    ifaddr = malloc(6);
-    memcpy(ifaddr, (void *)buffer+6, 6);
+    /* get HW address pointer */
+    hwaddr = ifaddr = NULL;
+    for(j=0; j<ADDLSTSIZE-1; j++) {
+      if(hwaddr == NULL && memcmp(dat->macs[j], "\0\0\0\0\0\0", 6) == 0)
+        hwaddr = dat->macs[j];
+      if(memcmp(dat->macs[j], buffer+6, 6) == 0) {
+        ifaddr = dat->macs[j];
+        break;
+      }
+    }
+    if(ifaddr == NULL) {
+      ifaddr = hwaddr;
+      memcpy(ifaddr, buffer+6, 6);
+    }
+    /* forward to mbn */
     mbnProcessRawMessage(itf, buffer+14, (int)hdr->caplen-14, ifaddr);
   }
 
