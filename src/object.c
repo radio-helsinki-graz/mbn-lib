@@ -22,6 +22,7 @@
 
 #include "mbn.h"
 #include "object.h"
+#include "codec.h"
 
 
 #ifdef MBNP_mingw
@@ -310,7 +311,7 @@ int set_actuator(struct mbn_handler *mbn, struct mbn_message *msg) {
   } else if(i >= 0 && i < mbn->node.NumberOfObjects && mbn->cb_SetActuatorData != NULL &&
       mbn->objects[i].ActuatorType != MBN_DATATYPE_NODATA && mbn->objects[i].ActuatorType == obj->DataType) {
     if(mbn->cb_SetActuatorData(mbn, obj->Number, obj->Data) == 0) {
-      dat = mbn->objects[i].ActuatorData = obj->Data;
+      dat = mbn->objects[i].ActuatorData;
       if(msg->MessageID && !msg->AcknowledgeReply > 0)
         send_object_reply(mbn, msg, MBN_OBJ_ACTION_ACTUATOR_RESPONSE, obj->DataType, mbn->objects[i].ActuatorSize, &dat);
     }
@@ -463,7 +464,9 @@ void MBN_EXPORT mbnUpdateSensorData(struct mbn_handler *mbn, unsigned short obje
 void MBN_EXPORT mbnUpdateActuatorData(struct mbn_handler *mbn, unsigned short object, union mbn_data dat) {
   if(object < 1024 || object >= mbn->node.NumberOfObjects+1024)
     return;
-  mbn->objects[object-1024].ActuatorData = dat;
+
+  free_datatype(mbn->objects[object-1024].ActuatorType, &(mbn->objects[object-1024].ActuatorData));
+  copy_datatype(mbn->objects[object-1024].ActuatorType, mbn->objects[object-1024].ActuatorSize, &dat, &(mbn->objects[object-1024].ActuatorData));
 }
 
 
