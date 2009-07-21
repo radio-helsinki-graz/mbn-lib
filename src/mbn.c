@@ -44,9 +44,12 @@
 # include <unistd.h>
 #endif
 
-#define MMTYPE(t, s)\
+#define MMTYPE_SIZE(t, s)\
   (t == MBN_DATATYPE_OCTETS || t == MBN_DATATYPE_BITS ? MBN_DATATYPE_UINT : t),\
   (t == MBN_DATATYPE_OCTETS || t == MBN_DATATYPE_BITS ? 1 : s)
+
+#define MMTYPE(t)\
+  (t == MBN_DATATYPE_OCTETS || t == MBN_DATATYPE_BITS ? MBN_DATATYPE_UINT : t)
 
 int mbnhandlers = 0;
 
@@ -139,14 +142,14 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
     for(i=0;i<mbn->node.NumberOfObjects;i++) {
       obj = &(mbn->objects[i]);
       if(objects[i].SensorSize > 0) {
-        copy_datatype(MMTYPE(objects[i].SensorType, objects[i].SensorSize), &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
-        copy_datatype(MMTYPE(objects[i].SensorType, objects[i].SensorSize), &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
+        copy_datatype(MMTYPE_SIZE(objects[i].SensorType, objects[i].SensorSize), &(objects[i].SensorMin), &(mbn->objects[i].SensorMin));
+        copy_datatype(MMTYPE_SIZE(objects[i].SensorType, objects[i].SensorSize), &(objects[i].SensorMax), &(mbn->objects[i].SensorMax));
         copy_datatype(objects[i].SensorType, objects[i].SensorSize, &(objects[i].SensorData), &(mbn->objects[i].SensorData));
       }
       if(objects[i].ActuatorSize > 0) {
-        copy_datatype(MMTYPE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
-        copy_datatype(MMTYPE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
-        copy_datatype(MMTYPE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
+        copy_datatype(MMTYPE_SIZE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorMin), &(mbn->objects[i].ActuatorMin));
+        copy_datatype(MMTYPE_SIZE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorMax), &(mbn->objects[i].ActuatorMax));
+        copy_datatype(MMTYPE_SIZE(objects[i].ActuatorType, objects[i].ActuatorSize), &(objects[i].ActuatorDefault), &(mbn->objects[i].ActuatorDefault));
         copy_datatype(objects[i].ActuatorType, objects[i].ActuatorSize, &(objects[i].ActuatorData), &(mbn->objects[i].ActuatorData));
       }
       mbn->objects[i].changed = mbn->objects[i].timeout = 0;
@@ -242,14 +245,14 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
   /* free objects */
   for(i=0; i<mbn->node.NumberOfObjects; i++) {
     if(mbn->objects[i].SensorSize > 0) {
-      free_datatype(mbn->objects[i].SensorType, &(mbn->objects[i].SensorMin));
-      free_datatype(mbn->objects[i].SensorType, &(mbn->objects[i].SensorMax));
+      free_datatype(MMTYPE(mbn->objects[i].SensorType), &(mbn->objects[i].SensorMin));
+      free_datatype(MMTYPE(mbn->objects[i].SensorType), &(mbn->objects[i].SensorMax));
       free_datatype(mbn->objects[i].SensorType, &(mbn->objects[i].SensorData));
     }
     if(mbn->objects[i].ActuatorSize > 0) {
-      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorMin));
-      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorMax));
-      free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorDefault));
+      free_datatype(MMTYPE(mbn->objects[i].ActuatorType), &(mbn->objects[i].ActuatorMin));
+      free_datatype(MMTYPE(mbn->objects[i].ActuatorType), &(mbn->objects[i].ActuatorMax));
+      free_datatype(MMTYPE(mbn->objects[i].ActuatorType), &(mbn->objects[i].ActuatorDefault));
       free_datatype(mbn->objects[i].ActuatorType, &(mbn->objects[i].ActuatorData));
     }
   }
