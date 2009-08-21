@@ -171,10 +171,6 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
   /* initialize address list */
   init_addresses(mbn);
 
-  /* init interface */
-  if(itf->cb_init != NULL && itf->cb_init(itf, err) != 0)
-    return NULL;
-
   /* create threads to keep track of timeouts */
   if(    (i = pthread_create((pthread_t *)mbn->timeout_thread,  NULL, node_timeout_thread, (void *) mbn)) != 0
       || (i = pthread_create((pthread_t *)mbn->throttle_thread, NULL, throttle_thread,     (void *) mbn)) != 0
@@ -187,6 +183,13 @@ struct mbn_handler * MBN_EXPORT mbnInit(struct mbn_node_info *node, struct mbn_o
   return mbn;
 }
 
+void MBN_EXPORT mbnStartInterface(struct mbn_interface *itf, char *err) {
+  /* init interface */
+  if(itf->cb_init != NULL)
+  {
+    itf->cb_init(itf, err);
+  }
+}
 
 /* IMPORTANT: must not be called in a thread which has a lock on mbn_mutex */
 void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
