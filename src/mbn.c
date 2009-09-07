@@ -317,7 +317,7 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
 
   /* send callback (if any) */
   if(tries >= 0 && mbn->cb_AcknowledgeReply != NULL) {
-    mbn->cb_AcknowledgeReply(mbn, &orig, msg, q->retries);
+    mbn->cb_AcknowledgeReply(mbn, &orig, msg, tries);
     free_message(&orig);
   }
   return ret;
