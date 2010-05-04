@@ -724,6 +724,8 @@ void copy_datatype(unsigned char type, int size, const union mbn_data *src, unio
       copy_datatype(src->Info->ActuatorType, src->Info->ActuatorSize, &(src->Info->ActuatorMax), &(dest->Info->ActuatorMax));
       copy_datatype(src->Info->ActuatorType, src->Info->ActuatorSize, &(src->Info->ActuatorDefault), &(dest->Info->ActuatorDefault));
     }
+  } else {
+    *dest = *src;
   }
 }
 
