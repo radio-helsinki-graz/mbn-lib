@@ -74,10 +74,19 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remoteip, char *remoteport, c
   struct hostent *remoteserver;
   int port;
 
+  /* Why the hell is this call _required_?
+   * Why doesn't Microsoft just support plain BSD sockets? */
+#ifdef MBNP_mingw
+  WSADATA wsadat;
+  if(WSAStartup(MAKEWORD(2, 0), &wsadat) != 0) {
+    sprintf(err, "Unsupported winsock version");
+    return NULL;
+  }
+#endif
+
   itf = (struct mbn_interface *) calloc(1, sizeof(struct mbn_interface));
   data = (struct udpdat *) calloc(1, sizeof(struct udpdat));
   itf->data = (void *) data;
-
 
   /* lookup hostname/ip address */
   data->defaultaddr = 0;
@@ -119,6 +128,9 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remoteip, char *remoteport, c
     close(data->socket);
     free(itf);
     free(data);
+#ifdef MBNP_mingw
+    WSACleanup();
+#endif
     return NULL;
   }
 
@@ -151,6 +163,9 @@ void udp_free(struct mbn_interface *itf) {
   pthread_join(dat->thread, NULL);
   free(dat);
   free(itf);
+#ifdef MBNP_mingw
+  WSACleanup();
+#endif
 }
 
 

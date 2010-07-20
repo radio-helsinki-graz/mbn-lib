@@ -21,8 +21,8 @@
 #include "mbn.h"
 #include "codec.h"
 
-#define __USE_GNU
-#include <dlfcn.h>
+//#define __USE_GNU
+//#include <dlfcn.h>
 
 
 /* Converts 7bits data to 8bits. The result buffer must

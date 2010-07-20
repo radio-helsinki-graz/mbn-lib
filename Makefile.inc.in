@@ -23,6 +23,11 @@ PLATFORM=
 #    Works on both windows (XP, 2003 or higher) and linux
 #IF_TCP=
 
+# UDP modules:
+#  if_udp
+#    Works on both windows (XP, 2003 or higher) and linux
+#IF_UDP=
+
 # Force this compile to only allow a fixed Manufacturer ID
 #MANUFACTURERID=
 
