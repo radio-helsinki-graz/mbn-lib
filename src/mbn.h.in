@@ -31,6 +31,7 @@
 /* these define which interface modules can be used, for the application */
 #undef MBN_IF_ETHERNET
 #undef MBN_IF_TCP
+#undef MBN_IF_UDP
 
 /* forcing a ManufacturerID? */
 #undef MBN_MANUFACTURERID
@@ -420,6 +421,9 @@ void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
 #endif
 #ifdef MBN_IF_TCP
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, char *);
+#endif
+#ifdef MBN_IF_UDP
+struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *, char *, char *);
 #endif
 
 /* address.c */

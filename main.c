@@ -14,6 +14,8 @@
 **
 ****************************************************************************/
 
+#define USE_IF_UDP
+
 #define MBN_VARARG
 #include "mbn.h"
 #include <stdio.h>
@@ -94,7 +96,19 @@ int main(void) {
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
 
-#ifdef MBN_IF_ETHERNET
+#ifdef USE_IF_UDP
+  itf = mbnUDPOpen("192.168.4.58", "34848", err);
+  if(itf == NULL) {
+    printf("Error: %s\n", err);
+    return 1;
+  }
+#elif defined(USE_IF_TCP)
+  itf = mbnTCPOpen(NULL, NULL, "0.0.0.0", NULL, err);
+  if(itf == NULL) {
+    printf("Error: %s\n", err);
+    return 1;
+  }
+#else
   struct mbn_if_ethernet *ifl, *n;
   char *ifname;
   ifname = NULL;
@@ -116,12 +130,6 @@ int main(void) {
     return 1;
   }
   mbnEthernetIFFree(ifl);
-#else
-  itf = mbnTCPOpen(NULL, NULL, "0.0.0.0", NULL, err);
-  if(itf == NULL) {
-    printf("Error: %s\n", err);
-    return 1;
-  }
 #endif
 
   objects[0] = MBN_OBJ("Object #1", MBN_DATATYPE_UINT, 0, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
@@ -139,9 +147,9 @@ int main(void) {
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetObjectInformationResponseCallback(mbn, ObjectInformationResponse);
 
+  mbnStartInterface(itf, err);
+
   pthread_exit(NULL);
   mbnFree(mbn);
   return 0;
 }
-
-
