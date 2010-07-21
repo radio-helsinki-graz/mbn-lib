@@ -461,7 +461,8 @@ Sets the object frequency state of object number \textit{object} of the MambaNet
 
 \subsection{mbnStartInterface}
 \begin{verbatim}
- void mbnStartInterface(struct mbn_interface *itf, char *error);
+ void mbnStartInterface(struct mbn_interface *itf,
+                        char *error);
 \end{verbatim}
 Starts the interface. Before this function is called to interfaced must be opened and all required callback functions must be set.
 
@@ -534,7 +535,8 @@ Updates the service request state of the MambaNet node \textit{mbn} to \textit{s
 
 \subsection{mbnWriteLogMessage}
 \begin{verbatim}
- void mbnWriteLogMessage(struct mbn_interface *itf, char *msg);
+ void mbnWriteLogMessage(struct mbn_interface *itf,
+ char *msg);
 \end{verbatim}
 Interfaces use this function to log connection information. If the callback function is installed it is possible to store the information in the application log.
 
