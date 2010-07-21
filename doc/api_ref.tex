@@ -489,13 +489,14 @@ If \textit{remotehost} is not \verb|NULL|, a connection will be made to the serv
 #ifdef MBN_IF_UDP
  struct mbn_interface *mbnUDPOpen(char *remotehost,
                                   char *remoteport,
+                                  char *localport,
                                   char *error);
 #endif
 \end{verbatim}
 Opens UDP 'connection(s)' and allocates an \verb|mbn_interface| structure for use for mbnInit(). On error, \verb|NULL| is returned and an error string is written to \textit{error}, which should have enough space for at least \verb|MBN_ERRSIZE| bytes.
 
 If \textit{remotehost} is not \verb|NULL|, a connection will be made to the server listening at port \textit{remoteport} on \textit{remotehost}.
-The library will act as a UDP server and listen for incoming connections on port 34848. \textit{remoteport} can be \verb|NULL| to use the default port for MambaNet. \textit{remotehost} can be either an hostname or a numeric IP addresses. Both IPv4 and IPv6 are supported.
+The library will act as a UDP server and listen for incoming connections on \textit{localport}, if \textit{localport} is NULL the default MambaNet port (34848) is used. \textit{remoteport} can be \verb|NULL| to use the default port for MambaNet. \textit{remotehost} can be either an hostname or a numeric IP addresses. Both IPv4 and IPv6 are supported.
 
 \emph{Note:} This function performs hostname lookups and opens connections in a blocking fasion. It can block up to a few minutes in the worst case.
 
