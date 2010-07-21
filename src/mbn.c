@@ -25,6 +25,7 @@
 
 #define _XOPEN_SOURCE 500
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -199,6 +200,7 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
    * while we're freeing everything */
   mbn->cb_ReceiveMessage = NULL;
   mbn->cb_AddressTableChange = NULL;
+  mbn->cb_WriteLogMessage = NULL;
   mbn->cb_OnlineStatus = NULL;
   mbn->cb_NameChange = NULL;
   mbn->cb_DefaultEngineAddrChange = NULL;
@@ -491,4 +493,15 @@ void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *mbn, char srv) {
   mbn->node.ServiceRequest = srv;
 }
 
+void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *itf, const char *fmt, ...) {
+  struct mbn_handler *mbn = itf->mbn;
+  if(mbn->cb_WriteLogMessage != NULL) {
+    va_list ap;
+    char buf[500];
+    va_start(ap, fmt);
+    vsnprintf(buf, 500, fmt, ap);
+    va_end(ap);
 
+    mbn->cb_WriteLogMessage(mbn, buf);
+  }
+}

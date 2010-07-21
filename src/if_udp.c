@@ -31,6 +31,7 @@
 # include <sys/select.h>
 # include <sys/time.h>
 # include <netdb.h>
+# include <arpa/inet.h>
 #else
 # define _WIN32_WINNT 0x0501 /* only works for ws2_32.dll > windows 2000 */
 # include <windows.h>
@@ -62,7 +63,7 @@ struct udpdat {
 int udp_init(struct mbn_interface *, char *);
 void *udp_receive_packets(void *);
 void udp_free(struct mbn_interface *);
-void udp_free_addr(void *);
+void udp_free_addr(struct mbn_interface *, void *);
 int udp_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
@@ -169,8 +170,15 @@ void udp_free(struct mbn_interface *itf) {
 }
 
 
-void udp_free_addr(void *arg) {
-  memset(arg, 0, 4);
+void udp_free_addr(struct mbn_interface *itf, void *arg) {
+  struct udpaddr *addr = arg;
+  struct in_addr in;
+
+  in.s_addr = addr->addr;
+  mbnWriteLogMessage(itf, "Remove UDP node %s:%d", inet_ntoa(in), ntohs(addr->port));
+
+  addr->addr = 0;
+  addr->port = 0;
 }
 
 
@@ -244,6 +252,7 @@ void *udp_receive_packets(void *ptr) {
             ifaddr = ipaddr;
             ((struct udpaddr *)ifaddr)->addr = from.sin_addr.s_addr;
             ((struct udpaddr *)ifaddr)->port = from.sin_port;
+            mbnWriteLogMessage(itf, "Add UDP node %s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
           }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }

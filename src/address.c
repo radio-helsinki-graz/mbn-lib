@@ -52,7 +52,7 @@ void remove_node(struct mbn_handler *mbn, struct mbn_address_node *node) {
       if(mbn->addresses[i].used && &(mbn->addresses[i]) != node && mbn->addresses[i].ifaddr == node->ifaddr)
         break;
     if(i >= mbn->addrsize)
-      mbn->itf->cb_free_addr(node->ifaddr);
+      mbn->itf->cb_free_addr(mbn->itf, node->ifaddr);
   }
 }
 
@@ -101,7 +101,7 @@ void free_addresses(struct mbn_handler *mbn) {
         if(mbn->addresses[j].used && mbn->addresses[j].ifaddr == mbn->addresses[i].ifaddr)
           break;
       if(j >= mbn->addrsize)
-        mbn->itf->cb_free_addr(mbn->addresses[i].ifaddr);
+        mbn->itf->cb_free_addr(mbn->itf, mbn->addresses[i].ifaddr);
     }
   /* free the array */
   free(mbn->addresses);
@@ -226,7 +226,7 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
         if(mbn->addresses[i].used && mbn->addresses[i].ifaddr == node->ifaddr)
           break;
       if(i >= mbn->addrsize)
-        mbn->itf->cb_free_addr(node->ifaddr);
+        mbn->itf->cb_free_addr(mbn->itf, node->ifaddr);
     }
     node->ifaddr = ifaddr;
   }

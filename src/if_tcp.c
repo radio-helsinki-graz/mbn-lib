@@ -32,6 +32,7 @@
 # include <sys/select.h>
 # include <sys/time.h>
 # include <netdb.h>
+# include <arpa/inet.h>
 #else
 # define _WIN32_WINNT 0x0501 /* only works for ws2_32.dll > windows 2000 */
 # include <windows.h>
@@ -64,6 +65,7 @@ struct tcpconn {
   unsigned char buf[MBN_MAX_MESSAGE_SIZE];
   int buflen;
   int sock; /* -1 when unused */
+  unsigned long remoteip;
 };
 
 struct tcpdat {
@@ -240,8 +242,10 @@ void free_tcp(struct mbn_interface *itf) {
 }
 
 
-void new_connection(struct tcpdat *dat) {
+void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
   int i;
+  struct sockaddr_in remote_addr;
+  unsigned int remote_addr_length = sizeof(remote_addr);
 
   for(i=0; i<MAX_CONNECTIONS; i++)
     if(dat->conn[i].sock < 0)
@@ -249,15 +253,18 @@ void new_connection(struct tcpdat *dat) {
 
   /* MAX_CONNECTIONS reached, just close the connection */
   if(i >= MAX_CONNECTIONS) {
-    if((i = accept(dat->listensocket, NULL, 0)) > 0)
+    if((i = accept(dat->listensocket, (struct sockaddr *)&remote_addr, &remote_addr_length)) > 0)
       close(i);
+    mbnWriteLogMessage(itf, "Rejected TCP connection from %s", inet_ntoa(remote_addr.sin_addr));
     return;
   }
 
   /* accept the connection */
-  if((dat->conn[i].sock = accept(dat->listensocket, NULL, 0)) < 0)
+  if((dat->conn[i].sock = accept(dat->listensocket, (struct sockaddr *)&remote_addr, &remote_addr_length)) < 0)
     return;
   dat->conn[i].buflen = 0;
+  dat->conn[i].remoteip = remote_addr.sin_addr.s_addr;
+  mbnWriteLogMessage(itf, "Accepted TCP connection from %s", inet_ntoa(remote_addr.sin_addr));
 }
 
 
@@ -265,6 +272,7 @@ int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   unsigned char buf[BUFFERSIZE];
   int n, i;
+  struct in_addr remote_addr;
 
   n = recv(cn->sock, (char *)buf, BUFFERSIZE, 0);
   if(n < 0 && errno == EINTR)
@@ -275,10 +283,14 @@ int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
     close(cn->sock);
     /* oops, this was our remote connection, we shouldn't lose this one! */
     if(dat->rconn == cn->sock) {
+      mbnWriteLogMessage(itf, "Lost connection to server");
       sprintf(err, "Lost connection to server");
       return 1;
     }
     cn->sock = -1;
+    remote_addr.s_addr = cn->remoteip;
+    mbnWriteLogMessage(itf, "Closed connection from %s", inet_ntoa(remote_addr));
+    cn->remoteip = 0;
     return 0;
   }
 
@@ -348,7 +360,7 @@ void *receiver(void *ptr) {
 
     /* check for incoming connections */
     if(dat->listensocket >= 0 && FD_ISSET(dat->listensocket, &rdfd))
-      new_connection(dat);
+      new_connection(itf, dat);
 
     /* check for data on all connections */
     for(i=0; i<MAX_CONNECTIONS; i++)
