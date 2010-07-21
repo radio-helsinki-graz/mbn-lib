@@ -67,7 +67,7 @@ void udp_free_addr(struct mbn_interface *, void *);
 int udp_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
-struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remoteip, char *remoteport, char *err) {
+struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport, char *err) {
   struct udpdat *data;
   struct mbn_interface *itf;
   int error = 0;
@@ -91,8 +91,8 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remoteip, char *remoteport, c
 
   /* lookup hostname/ip address */
   data->defaultaddr = 0;
-  if (remoteip != NULL) {
-    remoteserver = gethostbyname(remoteip);
+  if (remotehost != NULL) {
+    remoteserver = gethostbyname(remotehost);
     if (remoteserver == NULL) {
       sprintf(err, "gethostbyname error: %s", strerror(errno));
       error++;
