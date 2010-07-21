@@ -459,6 +459,13 @@ Please note that callback functions intended to be used by interface modules can
 Sets the object frequency state of object number \textit{object} of the MambaNet node with address \textit{addr} to \textit{freq}. The \textit{acknowledge} argument behaves the same as for mbnGetActuatorData().
 
 
+\subsection{mbnStartInterface}
+\begin{verbatim}
+ void mbnStartInterface(struct mbn_interface *itf, char *error);
+\end{verbatim}
+Starts the interface. Before this function is called to interfaced must be opened and all required callback functions must be set.
+
+
 \subsection{mbnTCPOpen}
 \begin{verbatim}
 #ifdef MBN_IF_TCP
@@ -523,6 +530,13 @@ Does the same as mbnUpdateActuatorData, but updates the sensor data instead of t
                               char sreq);
 \end{verbatim}
 Updates the service request state of the MambaNet node \textit{mbn} to \textit{sreq}. Valid values are $1$ to indicate that this node requires service, or $0$ otherwise.
+
+
+\subsection{mbnWriteLogMessage}
+\begin{verbatim}
+ void mbnWriteLogMessage(struct mbn_interface *itf, char *msg);
+\end{verbatim}
+Interfaces use this function to log connection information. If the callback function is installed it is possible to store the information in the application log.
 
 
 \subsection{MBN\_OBJ}
@@ -769,4 +783,12 @@ Called when a node on the network attempts to change the sensor data of object n
                          time_t datetime);
 \end{verbatim}
 Called on receiving a set actuator data on the timestamp default node object. This callback should be used to set the date/time of the system to \textit{datetime}.
+
+
+\subsection{WriteLogMessage}
+\begin{verbatim}
+ void WriteLogMessage(struct mbn_interface *itf,
+                      char *msg);
+\end{verbatim}
+Called when a interface has log information on new nodes or expired nodes. For the TCP interface it will for example log the accepted connections.
 

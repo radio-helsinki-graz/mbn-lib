@@ -2,9 +2,13 @@
 \section{Initialization}
 Each MambaNet node the application provides has a special handle. All library functions that act from the node need this handle as argument, and all callback functions will receive it to determine from which MambaNet node the callback came from.
 
-A handle can be obtained by calling mbnInit(), this function expects various information about the node as argument and will then initialize the node and request a MambaNet address. The following example illustrates how to initialize a node on Ethernet without custom objects:
+A handle can be obtained by calling mbnInit(), this function expects various information about the node as argument and will then initialize the node. The following example illustrates how to initialize a node on Ethernet without custom objects:
 \begin{verbatim}
   #include <mbn.h>
+
+  #define MANUFACTURER_ID 0xFFFF
+  //The manucature ID 0xFFFF is reserved for custom use
+  //Private IDs can retrieved by contacting D&R
 
   struct mbn_interface *itf;
   struct mbn_handler *mbn;
@@ -32,9 +36,14 @@ A handle can be obtained by calling mbnInit(), this function expects various inf
     printf("Error initializing MambaNet node: %s", error);
     return;
   }
+
+  // Set your callback functions, see callback section in the API chapter
+
+  //Start all opened interfaces
+  mbnStartInterface(itf, error);
 \end{verbatim}
 
-After successful execution, \textit{mbn} points to a valid MambaNet node handle and can be used to attach callback functions and call library functions. In an actual application you would usually want to provide more information in \textit{node} and you would want to make the ethernet device configurable, this will be discussed later in this document.
+After successful execution, \textit{mbn} points to a valid MambaNet node handle and can be used to attach callback functions. After starting the interfaces with \textit{mbnStartInterface()} you can use the MambaNet node handle to call library functions. In an actual application you would usually want to provide more information in \textit{node} and you would want to make the ethernet device configurable, this will be discussed later in this document.
 
 Keep in mind that right after initialization, the MambaNet node does not have a validated address. You have to wait for the OnlineStatus() callback before sending (object) messages to the network.
 
@@ -48,12 +57,14 @@ Custom node objects can be added to a MambaNet node at intialization by setting 
 \begin{verbatim}
   // Tell mbn.h to add MBN_OBJ() to our code
   #define MBN_VARARG
-  #include "mhn.h"
-  
+  #include "mbn.h"
+
   // allocate an array for 3 objects
   struct mbn_object objects[3];
-  
+
   // object #1: sensor of type unsigned int
+  // the 'freq' field must be non-zero (e.g. 1) to be able
+  // to send sensor-change messages
   objects[0] = MBN_OBJ(
     "Object #1", // name
     // sensor type,  freq, size (bytes), min, max, current value
@@ -61,7 +72,7 @@ Custom node objects can be added to a MambaNet node at intialization by setting 
     // actuator (none)
     MBN_DATATYPE_NODATA
   );
-  
+
   // object #2: actuator of type float
   objects[1] = MBN_OBJ(
     "Object #2", // name
@@ -70,17 +81,17 @@ Custom node objects can be added to a MambaNet node at intialization by setting 
     // actuator type, size,   min,  max, default, current
     MBN_DATATYPE_FLOAT,  4, -30.0, 10.0,     0.0,     0.0
   );
-  
+
   // object #3: signed int sensor and float actuator
   objects[2] = MBN_OBJ(
     "Object #3",
     MBN_DATATYPE_SINT, 0, 4, -100, 100, 0,
     MBN_DATATYPE_FLOAT, 4, -100.0, 100.0, 0.0
   );
-  
+
   // specify how many objects we have
   info.NumberOfObjects = 3;
-  
+
   // initialize the MambaNet node
   mbn = mbnInit(&info, objects, itf, error);
 \end{verbatim}
@@ -91,7 +102,7 @@ The library will then automatically reply to object messages from other nodes on
                       unsigned short object,
                       union mbn_data in) {
     union mbn_data out;
-    
+
     // execute the default action if this is not object #3
     // (object number 1024 is the first custom object)
     // normally, an application should handle all defined objects
@@ -102,19 +113,19 @@ The library will then automatically reply to object messages from other nodes on
     // (converting float to signed int)
     out.SInt = (int)in.Float;
     mbnUpdateSensorData(mbn, 1026, out);
-    
+
     // always return 0, unless something went wrong
     return 0;
   }
-  
+
   int main() {
     struct mbn_handler *mbn;
     // [initialization omitted, we know how that works already]
-    
+
     // set the callback
     // (no, the double 'Set' here is not a typo)
     mbnSetSetActuatorDataCallback(mbn, SetActuatorData);
-    
+
     // [do some work here to keep the program alive]
   }
 \end{verbatim}
@@ -140,14 +151,14 @@ The address table can also be used when receiving a message from another node on
   int ReceiveMessage(struct mbn_handler *mbn,
                      struct mbn_message *msg) {
     struct mbn_address_node *node;
-    
+
     node = mbnNodeStatus(mbn, msg->AddressFrom);
     if(node && node->ManufacturerID == 0xFFFF)
       return 1;
     else
       return 0;
   }
-  
+
   // somewhere after initializing mbn...
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
 \end{verbatim}
@@ -157,7 +168,7 @@ The address table can also be used when receiving a message from another node on
 \section{Interface modules}
 The MambaNet protocol can be used over several different transport layers, the library handles this by providing ``interface modules'': modules that define and implement how the communication with the transport layer is done.
 
-The current library has two built-in interface modules: Ethernet and TCP. As seen in the section discussing initialization, an interface module has to be initialized and opened before calling mbnInit(). Each module provides its own set of functions to do this.
+The current library has three built-in interface modules: Ethernet, TCP and UDP. As seen in the section discussing initialization, an interface module has to be initialized and opened before calling mbnInit(). Each module provides its own set of functions to do this.
 
 The ethernet module provides a function to get the list of possible ethernet devices to use. The following example illustrates how to open the last available device on the machine. Refer to the documentation of the \verb|mbn_if_ethernet| struct and the mbnEthernetOpen() function for more information.
 \begin{verbatim}
@@ -169,27 +180,29 @@ The ethernet module provides a function to get the list of possible ethernet dev
   struct mbn_if_ethernet *devices, *last;
   struct mbn_interface *itf;
   char error[MBN_ERRSIZE];
-  
+
   // get the list of devices
   if((devices = mbnEthernetIFList(error)) == NULL) {
     printf("Couldn't get device list: %s\n", error);
     return;
   }
-  
+
   // browse to the last device in the list
   for(last=devices; devices->next!=NULL; last=devices->next)
     ;
-  
+
   // open the interface
   if((itf = mbnEthernetOpen(last->name, error)) == NULL) {
     printf("Couldn't open device "%s": %s\n", last->name, error);
     return;
   }
-  
+
   // free the device list
   mbnEthernetIFFree(devices);
 #endif
 \end{verbatim}
 
 The TCP module can be initialized using the mbnTCPOpen() function, refer to the API documentation for an explanation on how to use it.
+
+
 
