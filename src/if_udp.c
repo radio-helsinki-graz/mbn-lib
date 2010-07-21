@@ -67,7 +67,7 @@ void udp_free_addr(struct mbn_interface *, void *);
 int udp_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
 
-struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport, char *err) {
+struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport, char *localport, char *err) {
   struct udpdat *data;
   struct mbn_interface *itf;
   int error = 0;
@@ -115,9 +115,14 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport,
   }
 
   /* Client/Server installation of addresses */
+  if (localport == NULL)
+    localport = MBN_UDP_PORT;
+  if (sscanf(localport, "%d", &port) != 1) {
+    error++;
+  }
   memset((char *) &si_me, 0, sizeof(si_me));
   si_me.sin_family = AF_INET;
-  si_me.sin_port = htons(34848);
+  si_me.sin_port = htons(port);
   si_me.sin_addr.s_addr = htonl(INADDR_ANY);
   if(bind(data->socket, (struct sockaddr *)&si_me, sizeof(si_me))==-1) {
     sprintf(err, "bind(): %s", strerror(errno));
@@ -175,7 +180,7 @@ void udp_free_addr(struct mbn_interface *itf, void *arg) {
   struct in_addr in;
 
   in.s_addr = addr->addr;
-  mbnWriteLogMessage(itf, "Remove UDP node %s:%d", inet_ntoa(in), ntohs(addr->port));
+  mbnWriteLogMessage(itf, "Remove UDP interface using %s:%d", inet_ntoa(in), ntohs(addr->port));
 
   addr->addr = 0;
   addr->port = 0;
@@ -252,7 +257,7 @@ void *udp_receive_packets(void *ptr) {
             ifaddr = ipaddr;
             ((struct udpaddr *)ifaddr)->addr = from.sin_addr.s_addr;
             ((struct udpaddr *)ifaddr)->port = from.sin_port;
-            mbnWriteLogMessage(itf, "Add UDP node %s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+            mbnWriteLogMessage(itf, "Add UDP interface using %s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
           }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }

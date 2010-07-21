@@ -426,7 +426,7 @@ void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, char *);
 #endif
 #ifdef MBN_IF_UDP
-struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *, char *, char *);
+struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *, char *, char *, char *);
 #endif
 
 /* address.c */
