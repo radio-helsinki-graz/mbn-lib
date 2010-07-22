@@ -237,9 +237,6 @@ void *udp_receive_packets(void *ptr) {
       break;
     }
     
-    if(htons(from.sin_port) != 34848)
-      continue;
-
     /* handle the data */
     for(i=0; i<rd; i++) {
       /* ignore non-start bytes if we haven't started yet */
