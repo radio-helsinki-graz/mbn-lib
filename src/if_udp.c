@@ -102,7 +102,10 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport,
 
   if(remoteport == NULL)
     remoteport = MBN_UDP_PORT;
+  else if ((remoteport[0] == 0) && (remotehost != NULL))
+    remoteport = MBN_UDP_PORT;
   if (sscanf(remoteport, "%d", &port) != 1) {
+    sprintf(err, "Error reading remoteport: %s\n", remoteport);
     error++;
   }
   data->defaultport = htons(port);
@@ -117,7 +120,10 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport,
   /* Client/Server installation of addresses */
   if (localport == NULL)
     localport = MBN_UDP_PORT;
+  else if ((localport[0] == 0) && (remotehost != NULL))
+    localport = MBN_UDP_PORT;
   if (sscanf(localport, "%d", &port) != 1) {
+    sprintf(err, "Error reading localport: %s\n", localport);
     error++;
   }
   memset((char *) &si_me, 0, sizeof(si_me));
