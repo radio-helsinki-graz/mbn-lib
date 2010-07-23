@@ -381,7 +381,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
   unsigned char raw[MBN_MAX_MESSAGE_SIZE];
   char err[MBN_ERRSIZE];
   struct mbn_address_node *dest;
-  struct mbn_msgqueue *q, *n;
+  struct mbn_msgqueue *q, *n, *prev_q;
   void *ifaddr;
   int r;
 
@@ -456,10 +456,32 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
     if(mbn->queue == NULL)
       mbn->queue = n;
     else {
+      prev_q = NULL;
       q = mbn->queue;
-      while(q->next != NULL)
+      while(q != NULL) {
+        /* check for duplicate retry message, if found replace object-data*/
+        if ((q->msg.AddressTo == n->msg.AddressTo) &&
+            (q->msg.MessageType == MBN_MSGTYPE_OBJECT) &&
+            (n->msg.MessageType == MBN_MSGTYPE_OBJECT) &&
+            (q->msg.Message.Object.Action == n->msg.Message.Object.Action) &&
+            (q->msg.Message.Object.Number == n->msg.Message.Object.Number)) {
+          n->next = q->next;
+          if (prev_q == NULL) {
+            mbn->queue = n;
+          } else {
+            prev_q->next = n;
+          }
+          break;
+        }
+        prev_q = q;
         q = q->next;
-      q->next = n;
+      }
+      if (q == NULL) {
+        prev_q->next = n;
+      } else {
+        free_message(&(q->msg));
+        free(q);
+      }
     }
   }
   ULCK();
