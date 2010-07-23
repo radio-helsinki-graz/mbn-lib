@@ -186,7 +186,7 @@ void udp_free_addr(struct mbn_interface *itf, void *arg) {
   struct in_addr in;
 
   in.s_addr = addr->addr;
-  mbnWriteLogMessage(itf, "Remove UDP interface using %s:%d", inet_ntoa(in), ntohs(addr->port));
+  mbnWriteLogMessage(itf, "Remove UDP connection to/from %s:%d", inet_ntoa(in), ntohs(addr->port));
 
   addr->addr = 0;
   addr->port = 0;
@@ -260,7 +260,7 @@ void *udp_receive_packets(void *ptr) {
             ifaddr = ipaddr;
             ((struct udpaddr *)ifaddr)->addr = from.sin_addr.s_addr;
             ((struct udpaddr *)ifaddr)->port = from.sin_port;
-            mbnWriteLogMessage(itf, "Add UDP interface using %s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+            mbnWriteLogMessage(itf, "Add UDP connection to/from %s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
           }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }

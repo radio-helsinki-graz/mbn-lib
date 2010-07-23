@@ -196,12 +196,12 @@ void ethernet_free(struct mbn_interface *itf) {
 
 
 void ethernet_free_addr(struct mbn_interface *itf, void *arg) {
-  mbnWriteLogMessage(itf, "Remove Ethernet node %02X:%02X:%02X:%02X:%02X:%02X", ((unsigned char *)arg)[0],
-                                                                                ((unsigned char *)arg)[1],
-                                                                                ((unsigned char *)arg)[2],
-                                                                                ((unsigned char *)arg)[3],
-                                                                                ((unsigned char *)arg)[4],
-                                                                                ((unsigned char *)arg)[5]);
+  mbnWriteLogMessage(itf, "Remove Ethernet address %02X:%02X:%02X:%02X:%02X:%02X", ((unsigned char *)arg)[0],
+                                                                                   ((unsigned char *)arg)[1],
+                                                                                   ((unsigned char *)arg)[2],
+                                                                                   ((unsigned char *)arg)[3],
+                                                                                   ((unsigned char *)arg)[4],
+                                                                                   ((unsigned char *)arg)[5]);
   memset(arg, 0, 6);
 }
 
@@ -273,12 +273,12 @@ void *receive_packets(void *ptr) {
             ifaddr = hwaddr;
             memcpy(ifaddr, (void *)from.sll_addr, 6);
 
-            mbnWriteLogMessage(itf, "Add Ethernet node %02X:%02X:%02X:%02X:%02X:%02X", ((unsigned char *)hwaddr)[0],
-                                                                                       ((unsigned char *)hwaddr)[1],
-                                                                                       ((unsigned char *)hwaddr)[2],
-                                                                                       ((unsigned char *)hwaddr)[3],
-                                                                                       ((unsigned char *)hwaddr)[4],
-                                                                                       ((unsigned char *)hwaddr)[5]);
+            mbnWriteLogMessage(itf, "Add Ethernet address %02X:%02X:%02X:%02X:%02X:%02X", ((unsigned char *)hwaddr)[0],
+                                                                                          ((unsigned char *)hwaddr)[1],
+                                                                                          ((unsigned char *)hwaddr)[2],
+                                                                                          ((unsigned char *)hwaddr)[3],
+                                                                                          ((unsigned char *)hwaddr)[4],
+                                                                                          ((unsigned char *)hwaddr)[5]);
           }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }
