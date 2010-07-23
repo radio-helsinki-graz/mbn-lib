@@ -550,6 +550,13 @@ Does the same as mbnUpdateActuatorData, but updates the sensor data instead of t
 Updates the service request state of the MambaNet node \textit{mbn} to \textit{sreq}. Valid values are $1$ to indicate that this node requires service, or $0$ otherwise.
 
 
+\subsection{mbnVersion}
+\begin{verbatim}
+ const char *mbnVersion();
+\end{verbatim}
+Returns a constant ASCII string with version and date information.
+
+
 \subsection{mbnWriteLogMessage}
 \begin{verbatim}
  void mbnWriteLogMessage(struct mbn_interface *itf,
