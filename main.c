@@ -96,6 +96,8 @@ int main(void) {
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
 
+  printf(mbnVersion());
+
 #ifdef USE_IF_UDP
   itf = mbnUDPOpen("192.168.4.58", "34848", NULL, err);
   if(itf == NULL) {

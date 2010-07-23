@@ -415,6 +415,7 @@ void MBN_EXPORT mbnUpdateNodeName(struct mbn_handler *, char *);
 void MBN_EXPORT mbnUpdateEngineAddr(struct mbn_handler *, unsigned long);
 void MBN_EXPORT mbnUpdateServiceRequest(struct mbn_handler *, char);
 void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *, const char *fmt, ...);
+const char *MBN_EXPORT mbnVersion();
 
 /* if_*.c */
 #ifdef MBN_IF_ETHERNET

@@ -505,3 +505,7 @@ void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *itf, const char *fmt, .
     mbn->cb_WriteLogMessage(mbn, buf);
   }
 }
+
+const char *MBN_EXPORT mbnVersion() {
+  return "MambaNet Library V1.4 - 23 July 2010\n";
+}
