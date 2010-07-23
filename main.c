@@ -97,7 +97,7 @@ int main(void) {
   char err[MBN_ERRSIZE];
 
 #ifdef USE_IF_UDP
-  itf = mbnUDPOpen("192.168.4.58", "34848", err);
+  itf = mbnUDPOpen("192.168.4.58", "34848", NULL, err);
   if(itf == NULL) {
     printf("Error: %s\n", err);
     return 1;
