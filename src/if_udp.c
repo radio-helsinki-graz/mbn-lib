@@ -117,22 +117,23 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport,
     error++;
   }
 
-  /* Client/Server installation of addresses */
-  if (localport == NULL)
-    localport = MBN_UDP_PORT;
-  else if ((localport[0] == 0) && (remotehost != NULL))
-    localport = MBN_UDP_PORT;
-  if (sscanf(localport, "%d", &port) != 1) {
-    sprintf(err, "Error reading localport: %s\n", localport);
-    error++;
-  }
-  memset((char *) &si_me, 0, sizeof(si_me));
-  si_me.sin_family = AF_INET;
-  si_me.sin_port = htons(port);
-  si_me.sin_addr.s_addr = htonl(INADDR_ANY);
-  if(bind(data->socket, (struct sockaddr *)&si_me, sizeof(si_me))==-1) {
-    sprintf(err, "bind(): %s", strerror(errno));
-    error++;
+  /* Only listen if localport is given */
+  if (localport != NULL) {
+    if ((localport[0] == 0) && (remotehost != NULL))
+      localport = MBN_UDP_PORT;
+    if (sscanf(localport, "%d", &port) != 1) {
+      sprintf(err, "Error reading localport: %s\n", localport);
+      error++;
+    }
+
+    memset((char *) &si_me, 0, sizeof(si_me));
+    si_me.sin_family = AF_INET;
+    si_me.sin_port = htons(port);
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+    if(bind(data->socket, (struct sockaddr *)&si_me, sizeof(si_me))==-1) {
+      sprintf(err, "bind(): %s", strerror(errno));
+      error++;
+    }
   }
 
   /* something went wrong in the above statements */
