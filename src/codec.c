@@ -547,7 +547,7 @@ int create_datatype(unsigned char type, union mbn_data *dat, int length, unsigne
       if(dat->SInt >= 0 || length == 4)
         for(i=0; i<length; i++)
           buffer[i] = (dat->SInt>>(8*(length-1-i))) & 0xFF;
-      if(length == 2) {
+      else if(length == 2) {
         buffer[0] = (0x80 | (dat->SInt>>8)) & 0xFF;
         buffer[1] = dat->SInt & 0xFF;
       } else
