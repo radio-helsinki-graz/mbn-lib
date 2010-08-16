@@ -41,6 +41,13 @@
 #endif
 #include <pthread.h>
 
+/* sleep() */
+#ifdef MBNP_mingw
+# include <windows.h>
+# define sleep(x) Sleep(x*1000)
+#else
+# include <unistd.h>
+#endif
 
 
 #define MBN_UDP_PORT "34848"
@@ -54,6 +61,7 @@ struct udpaddr {
 
 struct udpdat {
   int socket;
+  char thread_run;
   unsigned long defaultaddr;
   unsigned short defaultport;
   struct udpaddr addr[ADDLSTSIZE];
@@ -171,6 +179,13 @@ int udp_init(struct mbn_interface *itf, char *err) {
 
 void udp_free(struct mbn_interface *itf) {
   struct udpdat *dat = (struct udpdat *)itf->data;
+  int i;
+
+  for(i=0; !dat->thread_run; i++) {
+    if(i > 5)
+      break;
+    sleep(1);
+  }
 
   pthread_cancel(dat->thread);
   pthread_join(dat->thread, NULL);
@@ -207,6 +222,8 @@ void *udp_receive_packets(void *ptr) {
   ssize_t rd;
   void *ifaddr, *ipaddr;
   socklen_t addrlength = sizeof(struct sockaddr_in);
+
+  dat->thread_run = 1;
 
   while(1) {
     /* we can safely cancel here */
