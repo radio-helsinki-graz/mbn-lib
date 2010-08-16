@@ -70,6 +70,7 @@ struct udpdat {
 
 int udp_init(struct mbn_interface *, char *);
 void *udp_receive_packets(void *);
+void udp_stop(struct mbn_interface *);
 void udp_free(struct mbn_interface *);
 void udp_free_addr(struct mbn_interface *, void *);
 int udp_transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
@@ -156,6 +157,7 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport,
   }
 
   itf->cb_init = udp_init;
+  itf->cb_stop = udp_stop;
   itf->cb_free = udp_free;
   itf->cb_free_addr = udp_free_addr;
   itf->cb_transmit = udp_transmit;
@@ -176,6 +178,20 @@ int udp_init(struct mbn_interface *itf, char *err) {
   return 0;
 }
 
+
+void udp_stop(struct mbn_interface *itf) {
+  struct udpdat *dat = (struct udpdat *)itf->data;
+  int i;
+
+  for(i=0; !dat->thread_run; i++) {
+    if(i > 5)
+      break;
+    sleep(1);
+  }
+
+  pthread_cancel(dat->thread);
+  pthread_join(dat->thread, NULL);
+}
 
 void udp_free(struct mbn_interface *itf) {
   struct udpdat *dat = (struct udpdat *)itf->data;

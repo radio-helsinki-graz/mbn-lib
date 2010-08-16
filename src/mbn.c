@@ -226,6 +226,10 @@ void MBN_EXPORT mbnFree(struct mbn_handler *mbn) {
     sleep(1);
   }
 
+  /* Stop the interface receiving */
+  if(mbn->itf->cb_stop != NULL)
+    mbn->itf->cb_stop(mbn->itf);
+
   /* request cancellation for the threads */
   pthread_cancel(*((pthread_t *)mbn->timeout_thread));
   pthread_cancel(*((pthread_t *)mbn->throttle_thread));
