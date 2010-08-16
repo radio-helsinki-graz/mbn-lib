@@ -240,6 +240,7 @@ typedef void(*mbn_cb_ObjectError)(struct mbn_handler *, struct mbn_message *, un
 
 /* interfaces */
 typedef int(*mbn_cb_InitInterface)(struct mbn_interface *, char *);
+typedef void(*mbn_cb_StopInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterface)(struct mbn_interface *);
 typedef void(*mbn_cb_FreeInterfaceAddress)(struct mbn_interface *, void *);
 typedef int(*mbn_cb_InterfaceTransmit)(struct mbn_interface *, unsigned char *, int, void *, char *);
@@ -291,6 +292,7 @@ struct mbn_object {
 struct mbn_interface {
   void *data;
   mbn_cb_InitInterface cb_init;
+  mbn_cb_StopInterface cb_stop;
   mbn_cb_FreeInterface cb_free;
   mbn_cb_FreeInterfaceAddress cb_free_addr;
   mbn_cb_InterfaceTransmit cb_transmit;
