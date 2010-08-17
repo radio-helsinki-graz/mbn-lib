@@ -79,6 +79,7 @@ struct tcpdat {
 int setup_client(struct tcpdat *, char *, char *, char *);
 int setup_server(struct tcpdat *, char *, char *, char *);
 int init_tcp(struct mbn_interface *, char *);
+void stop_tcp(struct mbn_interface *);
 void free_tcp(struct mbn_interface *);
 void *receiver(void *);
 int tcptransmit(struct mbn_interface *, unsigned char *, int, void *, char *);
@@ -131,6 +132,7 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
   }
 
   itf->cb_init = init_tcp;
+  itf->cb_stop = stop_tcp;
   itf->cb_free = free_tcp;
   itf->cb_transmit = tcptransmit;
   return itf;
@@ -217,6 +219,19 @@ int init_tcp(struct mbn_interface *itf, char *err) {
   return 0;
 }
 
+
+void stop_tcp(struct mbn_interface *itf) {
+  struct tcpdat *dat = (struct tcpdat *)itf->data;
+  int i;
+
+  for(i=0; !dat->thread_run; i++) {
+    if(i > 5)
+      break;
+    sleep(1);
+  }
+  pthread_cancel(dat->thread);
+  pthread_join(dat->thread, NULL);
+}
 
 void free_tcp(struct mbn_interface *itf) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;

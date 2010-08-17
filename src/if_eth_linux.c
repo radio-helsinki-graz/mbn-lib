@@ -47,6 +47,7 @@ struct ethdat {
 
 int ethernet_init(struct mbn_interface *, char *);
 void *receive_packets(void *);
+void ethernet_stop(struct mbn_interface *itf);
 void ethernet_free(struct mbn_interface *);
 void ethernet_free_addr(struct mbn_interface *, void *);
 int transmit(struct mbn_interface *, unsigned char *, int, void *, char *);
@@ -165,6 +166,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface, char *err) {
   }
 
   itf->cb_init = ethernet_init;
+  itf->cb_stop = ethernet_stop;
   itf->cb_free = ethernet_free;
   itf->cb_free_addr = ethernet_free_addr;
   itf->cb_transmit = transmit;
@@ -185,6 +187,12 @@ int ethernet_init(struct mbn_interface *itf, char *err) {
   return 0;
 }
 
+
+void ethernet_stop(struct mbn_interface *itf) {
+  struct ethdat *dat = (struct ethdat *)itf->data;
+  pthread_cancel(dat->thread);
+  pthread_join(dat->thread, NULL);
+}
 
 void ethernet_free(struct mbn_interface *itf) {
   struct ethdat *dat = (struct ethdat *)itf->data;

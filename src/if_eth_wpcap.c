@@ -255,6 +255,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   }
 
   dat->pc = pc;
+  itf->cb_stop = stop_pcap;
   itf->cb_free = free_pcap;
   itf->cb_init = init_pcap;
   itf->cb_free_addr = free_pcap_addr;
@@ -263,6 +264,21 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   return itf;
 }
 
+
+void stop_pcap(struct mbn_interface *itf) {
+  struct pcapdat *dat = (struct pcapdat *)itf->data;
+  int i;
+
+/*  pcap_close(dat->pc);*/
+
+  for(i=0; !dat->thread_run; i++) {
+    if(i > 5)
+      break;
+    Sleep(1000);
+  }
+  pthread_cancel(dat->thread);
+  pthread_join(dat->thread, NULL);
+}
 
 void free_pcap(struct mbn_interface *itf) {
   struct pcapdat *dat = (struct pcapdat *)itf->data;

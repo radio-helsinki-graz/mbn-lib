@@ -533,5 +533,5 @@ void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *itf, const char *fmt, .
 }
 
 const char *MBN_EXPORT mbnVersion() {
-  return "MambaNet Library V1.4 - 23 July 2010";
+  return "MambaNet Library V1.4 - 17 August 2010";
 }
