@@ -87,6 +87,7 @@ struct pcapdat {
 };
 
 
+void stop_pcap(struct mbn_interface *);
 void free_pcap(struct mbn_interface *);
 void free_pcap_addr(struct mbn_interface *, void *);
 int init_pcap(struct mbn_interface *, char *);
