@@ -28,6 +28,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <ifaddrs.h>
+#include <linux/sockios.h>
 
 #include "mbn.h"
 
@@ -331,5 +332,31 @@ int transmit(struct mbn_interface *itf, unsigned char *buffer, int length, void 
     sent += rd;
   }
   return 0;
+}
+
+char MBN_EXPORT mbnEthernetMIILinkStatus(struct mbn_interface *itf, char *err) {
+  struct ethdat *dat = (struct ethdat *)itf->data;
+  struct ifreq ifr;
+
+  memset(&ifr, 0, sizeof(ifr));
+  ifr.ifr_ifindex = dat->ifindex;
+
+  if (ioctl(dat->socket, SIOCGIFNAME, &ifr) == -1) {
+    sprintf(err, "SIOCGIFNAME failed: %d", strerror(errno));
+    return -1;
+  }
+  if (ioctl(dat->socket, SIOCGMIIPHY, &ifr) == -1) {
+    sprintf(err, "SIOCGMIIPHY failed: %s", strerror(errno));
+    return -1;
+  }
+
+  ((unsigned short*) &ifr.ifr_data)[1] = 1;
+
+  if (ioctl(dat->socket, SIOCGMIIREG, &ifr) == -1) {
+    sprintf(err, "SIOCGMIIREG failed: %s", strerror(errno));
+    return -1;
+  }
+
+  return (((unsigned short*) &ifr.ifr_data)[3] & 0x0004) ? 1 : 0;
 }
 
