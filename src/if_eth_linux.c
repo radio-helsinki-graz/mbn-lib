@@ -344,7 +344,7 @@ char MBN_EXPORT mbnEthernetMIILinkStatus(struct mbn_interface *itf, char *err) {
   ifr.ifr_ifindex = dat->ifindex;
 
   if (ioctl(dat->socket, SIOCGIFNAME, &ifr) == -1) {
-    sprintf(err, "SIOCGIFNAME failed: %d", strerror(errno));
+    sprintf(err, "SIOCGIFNAME failed: %s", strerror(errno));
     return -1;
   }
   if (ioctl(dat->socket, SIOCGMIIPHY, &ifr) == -1) {
