@@ -54,6 +54,7 @@
 
 int mbnhandlers = 0;
 
+char versionString[256];
 
 /* thread that keeps track of messages requiring an acknowledge reply,
  * and retries the message after a timeout (of one second, currently) */
@@ -533,5 +534,7 @@ void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *itf, const char *fmt, .
 }
 
 const char *MBN_EXPORT mbnVersion() {
-  return "MambaNet Library V1.4 - 17 August 2010";
+  sprintf(versionString, "MambaNet Library V1.5 - %s %s", __DATE__, __TIME__);
+  return versionString;
 }
+
