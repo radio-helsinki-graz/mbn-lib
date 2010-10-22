@@ -109,6 +109,8 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *interface, char *err) {
   int error = 0;
   struct sockaddr_ll sockaddr;
 
+  memset(&sockaddr, 0, sizeof(struct sockaddr_ll));
+
   if(interface == NULL) {
     sprintf(err, "No interface specified");
     return NULL;
