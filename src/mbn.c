@@ -484,8 +484,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
       if (q == NULL) {
         prev_q->next = n;
       } else {
-        free_message(&(q->msg));
-        free(q);
+        q->retries = -1;
       }
     }
   }
