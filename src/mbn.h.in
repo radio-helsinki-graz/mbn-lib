@@ -558,15 +558,15 @@ struct mbn_object MBN_OBJ(char *desc, ...) {
     case MBN_DATATYPE_OCTETS:
       obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
-      obj.SensorMin.Octets  = (unsigned char *) va_arg(va, char *);
-      obj.SensorMax.Octets  = (unsigned char *) va_arg(va, char *);
+      obj.SensorMin.UInt  = (unsigned long) va_arg(va, unsigned long);
+      obj.SensorMax.UInt  = (unsigned long) va_arg(va, unsigned long);
       obj.SensorData.Octets = (unsigned char *) va_arg(va, char *);
       break;
     case MBN_DATATYPE_BITS:
       obj.UpdateFrequency = (unsigned short) va_arg(va, unsigned long);
       obj.SensorSize = (unsigned char) va_arg(va, int);
-      memcpy((void *)obj.SensorMin.Bits,  (void *)va_arg(va, unsigned char *), obj.SensorSize);
-      memcpy((void *)obj.SensorMax.Bits,  (void *)va_arg(va, unsigned char *), obj.SensorSize);
+      obj.SensorMin.UInt  = (unsigned long) va_arg(va, unsigned long);
+      obj.SensorMax.UInt  = (unsigned long) va_arg(va, unsigned long);
       memcpy((void *)obj.SensorData.Bits, (void *)va_arg(va, unsigned char *), obj.SensorSize);
       break;
     default:
