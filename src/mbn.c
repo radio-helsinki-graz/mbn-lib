@@ -79,10 +79,10 @@ void *msgqueue_thread(void *arg) {
           mbn->queue = last = q->next;
         } else
           last->next = q->next;
-        tmp = q->next;
-        free_message(&(q->msg));
-        free(q);
-        q = tmp;
+        tmp = q;
+        q = q->next;
+        free_message(&(tmp->msg));
+        free(tmp);
         ULCK();
         continue;
       }
@@ -461,6 +461,7 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
     if(mbn->queue == NULL)
       mbn->queue = n;
     else {
+      /* mbn->queue is not NULL so prev_q will always set in the while */
       prev_q = NULL;
       q = mbn->queue;
       while(q != NULL) {
@@ -470,22 +471,12 @@ void MBN_EXPORT mbnSendMessage(struct mbn_handler *mbn, struct mbn_message *msg,
             (n->msg.MessageType == MBN_MSGTYPE_OBJECT) &&
             (q->msg.Message.Object.Action == n->msg.Message.Object.Action) &&
             (q->msg.Message.Object.Number == n->msg.Message.Object.Number)) {
-          n->next = q->next;
-          if (prev_q == NULL) {
-            mbn->queue = n;
-          } else {
-            prev_q->next = n;
-          }
-          break;
+          q->retries = -1;
         }
         prev_q = q;
         q = q->next;
       }
-      if (q == NULL) {
-        prev_q->next = n;
-      } else {
-        q->retries = -1;
-      }
+      prev_q->next = n;
     }
   }
   ULCK();
@@ -533,7 +524,7 @@ void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *itf, const char *fmt, .
 }
 
 const char *MBN_EXPORT mbnVersion() {
-  sprintf(versionString, "MambaNet Library V1.5 - %s (%s)", __DATE__, __TIME__);
+  sprintf(versionString, "MambaNet Library V1.6 - %s (%s)", __DATE__, __TIME__);
   return versionString;
 }
 
