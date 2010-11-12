@@ -443,7 +443,7 @@ const char *MBN_EXPORT mbnVersion();
 struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *, char *);
 struct mbn_if_ethernet * MBN_EXPORT mbnEthernetIFList(char *);
 void MBN_EXPORT mbnEthernetIFFree(struct mbn_if_ethernet *);
-char mbnEthernetMIILinkStatus(struct mbn_interface *, char *);
+char MBN_EXPORT mbnEthernetMIILinkStatus(struct mbn_interface *, char *);
 #endif
 #ifdef MBN_IF_TCP
 struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, char *);
