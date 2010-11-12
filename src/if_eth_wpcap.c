@@ -397,3 +397,11 @@ int wpcaptransmit(struct mbn_interface *itf, unsigned char *buf, int len, void *
   return 0;
 }
 
+char MBN_EXPORT mbnEthernetMIILinkStatus(struct mbn_interface *itf, char *err) {
+PacketRequest(0); 
+  return 0;
+  itf=NULL;
+  err=NULL;
+}
+
+
