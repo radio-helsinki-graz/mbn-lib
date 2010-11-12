@@ -34,7 +34,26 @@
 #undef MBN_IF_UDP
 
 /* forcing a ManufacturerID? */
-#undef MBN_MANUFACTURERID
+/* #undef MBN_MANUFACTURERID */
+#define MBN_MANUFACTURERID 1
+
+#ifndef MBN_MANUFACTURERID
+  #define MBN_MANUFACTURER_NAME "None" 
+#else
+  #if MBN_MANUFACTURERID == 1
+    #define MBN_MANUFACTURER_NAME "DnR"
+  #elif MBN_MANUFACTURERID == 2
+    #define MBN_MANUFACTURER_NAME "Broadcast Partners"
+  #elif MBN_MANUFACTURERID == 3
+    #define MBN_MANUFACTURER_NAME "Prisode"
+  #elif MBN_MANUFACTURERID == 4
+    #define MBN_MANUFACTURER_NAME "Prosol"
+  #elif MBN_MANUFACTURERID == 5
+    #define MBN_MANUFACTURER_NAME "Caliope"
+  #elif MBN_MANUFACTURERID == 6
+    #define MBN_MANUFACTURER_NAME "Radio42"
+  #endif
+#endif
 
 /* Windows DLLs want flags for exportable functions */
 #ifdef MBNP_mingw
