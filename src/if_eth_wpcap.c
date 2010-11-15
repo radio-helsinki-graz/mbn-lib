@@ -24,6 +24,7 @@
 #include <iphlpapi.h>
 #include <ipexport.h>
 #include <pcap.h>
+#include <Packet32.h>
 
 #include "mbn.h"
 
@@ -45,12 +46,16 @@ static int     (*p_pcap_next_ex) (pcap_t *, struct pcap_pkthdr **, const u_char 
 static int     (*p_pcap_sendpacket) (pcap_t *, u_char *, int);
 static char imported = 0;
 
+static char*     (*p_packet32_packetgetversion) (void);
+static LPADAPTER (*p_packet32_packetopenadapter) (char *);
+static void      (*p_packet32_packetcloseadapter) (LPADAPTER);
+static int       (*p_packet32_packetrequest) (LPADAPTER, int, void *);
 
 int import_pcap() {
   if(imported)
     return 1;
   HANDLE dll;
-  if((dll = LoadLibrary("wpcap.dll")) <= HINSTANCE_ERROR)
+  if((dll = LoadLibrary("wpcap.dll")) <= (HANDLE)HINSTANCE_ERROR)
     return 0;
   p_pcap_findalldevs = (int     (*)(pcap_if_t **, char *)) GetProcAddress(dll, "pcap_findalldevs");
   p_pcap_freealldevs = (void    (*)(pcap_if_t *)) GetProcAddress(dll, "pcap_freealldevs");
@@ -62,6 +67,14 @@ int import_pcap() {
   p_pcap_geterr      = (char   *(*)(pcap_t *)) GetProcAddress(dll, "pcap_geterr");
   p_pcap_next_ex     = (int     (*)(pcap_t *, struct pcap_pkthdr **, const u_char **)) GetProcAddress(dll, "pcap_next_ex");
   p_pcap_sendpacket  = (int     (*)(pcap_t *, u_char *, int)) GetProcAddress(dll, "pcap_sendpacket");
+
+  if((dll = LoadLibrary("Packet.dll")) <= (HANDLE)HINSTANCE_ERROR)
+    return 0;
+  p_packet32_packetgetversion   = (char      *(*)(void)) GetProcAddress(dll, "PacketGetVersion");
+  p_packet32_packetopenadapter  = (LPADAPTER  (*)(char *)) GetProcAddress(dll, "PacketOpenAdapter");
+  p_packet32_packetcloseadapter = (void       (*)(LPADAPTER)) GetProcAddress(dll, "PacketCloseAdapter"); 
+  p_packet32_packetrequest      = (int        (*)(LPADAPTER, int, void *)) GetProcAddress(dll, "PacketRequest");
+
   return ++imported;
 }
 
@@ -80,6 +93,7 @@ int import_pcap() {
 
 struct pcapdat {
   pcap_t *pc;
+  LPADAPTER pa;
   pthread_t thread;
   char thread_run;
   unsigned char mymac[6];
@@ -173,6 +187,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   pcap_addr_t *a;
   pcap_if_t *devs, *d;
   pcap_t *pc = NULL;
+  LPADAPTER pa = NULL;
   struct bpf_program fp;
   int i, suc, error = 0;
   unsigned long alen;
@@ -213,6 +228,11 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   if(!error && (pc = pcap_open_live(d->name, BUFFERSIZE, 0, 1, err+25)) == NULL) {
     memcpy((void *)err, (void *)"Couldn't open interface: ", 25);
     error++;
+  }
+
+  if(!error && (pa = p_packet32_packetopenadapter(d->name)) == NULL) {
+    memcpy((void *)err, (void *)"Couldn't open adapter: ", 23);
+    error++; 
   }
 
   /* get MAC address */
@@ -256,6 +276,7 @@ struct mbn_interface * MBN_EXPORT mbnEthernetOpen(char *ifname, char *err) {
   }
 
   dat->pc = pc;
+  dat->pa = pa;
   itf->cb_stop = stop_pcap;
   itf->cb_free = free_pcap;
   itf->cb_init = init_pcap;
@@ -284,6 +305,8 @@ void stop_pcap(struct mbn_interface *itf) {
 void free_pcap(struct mbn_interface *itf) {
   struct pcapdat *dat = (struct pcapdat *)itf->data;
   int i;
+
+  p_packet32_packetcloseadapter(dat->pa);
 
   pcap_close(dat->pc);
 
@@ -339,7 +362,7 @@ void *receive_packets(void *ptr) {
     pthread_testcancel();
 
     /* wait for/read packet */
-    i = pcap_next_ex(dat->pc, &hdr, (u_char *)&buffer);
+    i = pcap_next_ex(dat->pc, &hdr, (const u_char **)&buffer);
     if(i < 0) {
       sprintf(err, "Couldn't read packet: %s", pcap_geterr(dat->pc));
       mbnInterfaceReadError(itf, err);
@@ -397,11 +420,22 @@ int wpcaptransmit(struct mbn_interface *itf, unsigned char *buf, int len, void *
   return 0;
 }
 
+#define OID_GEN_MEDIA_CONNECT_STATUS 0x00010114
+
 char MBN_EXPORT mbnEthernetMIILinkStatus(struct mbn_interface *itf, char *err) {
-PacketRequest(0); 
-  return 0;
-  itf=NULL;
-  err=NULL;
+  struct pcapdat *dat = (struct pcapdat *) itf->data;
+  unsigned char oid_storage[1024];
+
+  PPACKET_OID_DATA oid_data = (PPACKET_OID_DATA)oid_storage;
+
+  memset(oid_storage, 0, 1024);
+  oid_data->Oid = OID_GEN_MEDIA_CONNECT_STATUS;
+  oid_data->Length = 1024-sizeof(oid_data->Oid);
+
+  p_packet32_packetrequest(dat->pa, 0, oid_data);
+
+  return (oid_data->Data[0]&0x01) ? 0 : 1;
+  err = NULL;
 }
 
 
