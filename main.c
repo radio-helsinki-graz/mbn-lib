@@ -14,7 +14,7 @@
 **
 ****************************************************************************/
 
-#define USE_IF_UDP
+/* #define USE_IF_UDP */
 
 #define MBN_VARARG
 #include "mbn.h"
@@ -133,6 +133,11 @@ int main(void) {
   }
   mbnEthernetIFFree(ifl);
 #endif
+
+  if (mbnEthernetMIILinkStatus(itf, err))
+    fprintf(stdout, "Link up\n");
+  else
+    fprintf(stdout, "Link down\n");
 
   objects[0] = MBN_OBJ("Object #1", MBN_DATATYPE_UINT, 0, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
