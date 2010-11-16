@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <sys/time.h>
 #include <pthread.h>
 
 #include "mbn.h"
@@ -61,6 +61,8 @@ char versionString[256];
 void *msgqueue_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_msgqueue *q, *last, *tmp;
+  struct timeval delay;
+  int RetVal;
 
   mbn->msgqueue_run = 1;
 
@@ -86,17 +88,22 @@ void *msgqueue_thread(void *arg) {
         ULCK();
         continue;
       }
-      /* Wait a sec. */
-      if(q->retries == 1)
-        continue;
-      /* No reply yet, let's try again */
-      mbnSendMessage(mbn, &(q->msg), MBN_SEND_NOCREATE | MBN_SEND_FORCEID);
+      /* Wait a sec if < 1. */
+      if(q->retries > 1) {
+        /* No reply yet, let's try again */
+        mbnSendMessage(mbn, &(q->msg), MBN_SEND_NOCREATE | MBN_SEND_FORCEID);
+      }
       last = q;
       q = q->next;
     }
 
     pthread_testcancel();
-    sleep(1);
+    delay.tv_sec = 1;
+    delay.tv_usec = 0;
+    RetVal =  1;
+    while (RetVal) {
+      RetVal = select(0, NULL, NULL, NULL, &delay);
+    }
   }
 }
 
@@ -301,7 +308,7 @@ int process_acknowledge_reply(struct mbn_handler *mbn, struct mbn_message *msg) 
   if(q != NULL && q->id == msg->MessageID) {
     /* make a copy for the callback */
     copy_message(&(q->msg), &orig);
-    tries = q->retries;
+    tries = q->retries-1;
     /* determine whether we need to process this message further,
      * If the original message is a GET action, then we should continue processing */
     if(q->msg.MessageType == MBN_MSGTYPE_OBJECT) {
