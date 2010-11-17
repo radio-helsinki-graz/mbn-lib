@@ -95,6 +95,8 @@ int main(void) {
   struct mbn_handler *mbn;
   struct mbn_interface *itf = NULL;
   char err[MBN_ERRSIZE];
+  struct mbn_if_ethernet *ifl, *n;
+  char *ifname;
 
   fprintf(stdout, "%s\n",mbnVersion());
 
@@ -111,8 +113,6 @@ int main(void) {
     return 1;
   }
 #else
-  struct mbn_if_ethernet *ifl, *n;
-  char *ifname;
   ifname = NULL;
   ifl = mbnEthernetIFList(err);
   if(ifl == NULL) {
