@@ -61,8 +61,10 @@ char versionString[256];
 void *msgqueue_thread(void *arg) {
   struct mbn_handler *mbn = (struct mbn_handler *) arg;
   struct mbn_msgqueue *q, *last, *tmp;
+#ifndef MBNP_mingw
   struct timeval delay;
   int RetVal;
+#endif
 
   mbn->msgqueue_run = 1;
 
@@ -98,12 +100,16 @@ void *msgqueue_thread(void *arg) {
     }
 
     pthread_testcancel();
+#ifdef MBNP_mingw
+    sleep(1);
+#else
     delay.tv_sec = 1;
     delay.tv_usec = 0;
     RetVal =  1;
     while (RetVal) {
       RetVal = select(0, NULL, NULL, NULL, &delay);
     }
+#endif
   }
 }
 
