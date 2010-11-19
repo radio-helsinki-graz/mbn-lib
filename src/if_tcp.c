@@ -143,9 +143,6 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
 /* TODO: non-blocking connect()? time-out? */
 int setup_client(struct tcpdat *dat, char *server, char *port, char *err) {
   struct addrinfo hint, *res, *rp;
-#ifdef MBNP_mingw
-  unsigned long NonBlockMode;
-#endif
 
   /* lookup hostname/ip address */
   memset((void *)&hint, 0, sizeof(struct addrinfo));
@@ -175,11 +172,6 @@ int setup_client(struct tcpdat *dat, char *server, char *port, char *err) {
   }
   dat->conn[0].sock = dat->rconn;
   dat->conn[0].buflen = 0;
-
-#ifdef MBNP_mingw
-  NonBlockMode=1;
-  ioctlsocket(dat->conn[0].sock, FIONBIO,&NonBlockMode);
-#endif
 
   return 0;
 }
@@ -271,9 +263,6 @@ void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
   int i;
   struct sockaddr_in remote_addr;
   unsigned int remote_addr_length = sizeof(remote_addr);
-#ifdef MBNP_mingw
-  unsigned long NonBlockMode;
-#endif
 
   for(i=0; i<MAX_CONNECTIONS; i++)
     if(dat->conn[i].sock < 0)
@@ -294,10 +283,6 @@ void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
   dat->conn[i].remoteip = remote_addr.sin_addr.s_addr;
   dat->conn[i].remoteport = remote_addr.sin_port;
 
-#ifdef MBNP_mingw
-  NonBlockMode=1;
-  ioctlsocket(dat->conn[i].sock, FIONBIO,&NonBlockMode);
-#endif
   mbnWriteLogMessage(itf, "Accepted TCP connection from %s:%d", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port));
 }
 
@@ -411,14 +396,22 @@ int tcptransmit(struct mbn_interface *itf, unsigned char *buf, int length, void 
   struct tcpconn *cn = (struct tcpconn *)ifaddr;
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   int i;
+#ifdef MBNP_mingw
+  unsigned long NonBlockMode;
+#endif
 
   for(i=0; i<MAX_CONNECTIONS; i++) {
     if(dat->conn[i].sock < 0 || (cn != NULL && cn != &(dat->conn[i])))
       continue;
 
-
 #ifdef MBNP_mingw
+    NonBlockMode=1;
+    ioctlsocket(dat->conn[i].sock, FIONBIO,&NonBlockMode);
+
     send(dat->conn[i].sock, (char *)buf, length, 0);
+
+    NonBlockMode=0;
+    ioctlsocket(dat->conn[i].sock, FIONBIO,&NonBlockMode);
 #else
     send(dat->conn[i].sock, (char *)buf, length, MSG_DONTWAIT);
 #endif
