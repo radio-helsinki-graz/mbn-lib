@@ -393,22 +393,16 @@ void *receiver(void *ptr) {
 int tcptransmit(struct mbn_interface *itf, unsigned char *buf, int length, void *ifaddr, char *err) {
   struct tcpconn *cn = (struct tcpconn *)ifaddr;
   struct tcpdat *dat = (struct tcpdat *)itf->data;
-  int i, sent, n;
+  int i;
 
   for(i=0; i<MAX_CONNECTIONS; i++) {
     if(dat->conn[i].sock < 0 || (cn != NULL && cn != &(dat->conn[i])))
       continue;
 
-    sent = 0;
-    while((n = send(dat->conn[i].sock, (char *)&(buf[sent]), length-sent, 0)) < length-sent) {
-      if(n < 0 && dat->conn[i].sock == dat->rconn) {
-        sprintf(err, "Can't send packet: %s", strerror(errno));
-        return 1;
-      }
-      sent += n;
-    }
+    send(dat->conn[i].sock, (char *)buf, length, MSG_DONTWAIT);
   }
   return 0;
+  err = NULL;
 }
 
 
