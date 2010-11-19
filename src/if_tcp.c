@@ -66,6 +66,7 @@ struct tcpconn {
   int buflen;
   int sock; /* -1 when unused */
   unsigned long remoteip;
+  unsigned int remoteport;
 };
 
 struct tcpdat {
@@ -270,7 +271,7 @@ void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
   if(i >= MAX_CONNECTIONS) {
     if((i = accept(dat->listensocket, (struct sockaddr *)&remote_addr, &remote_addr_length)) > 0)
       close(i);
-    mbnWriteLogMessage(itf, "Rejected TCP connection from %s", inet_ntoa(remote_addr.sin_addr));
+    mbnWriteLogMessage(itf, "Rejected TCP connection from %s:%d", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port));
     return;
   }
 
@@ -279,7 +280,8 @@ void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
     return;
   dat->conn[i].buflen = 0;
   dat->conn[i].remoteip = remote_addr.sin_addr.s_addr;
-  mbnWriteLogMessage(itf, "Accepted TCP connection from %s", inet_ntoa(remote_addr.sin_addr));
+  dat->conn[i].remoteport = remote_addr.sin_port;
+  mbnWriteLogMessage(itf, "Accepted TCP connection from %s:%d", inet_ntoa(remote_addr.sin_addr), ntohs(remote_addr.sin_port));
 }
 
 
@@ -304,8 +306,9 @@ int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
     }
     cn->sock = -1;
     remote_addr.s_addr = cn->remoteip;
-    mbnWriteLogMessage(itf, "Closed connection from %s", inet_ntoa(remote_addr));
+    mbnWriteLogMessage(itf, "Closed connection from %s:%d", inet_ntoa(remote_addr), ntohs(cn->remoteport));
     cn->remoteip = 0;
+    cn->remoteport = 0;
     return 0;
   }
 
