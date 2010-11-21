@@ -82,6 +82,7 @@ int setup_server(struct tcpdat *, char *, char *, char *);
 int init_tcp(struct mbn_interface *, char *);
 void stop_tcp(struct mbn_interface *);
 void free_tcp(struct mbn_interface *);
+void free_addr_tcp(struct mbn_interface *, void *);
 void *receiver(void *);
 int tcptransmit(struct mbn_interface *, unsigned char *, int, void *, char *);
 
@@ -135,6 +136,7 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *remoteip, char *remoteport, c
   itf->cb_init = init_tcp;
   itf->cb_stop = stop_tcp;
   itf->cb_free = free_tcp;
+  itf->cb_free_addr = free_addr_tcp;
   itf->cb_transmit = tcptransmit;
   return itf;
 }
@@ -258,6 +260,9 @@ void free_tcp(struct mbn_interface *itf) {
 #endif
 }
 
+void free_addr_tcp(struct mbn_interface *itf, void *ifaddr) {
+  /* Nothing to be don because *ifaddr is not dynamically allocated */
+}
 
 void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
   int i;
