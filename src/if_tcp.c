@@ -262,6 +262,9 @@ void free_tcp(struct mbn_interface *itf) {
 
 void free_addr_tcp(struct mbn_interface *itf, void *ifaddr) {
   /* Nothing to be don because *ifaddr is not dynamically allocated */
+  return;
+  itf = NULL;
+  ifaddr = NULL;
 }
 
 void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
