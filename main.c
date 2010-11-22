@@ -15,6 +15,7 @@
 ****************************************************************************/
 
 /* #define USE_IF_UDP */
+#define USE_IF_TCP
 
 #define MBN_VARARG
 #include "mbn.h"
@@ -73,6 +74,11 @@ void Error(struct mbn_handler *mbn, int code, char *msg) {
   mbn += 1;
 }
 
+void mWriteLogMessage(struct mbn_handler *mbn, char *msg) {
+  printf("%s\n", msg);
+  mbn += 1;
+}
+
 int ReceiveMessage(struct mbn_handler *mbn, struct mbn_message *msg) {
   /*printf("ReceiveMessage from %08lX to %08lX type %d\n", msg->AddressFrom, msg->AddressTo, msg->MessageType);*/
   mbn += 1; msg += 1;
@@ -97,6 +103,7 @@ int main(void) {
   char err[MBN_ERRSIZE];
   struct mbn_if_ethernet *ifl, *n;
   char *ifname;
+  int i;
 
   fprintf(stdout, "%s\n",mbnVersion());
 
@@ -107,7 +114,7 @@ int main(void) {
     return 1;
   }
 #elif defined(USE_IF_TCP)
-  itf = mbnTCPOpen(NULL, NULL, "0.0.0.0", NULL, err);
+  itf = mbnTCPOpen("192.168.0.200", "34848", NULL, NULL, err);
   if(itf == NULL) {
     printf("Error: %s\n", err);
     return 1;
@@ -132,12 +139,12 @@ int main(void) {
     return 1;
   }
   mbnEthernetIFFree(ifl);
-#endif
 
   if (mbnEthernetMIILinkStatus(itf, err))
     fprintf(stdout, "Link up\n");
   else
     fprintf(stdout, "Link down\n");
+#endif
 
   objects[0] = MBN_OBJ("Object #1", MBN_DATATYPE_UINT, 0, 2, 0, 512, 256, MBN_DATATYPE_NODATA);
   objects[1] = MBN_OBJ("Object #2", MBN_DATATYPE_NODATA, MBN_DATATYPE_UINT, 2, 0, 512, 0, 256);
@@ -153,10 +160,15 @@ int main(void) {
   mbnSetErrorCallback(mbn, Error);
   mbnSetReceiveMessageCallback(mbn, ReceiveMessage);
   mbnSetObjectInformationResponseCallback(mbn, ObjectInformationResponse);
+  mbnSetWriteLogMessageCallback(mbn, mWriteLogMessage);
 
   mbnStartInterface(itf, err);
 
-  pthread_exit(NULL);
+  for (i=0; i<20; i++) {
+    sleep(1);
+    printf("sleep number %d\n", i);
+  }
+  /*pthread_exit(NULL);*/
   mbnFree(mbn);
   return 0;
 }
