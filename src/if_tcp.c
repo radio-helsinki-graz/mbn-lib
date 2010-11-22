@@ -298,7 +298,7 @@ void new_connection(struct mbn_interface *itf, struct tcpdat *dat) {
 int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
   struct tcpdat *dat = (struct tcpdat *)itf->data;
   unsigned char buf[BUFFERSIZE];
-  int n, i;
+  int n, i, j;
   struct in_addr remote_addr;
 
   n = recv(cn->sock, (char *)buf, BUFFERSIZE, 0);
@@ -332,9 +332,10 @@ int read_connection(struct mbn_interface *itf, struct tcpconn *cn, char *err) {
         /* broadcast message, forward to the other connections */
         /* TODO: this can block the thread, use a send buffer? */
         if(buf[0] == 0x81) {
-          for(n=0; n<MAX_CONNECTIONS; n++)
-            if(dat->conn[n].sock >= 0 && &(dat->conn[n]) != cn)
-              tcptransmit(itf, cn->buf, cn->buflen, (void *)&(dat->conn[n]), err);
+          for(j=0; j<MAX_CONNECTIONS; j++)
+            if(dat->conn[j].sock >= 0 && &(dat->conn[j]) != cn) {
+              tcptransmit(itf, cn->buf, cn->buflen, (void *)&(dat->conn[j]), err);
+            }
         }
         /* now send to mbn */
         mbnProcessRawMessage(itf, cn->buf, cn->buflen, (void *)cn);
