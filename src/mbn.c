@@ -537,7 +537,7 @@ void MBN_EXPORT mbnWriteLogMessage(struct mbn_interface *itf, const char *fmt, .
 }
 
 const char *MBN_EXPORT mbnVersion() {
-  sprintf(versionString, "MambaNet Library V1.9 Beta - %s (%s) - %s", __DATE__, __TIME__, MBN_MANUFACTURER_NAME);
+  sprintf(versionString, "MambaNet Library V1.9 - %s (%s) - %s", __DATE__, __TIME__, MBN_MANUFACTURER_NAME);
   return versionString;
 }
 
