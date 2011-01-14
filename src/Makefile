@@ -15,6 +15,9 @@ endif
 ifdef IF_UDP
 	OBJECTS += ${IF_UDP}.o
 endif
+ifdef IF_UNIX
+	OBJECTS += ${IF_UNIX}.o
+endif
 
 
 ifdef BUILD_STATIC
@@ -60,6 +63,10 @@ ifdef IF_TCP
 endif
 ifdef IF_UDP
 	sed 's/#undef MBN_IF_UDP/#define MBN_IF_UDP ${IF_UDP}/' < mbn.h > mbn.h-
+	mv mbn.h- mbn.h
+endif
+ifdef IF_UNIX
+	sed 's/#undef MBN_IF_UNIX/#define MBN_IF_UNIX ${IF_UNIX}/' < mbn.h > mbn.h-
 	mv mbn.h- mbn.h
 endif
 ifdef MANUFACTURERID

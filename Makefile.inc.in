@@ -28,6 +28,11 @@ PLATFORM=
 #    Works on both windows (XP, 2003 or higher) and linux
 #IF_UDP=
 
+# Unix socket modules:
+#  if_unix
+#    Raw linux sockets, requires linux 2.6+
+#IF_UNIX=
+
 # Force this compile to only allow a fixed Manufacturer ID
 #MANUFACTURERID=
 

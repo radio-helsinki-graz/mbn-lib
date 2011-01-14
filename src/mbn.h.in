@@ -32,6 +32,7 @@
 #undef MBN_IF_ETHERNET
 #undef MBN_IF_TCP
 #undef MBN_IF_UDP
+#undef MBN_IF_UNIX
 
 /* forcing a ManufacturerID? */
 /* #undef MBN_MANUFACTURERID */
@@ -451,6 +452,10 @@ struct mbn_interface * MBN_EXPORT mbnTCPOpen(char *, char *, char *, char *, cha
 #ifdef MBN_IF_UDP
 struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *, char *, char *, char *);
 #endif
+#ifdef MBN_IF_UNIX
+struct mbn_interface * MBN_EXPORT mbnUnixOpen(char *, char *, char *);
+#endif
+
 
 /* address.c */
 void MBN_EXPORT mbnForceAddress(struct mbn_handler *, unsigned long);
