@@ -78,8 +78,10 @@
  */
 
 /* stack configuration */
-#define MBN_ADDR_TIMEOUT    110 /* seconds */
-#define MBN_ADDR_MSG_TIMEOUT 30 /* sending address reservation information packets */
+#define MBN_ADDR_TIMEOUT          110 /* seconds */
+#define MBN_ADDR_MSG_TIMEOUT       30 /* sending address reservation information packets */
+#define MBN_ENG_ADDR_TIMEOUT        4 /* seconds */
+#define MBN_ENG_ADDR_MSG_TIMEOUT    1 /* sending address reservation information packets every second */
 
 #define MBN_ACKNOWLEDGE_RETRIES 15 /* number of times to retry a message requiring an acknowledge */
 

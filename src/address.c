@@ -127,7 +127,11 @@ void send_info(struct mbn_handler *mbn) {
   msg.Message.Address.Services           = mbn->node.Services;
   mbnSendMessage(mbn, &msg, MBN_SEND_IGNOREVALID);
 
-  mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
+  if (mbn->node.Services & MBN_ADDR_SERVICES_ENGINE) {
+    mbn->pongtimeout = MBN_ENG_ADDR_MSG_TIMEOUT;
+  } else {
+    mbn->pongtimeout = MBN_ADDR_MSG_TIMEOUT;
+  }
 }
 
 
@@ -218,7 +222,11 @@ void process_reservation_information(struct mbn_handler *mbn, struct mbn_message
         mbn->cb_AddressTableChange(mbn, node->MambaNetAddr == 0 ? NULL : node, &new);
       memcpy((void *)node, (void *)&new, sizeof(struct mbn_address_node));
     }
-    node->Alive = MBN_ADDR_TIMEOUT;
+    if (new.Services&MBN_ADDR_SERVICES_ENGINE) {
+      node->Alive = MBN_ENG_ADDR_TIMEOUT;
+    } else {
+      node->Alive = MBN_ADDR_TIMEOUT;
+    }
     /* update hardware address */
     if(node->ifaddr != NULL && ifaddr != node->ifaddr && mbn->itf->cb_free_addr != NULL) {
       /* check for nodes with the same pointer, and free the memory if none found */
