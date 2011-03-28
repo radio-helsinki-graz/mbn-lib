@@ -169,7 +169,7 @@ struct mbn_interface * MBN_EXPORT mbnUDPOpen(char *remotehost, char *remoteport,
 int udp_init(struct mbn_interface *itf, char *err) {
   struct udpdat *dat = (struct udpdat *)itf->data;
   int i;
-  
+
   /* create thread to wait for packets */
   if((i = pthread_create(&(dat->thread), NULL, udp_receive_packets, (void *) itf)) != 0) {
     sprintf(err, "Can't create thread: %s (%d)", strerror(i), i);
@@ -270,7 +270,7 @@ void *udp_receive_packets(void *ptr) {
       mbnInterfaceReadError(itf, err);
       break;
     }
-    
+
     /* handle the data */
     for(i=0; i<rd; i++) {
       /* ignore non-start bytes if we haven't started yet */
@@ -295,6 +295,13 @@ void *udp_receive_packets(void *ptr) {
             ((struct udpaddr *)ifaddr)->addr = from.sin_addr.s_addr;
             ((struct udpaddr *)ifaddr)->port = from.sin_port;
             mbnWriteLogMessage(itf, "Add UDP connection to/from %s:%d", inet_ntoa(from.sin_addr), ntohs(from.sin_port));
+          }
+          if(buffer[0] == 0x81) {
+            for(j=0; j<ADDLSTSIZE; j++) {
+              if(dat->socket >= 0 && &(dat->addr[j]) != ifaddr) {
+                udp_transmit(itf, msgbuf, msgbuflen, (void *)&(dat->addr[j]), err);
+              }
+            }
           }
           mbnProcessRawMessage(itf, msgbuf, msgbuflen, ifaddr);
         }
@@ -324,7 +331,7 @@ int udp_transmit(struct mbn_interface *itf, unsigned char *buffer, int length, v
     for(i=0; i<ADDLSTSIZE; i++) {
       if (dat->addr[i].addr == 0)
         continue;
-      
+
       daddr.sin_port = dat->addr[i].port;
       daddr.sin_addr.s_addr = dat->addr[i].addr;
 
